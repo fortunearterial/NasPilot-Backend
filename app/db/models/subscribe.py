@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, String, Sequence, Text
 from sqlalchemy.orm import Session
 
-from app.db import db_update, db_query
-from app.db.models import Base
+from app.db import db_query, db_update, Base
 
 
 class Subscribe(Base):
@@ -66,6 +65,8 @@ class Subscribe(Base):
     best_version = Column(Integer, default=0)
     # 当前优先级
     current_priority = Column(Integer)
+    # 保存路径
+    save_path = Column(String)
 
     @staticmethod
     @db_query
