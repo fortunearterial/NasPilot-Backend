@@ -43,14 +43,15 @@ def add_site(
     if not site_in.url:
         return schemas.Response(success=False, message="站点地址不能为空")
     domain = StringUtils.get_url_domain(site_in.url)
-    site_info = SitesHelper().get_indexer(domain)
-    if not site_info:
-        return schemas.Response(success=False, message="该站点不支持或用户未通过认证")
-    if Site.get_by_domain(db, domain):
-        return schemas.Response(success=False, message=f"{domain} 站点己存在")
+    # feat: 删除站点库相关
+    # site_info = SitesHelper().get_indexer(domain)
+    # if not site_info:
+    #     return schemas.Response(success=False, message="该站点不支持或用户未通过认证")
+    # if Site.get_by_url(db, site_in.url):
+    #     return schemas.Response(success=False, message=f"{site_in.url} 站点己存在")
     # 保存站点信息
     site_in.domain = domain
-    site_in.name = site_info.get("name")
+    # site_in.name = site_info.get("name")
     site_in.id = None
     site = Site(**site_in.dict())
     site.create(db)
@@ -183,8 +184,9 @@ def site_icon(site_id: int,
     })
 
 
-@router.get("/resource/{site_id}", summary="站点资源", response_model=List[schemas.TorrentInfo])
+@router.get("/resource/{site_id}/{resource_type}", summary="站点资源", response_model=List[schemas.TorrentInfo])
 def site_resource(site_id: int,
+                  resource_type: str,
                   db: Session = Depends(get_db),
                   _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
@@ -196,7 +198,13 @@ def site_resource(site_id: int,
             status_code=404,
             detail=f"站点 {site_id} 不存在",
         )
-    torrents = TorrentsChain().browse(domain=site.domain)
+    torrents = None
+    if resource_type == 'browse':
+        torrents = TorrentsChain().browse(site=site)
+    elif resource_type == 'rss':
+        torrents = TorrentsChain().rss(site=site)
+    elif resource_type == 'search':
+        torrents = TorrentsChain().search(site=site, keyword = 'ABC')
     if not torrents:
         return []
     return [torrent.to_dict() for torrent in torrents]

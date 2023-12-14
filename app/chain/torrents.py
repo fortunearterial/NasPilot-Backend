@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.context import TorrentInfo, Context, MediaInfo
 from app.core.metainfo import MetaInfo
 from app.db.site_oper import SiteOper
+from app.db.models.site import Site
 from app.db.systemconfig_oper import SystemConfigOper
 from app.helper.rss import RssHelper
 from app.helper.sites import SitesHelper
@@ -71,40 +72,40 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         self.remove_cache(self._rss_file)
         logger.info(f'种子缓存数据清理完成')
 
-    @cached(cache=TTLCache(maxsize=128, ttl=595))
-    def browse(self, domain: str) -> List[TorrentInfo]:
+    # @cached(cache=TTLCache(maxsize=128, ttl=595))
+    def browse(self, site: Site) -> List[TorrentInfo]:
         """
         浏览站点首页内容，返回种子清单，TTL缓存10分钟
-        :param domain: 站点域名
+        :param site: 站点
         """
-        logger.info(f'开始获取站点 {domain} 最新种子 ...')
-        site = self.siteshelper.get_indexer(domain)
         if not site:
-            logger.error(f'站点 {domain} 不存在！')
+            logger.error(f'站点 {site.name} 不存在！')
             return []
-        return self.refresh_torrents(site=site)
+        logger.info(f'开始获取站点 {site.name} 最新种子 ...')
+        indexer = self.siteshelper.get_indexer(site=site)
+        return self.refresh_torrents(site=indexer)
 
-    @cached(cache=TTLCache(maxsize=128, ttl=295))
-    def rss(self, domain: str) -> List[TorrentInfo]:
+    # @cached(cache=TTLCache(maxsize=128, ttl=295))
+    def rss(self, site: Site) -> List[TorrentInfo]:
         """
         获取站点RSS内容，返回种子清单，TTL缓存5分钟
-        :param domain: 站点域名
+        :param site: 站点
         """
-        logger.info(f'开始获取站点 {domain} RSS ...')
-        site = self.siteshelper.get_indexer(domain)
         if not site:
-            logger.error(f'站点 {domain} 不存在！')
+            logger.error(f'站点 {site.name} 不存在！')
             return []
-        if not site.get("rss"):
-            logger.error(f'站点 {domain} 未配置RSS地址！')
+        if not site.feed or site.feed.get("method") != 'RSS':
+            logger.error(f'站点 {site.name} 不支持RSS！')
             return []
-        rss_items = self.rsshelper.parse(site.get("rss"), True if site.get("proxy") else False)
+        logger.info(f'开始获取站点 {site.name} RSS ...')
+        indexer = self.siteshelper.get_indexer(site=site)
+        rss_items = self.rsshelper.parse(indexer.get("rss"), True if indexer.get("proxy") else False)
         if rss_items is None:
             # rss过期，尝试保留原配置生成新的rss
-            self.__renew_rss_url(domain=domain, site=site)
+            self.__renew_rss_url(domain=site.domain, site=indexer)
             return []
         if not rss_items:
-            logger.error(f'站点 {domain} 未获取到RSS数据！')
+            logger.error(f'站点 {site.name} 未获取到RSS数据！')
             return []
         # 组装种子
         ret_torrents: List[TorrentInfo] = []
@@ -112,12 +113,12 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
             if not item.get("title"):
                 continue
             torrentinfo = TorrentInfo(
-                site=site.get("id"),
-                site_name=site.get("name"),
-                site_cookie=site.get("cookie"),
-                site_ua=site.get("ua") or settings.USER_AGENT,
-                site_proxy=site.get("proxy"),
-                site_order=site.get("pri"),
+                site=indexer.get("id"),
+                site_name=indexer.get("name"),
+                site_cookie=indexer.get("cookie"),
+                site_ua=indexer.get("ua") or settings.USER_AGENT,
+                site_proxy=indexer.get("proxy"),
+                site_order=indexer.get("pri"),
                 title=item.get("title"),
                 enclosure=item.get("enclosure"),
                 page_url=item.get("link"),
@@ -128,19 +129,32 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
 
         return ret_torrents
 
-    def refresh(self, stype: str = None, sites: List[int] = None) -> Dict[str, List[Context]]:
+    # @cached(cache=TTLCache(maxsize=128, ttl=595))
+    def search(self, site: Site, keyword: str) -> List[TorrentInfo]:
+        """
+        浏览站点首页内容，返回种子清单，TTL缓存10分钟
+        :param site: 站点
+        """
+        if not site:
+            logger.error(f'站点 {site.name} 不存在！')
+            return []
+        logger.info(f'开始搜索站点 {site.name} 关键字 {keyword} 最新种子 ...')
+        indexer = self.siteshelper.get_indexer(site=site)
+        return self.search_torrents(site=indexer, keywords=[keyword])
+
+    def refresh(self, stype: str = None, site_ids: List[int] = None) -> Dict[str, List[Context]]:
         """
         刷新站点最新资源，识别并缓存起来
         :param stype: 强制指定缓存类型，spider:爬虫缓存，rss:rss缓存
-        :param sites: 强制指定站点ID列表，为空则读取设置的订阅站点
+        :param site_ids: 强制指定站点ID列表，为空则读取设置的订阅站点
         """
         # 刷新类型
         if not stype:
             stype = settings.SUBSCRIBE_MODE
 
         # 刷新站点
-        if not sites:
-            sites = self.systemconfig.get(SystemConfigKey.RssSites) or []
+        if not site_ids:
+            site_ids = self.systemconfig.get(SystemConfigKey.RssSites) or []
 
         # 读取缓存
         torrents_cache = self.get_torrents()
@@ -151,19 +165,19 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                                        if not self.torrenthelper.is_invalid(_torrent.torrent_info.enclosure)]
 
         # 所有站点索引
-        indexers = self.siteshelper.get_indexers()
+        site = self.siteoper.list_order_by_pri()
         # 遍历站点缓存资源
-        for indexer in indexers:
+        for site in sites:
             # 未开启的站点不刷新
-            if sites and indexer.get("id") not in sites:
+            if site_ids and site.id not in site_ids:
                 continue
             domain = StringUtils.get_url_domain(indexer.get("domain"))
             if stype == "spider":
                 # 刷新首页种子
-                torrents: List[TorrentInfo] = self.browse(domain=domain)
+                torrents: List[TorrentInfo] = self.browse(site=site)
             else:
                 # 刷新RSS种子
-                torrents: List[TorrentInfo] = self.rss(domain=domain)
+                torrents: List[TorrentInfo] = self.rss(site=site)
             # 按pubdate降序排列
             torrents.sort(key=lambda x: x.pubdate or '', reverse=True)
             # 取前N条

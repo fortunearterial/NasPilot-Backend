@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import sys
 import threading
+import json
 
 import uvicorn as uvicorn
 from PIL import Image

@@ -10,6 +10,7 @@ from app.modules.indexer.mtorrent import MTorrentSpider
 from app.modules.indexer.spider import TorrentSpider
 from app.modules.indexer.tnode import TNodeSpider
 from app.modules.indexer.torrentleech import TorrentLeech
+from app.modules.indexer.dspider import DetailTorrentSpider
 from app.schemas.types import MediaType
 from app.utils.string import StringUtils
 
@@ -81,6 +82,13 @@ class IndexerModule(_ModuleBase):
                         mtype=mtype,
                         page=page
                     )
+                elif site.get('parser') == "dSpider":
+                    error_flag, result_array = self.__dspider_search(
+                        search_word=search_word,
+                        indexer=site,
+                        mtype=mtype,
+                        page=page
+                    )
                 else:
                     error_flag, result_array = self.__spider_search(
                         search_word=search_word,
@@ -127,6 +135,27 @@ class IndexerModule(_ModuleBase):
         :return: 是否发生错误, 种子列表
         """
         _spider = TorrentSpider(indexer=indexer,
+                                mtype=mtype,
+                                keyword=search_word,
+                                page=page)
+
+        return _spider.is_error, _spider.get_torrents()
+
+    @staticmethod
+    def __dspider_search(indexer: CommentedMap,
+                        search_word: str = None,
+                        mtype: MediaType = None,
+                        page: int = 0) -> (bool, List[dict]):
+        """
+        根据关键字搜索单个站点，并解析明细页面
+        :param: indexer: 站点配置
+        :param: search_word: 关键字
+        :param: page: 页码
+        :param: mtype: 媒体类型
+        :param: timeout: 超时时间
+        :return: 是否发生错误, 种子列表
+        """
+        _spider = DetailTorrentSpider(indexer=indexer,
                                 mtype=mtype,
                                 keyword=search_word,
                                 page=page)

@@ -43,7 +43,7 @@ def arr_system_status(_: str = Depends(verify_uri_apikey)) -> Any:
         "isDocker": True,
         "mode": "console",
         "branch": "main",
-        "databaseType": "sqLite",
+        "databaseType": "mariadb",
         "databaseVersion": {
             "major": 0,
             "minor": 0,

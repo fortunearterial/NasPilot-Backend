@@ -1,6 +1,8 @@
 import copy
 import datetime
 import re
+import time
+import random
 from typing import List
 from urllib.parse import quote, urlencode
 
@@ -17,7 +19,7 @@ from app.utils.string import StringUtils
 from app.schemas.types import MediaType
 
 
-class TorrentSpider:
+class DetailTorrentSpider:
     # 是否出现错误
     is_error: bool = False
     # 索引器ID
@@ -26,6 +28,8 @@ class TorrentSpider:
     indexername: str = None
     # 站点域名
     domain: str = None
+    # 编码
+    encoding: str = None
     # 站点Cookie
     cookie: str = None
     # 站点UA
@@ -52,12 +56,17 @@ class TorrentSpider:
     category: dict = {}
     # 站点种子列表配置
     lists: dict = {}
+    # 链接字段配置
+    feed_links: dict = {}
+    search_links: dict = {}
     # 站点种子字段配置
     fields: dict = {}
     # 页码
     page: int = 0
     # 搜索条数
     result_num: int = 100
+    # 单个链接信息
+    link_path: str = None
     # 单个种子信息
     torrents_info: dict = {}
     # 种子列表
@@ -84,13 +93,16 @@ class TorrentSpider:
         self.indexerid = indexer.get('id')
         self.indexername = indexer.get('name')
         self.search = indexer.get('search')
-        self.batch = indexer.get('batch')
+        self.batch = self.search.get('batch')
         self.browse = indexer.get('browse')
         self.category = indexer.get('category')
         self.lists = indexer.get('torrents').get('lists', {})
+        self.feed_links = indexer.get('torrents').get('feed_links')
+        self.search_links = indexer.get('torrents').get('search_links')
         self.fields = indexer.get('torrents').get('fields')
         self.render = indexer.get('render')
         self.domain = indexer.get('domain')
+        self.encoding = indexer.get('encoding')
         self.page = page
         if self.domain and not str(self.domain).endswith("/"):
             self.domain = self.domain + "/"
@@ -107,6 +119,73 @@ class TorrentSpider:
             self.referer = referer
         self.torrents_info_array = []
 
+    def __get_html(self, searchurl, method = 'get', params = None) -> str:
+        logger.info(f"开始请求：{searchurl}")
+
+        if self.render:
+            # 浏览器仿真
+            if method == 'get':
+                page_source = PlaywrightHelper().get_page_source(
+                    url=searchurl,
+                    cookies=self.cookie,
+                    ua=self.ua,
+                    proxies=self.proxy_server
+                )
+            else:
+                # TODO: post request
+                page_source = PlaywrightHelper().get_page_source(
+                    url=searchurl,
+                    params=params,
+                    cookies=self.cookie,
+                    ua=self.ua,
+                    proxies=self.proxy_server
+                )
+        else:
+            # requests请求
+            if method == 'get':
+                ret = RequestUtils(
+                    ua=self.ua,
+                    cookies=self.cookie,
+                    timeout=30,
+                    referer=self.referer,
+                    proxies=self.proxies
+                ).get_res(searchurl, allow_redirects=True)
+            else:
+                ret = RequestUtils(
+                    ua=self.ua,
+                    cookies=self.cookie,
+                    timeout=30,
+                    referer=self.referer,
+                    proxies=self.proxies
+                ).post_res(searchurl, params=params, allow_redirects=True)
+            if ret is not None:
+                # 使用chardet检测字符编码
+                raw_data = ret.content
+                if raw_data:
+                    # fix: 用指定的编码进行解码
+                    if self.encoding:
+                        page_source = raw_data.decode(self.encoding)
+                    else:
+                        try:
+                            result = chardet.detect(raw_data)
+                            encoding = result['encoding']
+                            # 解码为字符串
+                            page_source = raw_data.decode(encoding)
+                        except Exception as e:
+                            logger.debug(f"chardet解码失败：{str(e)}")
+                            # 探测utf-8解码
+                            if re.search(r"charset=\"?utf-8\"?", ret.text, re.IGNORECASE):
+                                ret.encoding = "utf-8"
+                            else:
+                                ret.encoding = ret.apparent_encoding
+                        page_source = ret.text
+                else:
+                    page_source = ret.text
+            else:
+                page_source = ""
+
+        return page_source
+
     def get_torrents(self) -> List[dict]:
         """
         开始请求
@@ -117,18 +196,23 @@ class TorrentSpider:
         # 种子搜索相对路径
         paths = self.search.get('paths', [])
         torrentspath = ""
+        torrentsmethod = ""
         if len(paths) == 1:
             torrentspath = paths[0].get('path', '')
+            torrentsmethod = paths[0].get('method', '')
         else:
             for path in paths:
                 if path.get("type") == "all" and not self.mtype:
                     torrentspath = path.get('path')
+                    torrentsmethod = path.get('method')
                     break
                 elif path.get("type") == "movie" and self.mtype == MediaType.MOVIE:
                     torrentspath = path.get('path')
+                    torrentsmethod = path.get('method')
                     break
                 elif path.get("type") == "tv" and self.mtype == MediaType.TV:
                     torrentspath = path.get('path')
+                    torrentsmethod = path.get('method')
                     break
 
         # 精确搜索
@@ -153,6 +237,7 @@ class TorrentSpider:
 
             # 搜索URL
             indexer_params = self.search.get("params") or {}
+            params = indexer_params.get('search')
             if indexer_params:
                 search_area = indexer_params.get('search_area')
                 # search_area非0表示支持imdbid搜索
@@ -164,18 +249,7 @@ class TorrentSpider:
                 inputs_dict = {
                     "keyword": search_word
                 }
-                # 查询参数，默认查询标题
-                params = {
-                    "search_mode": search_mode,
-                    "search_area": 0,
-                    "page": self.page or 0,
-                    "notnewword": 1
-                }
-                # 额外参数
-                for key, value in indexer_params.items():
-                    params.update({
-                        "%s" % key: str(value).format(**inputs_dict)
-                    })
+                params = params.format(**inputs_dict)
                 # 分类条件
                 if self.category:
                     if self.mtype == MediaType.TV:
@@ -195,7 +269,7 @@ class TorrentSpider:
                             params.update({
                                 "cat%s" % cat.get("id"): 1
                             })
-                searchurl = self.domain + torrentspath + "?" + urlencode(params)
+                searchurl = self.domain + str(torrentspath).format(**inputs_dict)
             else:
                 # 变量字典
                 inputs_dict = {
@@ -205,6 +279,11 @@ class TorrentSpider:
                 # 无额外参数
                 searchurl = self.domain + str(torrentspath).format(**inputs_dict)
 
+            # 获取页面源代码
+            page_source = self.__get_html(searchurl, method = torrentsmethod, params = params)
+
+            # 解析
+            return self.parselinks(page_source, self.search_links)
         # 列表浏览
         else:
             # 变量字典
@@ -225,49 +304,36 @@ class TorrentSpider:
             # 搜索Url
             searchurl = self.domain + str(torrentspath).format(**inputs_dict)
 
-        logger.info(f"开始请求：{searchurl}")
+            # 获取页面源代码
+            page_source = self.__get_html(searchurl)
 
-        if self.render:
-            # 浏览器仿真
-            page_source = PlaywrightHelper().get_page_source(
-                url=searchurl,
-                cookies=self.cookie,
-                ua=self.ua,
-                proxies=self.proxy_server
-            )
-        else:
-            # requests请求
-            ret = RequestUtils(
-                ua=self.ua,
-                cookies=self.cookie,
-                timeout=30,
-                referer=self.referer,
-                proxies=self.proxies
-            ).get_res(searchurl, allow_redirects=True)
-            if ret is not None:
-                # 使用chardet检测字符编码
-                raw_data = ret.content
-                if raw_data:
-                    try:
-                        result = chardet.detect(raw_data)
-                        encoding = result['encoding']
-                        # 解码为字符串
-                        page_source = raw_data.decode(encoding)
-                    except Exception as e:
-                        logger.debug(f"chardet解码失败：{str(e)}")
-                        # 探测utf-8解码
-                        if re.search(r"charset=\"?utf-8\"?", ret.text, re.IGNORECASE):
-                            ret.encoding = "utf-8"
-                        else:
-                            ret.encoding = ret.apparent_encoding
-                        page_source = ret.text
+            # 解析
+            return self.parselinks(page_source, self.feed_links)
+        
+
+    def __get_links(self, torrent):
+        # links
+        selector = {}
+        selector["selector"] = "a"
+        selector["attribute"] = "href"
+        link = torrent(selector.get('selector', '')).clone()
+        self.__remove(link, selector)
+        items = self.__attribute_or_text(link, selector)
+        item = self.__index(items, selector)
+        detail_link = self.__filter_text(item, selector.get('filters'))
+        if detail_link:
+            if not detail_link.startswith("http"):
+                if detail_link.startswith("//"):
+                    detail_link = self.domain.split(":")[0] + ":" + detail_link
+                elif detail_link.startswith("/"):
+                    detail_link = self.domain + detail_link[1:]
                 else:
-                    page_source = ret.text
-            else:
-                page_source = ""
+                    detail_link = self.domain + detail_link
 
-        # 解析
-        return self.parse(page_source)
+            self.link_path = detail_link
+            page_source = self.__get_html(detail_link)
+
+            self.parse(page_source)
 
     def __get_title(self, torrent):
         # title default
@@ -347,24 +413,25 @@ class TorrentSpider:
 
     def __get_detail(self, torrent):
         # details
-        if 'details' not in self.fields:
-            return
-        selector = self.fields.get('details', {})
-        details = torrent(selector.get('selector', '')).clone()
-        self.__remove(details, selector)
-        items = self.__attribute_or_text(details, selector)
-        item = self.__index(items, selector)
-        detail_link = self.__filter_text(item, selector.get('filters'))
-        if detail_link:
-            if not detail_link.startswith("http"):
-                if detail_link.startswith("//"):
-                    self.torrents_info['page_url'] = self.domain.split(":")[0] + ":" + detail_link
-                elif detail_link.startswith("/"):
-                    self.torrents_info['page_url'] = self.domain + detail_link[1:]
-                else:
-                    self.torrents_info['page_url'] = self.domain + detail_link
-            else:
-                self.torrents_info['page_url'] = detail_link
+        self.torrents_info['page_url'] = self.link_path
+        # if 'details' not in self.fields:
+        #     return
+        # selector = self.fields.get('details', {})
+        # details = torrent(selector.get('selector', '')).clone()
+        # self.__remove(details, selector)
+        # items = self.__attribute_or_text(details, selector)
+        # item = self.__index(items, selector)
+        # detail_link = self.__filter_text(item, selector.get('filters'))
+        # if detail_link:
+        #     if not detail_link.startswith("http"):
+        #         if detail_link.startswith("//"):
+        #             self.torrents_info['page_url'] = self.torrents_info['page_url'] + "#" + self.domain.split(":")[0] + ":" + detail_link
+        #         elif detail_link.startswith("/"):
+        #             self.torrents_info['page_url'] = self.torrents_info['page_url'] + "#" + self.domain + detail_link[1:]
+        #         else:
+        #             self.torrents_info['page_url'] = self.torrents_info['page_url'] + "#" + self.domain + detail_link
+        #     else:
+        #         self.torrents_info['page_url'] = self.torrents_info['page_url'] + "#" + detail_link
 
     def __get_download(self, torrent):
         # download link
@@ -547,6 +614,18 @@ class TorrentSpider:
         else:
             self.torrents_info['labels'] = []
 
+    def get_links(self, torrent) -> dict:
+        """
+        解析单条种子数据
+        """
+        self.link_path = None
+        try:
+            self.__get_links(torrent)
+        except Exception as err:
+            logger.error("%s 搜索出现错误：%s" % (self.indexername, str(err)))
+
+        time.sleep(random.randint(1, 10))
+
     def get_info(self, torrent) -> dict:
         """
         解析单条种子数据
@@ -639,7 +718,7 @@ class TorrentSpider:
             items = items[0]
         return items
 
-    def parse(self, html_text: str) -> List[dict]:
+    def parselinks(self, html_text: str, links: dict) -> List[dict]:
         """
         解析整个页面
         """
@@ -648,6 +727,26 @@ class TorrentSpider:
             return []
         # 清空旧结果
         self.torrents_info_array = []
+        try:
+            # 解析站点文本对象
+            html_doc = PyQuery(html_text)
+            # 种子筛选器
+            torrents_selector = links.get('selector', '')
+            # 遍历种子html列表
+            for torn in html_doc(torrents_selector):
+                self.get_links(PyQuery(torn))
+            return self.torrents_info_array
+        except Exception as err:
+            self.is_error = True
+            logger.warn(f"错误：{self.indexername} {str(err)}")
+
+    def parse(self, html_text: str) -> List[dict]:
+        """
+        解析整个页面
+        """
+        if not html_text:
+            self.is_error = True
+            return []
         try:
             # 解析站点文本对象
             html_doc = PyQuery(html_text)

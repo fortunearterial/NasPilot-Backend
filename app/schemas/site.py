@@ -1,7 +1,21 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
+class Feed(BaseModel):
+    method: str
+    path: str
+
+    class Config:
+        orm_mode = False
+
+class Search(BaseModel):
+    method: str
+    path: str
+    body: Optional[str]
+
+    class Config:
+        orm_mode = False
 
 class Site(BaseModel):
     # ID
@@ -14,8 +28,14 @@ class Site(BaseModel):
     url: Optional[str]
     # 站点优先级
     pri: Optional[int] = 0
-    # RSS地址
-    rss: Optional[str] = None
+    # 适用类型
+    types: Optional[List[str]] = None
+    # FEED地址
+    feed: Optional[Feed] = None
+    # SEARCH地址
+    search: Optional[Search] = None
+    # XPATH
+    xpath: Optional[str] = None
     # Cookie
     cookie: Optional[str] = None
     # User-Agent
