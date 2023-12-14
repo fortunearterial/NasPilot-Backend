@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence
+from sqlalchemy import Column, Integer, String, Sequence, Text
 from sqlalchemy.orm import Session
 
 from app.db import db_update, db_query
@@ -11,39 +11,39 @@ class Subscribe(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 标题
-    name = Column(String, nullable=False, index=True)
+    name = Column(String(255), nullable=False, index=True)
     # 年份
-    year = Column(String)
+    year = Column(String(255))
     # 类型
-    type = Column(String)
+    type = Column(String(255))
     # 搜索关键字
-    keyword = Column(String)
+    keyword = Column(String(255))
     tmdbid = Column(Integer, index=True)
-    imdbid = Column(String)
+    imdbid = Column(String(255))
     tvdbid = Column(Integer)
-    doubanid = Column(String, index=True)
+    doubanid = Column(String(255), index=True)
     # 季号
     season = Column(Integer)
     # 海报
-    poster = Column(String)
+    poster = Column(String(255))
     # 背景图
-    backdrop = Column(String)
+    backdrop = Column(String(255))
     # 评分
     vote = Column(Integer)
     # 简介
-    description = Column(String)
+    description = Column(Text)
     # 过滤规则
-    filter = Column(String)
+    filter = Column(String(255))
     # 包含
-    include = Column(String)
+    include = Column(String(255))
     # 排除
-    exclude = Column(String)
+    exclude = Column(String(255))
     # 质量
-    quality = Column(String)
+    quality = Column(String(255))
     # 分辨率
-    resolution = Column(String)
+    resolution = Column(String(255))
     # 特效
-    effect = Column(String)
+    effect = Column(String(255))
     # 总集数
     total_episode = Column(Integer)
     # 开始集数
@@ -51,17 +51,17 @@ class Subscribe(Base):
     # 缺失集数
     lack_episode = Column(Integer)
     # 附加信息
-    note = Column(String)
+    note = Column(String(255))
     # 状态：N-新建， R-订阅中
-    state = Column(String, nullable=False, index=True, default='N')
+    state = Column(String(255), nullable=False, index=True, default='N')
     # 最后更新时间
-    last_update = Column(String)
+    last_update = Column(String(255))
     # 创建时间
-    date = Column(String)
+    date = Column(String(255))
     # 订阅用户
-    username = Column(String)
+    username = Column(String(255))
     # 订阅站点
-    sites = Column(String)
+    sites = Column(String(255))
     # 是否洗版
     best_version = Column(Integer, default=0)
     # 当前优先级

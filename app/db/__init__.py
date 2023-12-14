@@ -1,4 +1,5 @@
 from typing import Tuple, Optional, Generator
+from urllib.parse import quote_plus
 
 from sqlalchemy import create_engine, QueuePool
 from sqlalchemy.orm import sessionmaker, Session, scoped_session
@@ -6,15 +7,13 @@ from sqlalchemy.orm import sessionmaker, Session, scoped_session
 from app.core.config import settings
 
 # 数据库引擎
-Engine = create_engine(f"sqlite:///{settings.CONFIG_PATH}/user.db",
-                       pool_pre_ping=True,
-                       echo=False,
-                       poolclass=QueuePool,
-                       pool_size=1024,
-                       pool_recycle=3600,
-                       pool_timeout=180,
-                       max_overflow=10,
-                       connect_args={"timeout": 60})
+# feat: change db to mariadb
+Engine = create_engine(url=settings.DB_URL,
+                        poolclass=QueuePool,
+                        pool_size=1024,
+                        pool_recycle=3600,
+                        pool_timeout=180,
+                        max_overflow=10)
 # 会话工厂
 SessionFactory = sessionmaker(bind=Engine)
 

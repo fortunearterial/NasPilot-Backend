@@ -13,17 +13,17 @@ class User(Base):
     # ID
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 用户名
-    name = Column(String, index=True, nullable=False)
+    name = Column(String(255), index=True, nullable=False)
     # 邮箱，未启用
-    email = Column(String)
+    email = Column(String(255))
     # 加密后密码
-    hashed_password = Column(String)
+    hashed_password = Column(String(255))
     # 是否启用
     is_active = Column(Boolean(), default=True)
     # 是否管理员
     is_superuser = Column(Boolean(), default=False)
     # 头像
-    avatar = Column(String)
+    avatar = Column(String(255))
 
     @staticmethod
     @db_query

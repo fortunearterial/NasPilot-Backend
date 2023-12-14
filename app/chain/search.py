@@ -45,9 +45,10 @@ class SearchChain(ChainBase):
             logger.error(f'{tmdbid} 媒体信息识别失败！')
             return []
         results = self.process(mediainfo=mediainfo, area=area)
-        # 保存眲结果
-        bytes_results = pickle.dumps(results)
-        self.systemconfig.set(SystemConfigKey.SearchResults, bytes_results)
+        # TODO: 保存搜索结果
+        # # 保存眲结果
+        # bytes_results = pickle.dumps(results)
+        # self.systemconfig.set(SystemConfigKey.SearchResults, bytes_results)
         return results
 
     def search_by_title(self, title: str, page: int = 0, site: int = None) -> List[TorrentInfo]:

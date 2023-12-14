@@ -13,39 +13,39 @@ class TransferHistory(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 源目录
-    src = Column(String, index=True)
+    src = Column(String(255), index=True)
     # 目标目录
-    dest = Column(String)
+    dest = Column(String(255))
     # 转移模式 move/copy/link...
-    mode = Column(String)
+    mode = Column(String(255))
     # 类型 电影/电视剧
-    type = Column(String)
+    type = Column(String(255))
     # 二级分类
-    category = Column(String)
+    category = Column(String(255))
     # 标题
-    title = Column(String, index=True)
+    title = Column(String(255), index=True)
     # 年份
-    year = Column(String)
+    year = Column(String(255))
     tmdbid = Column(Integer, index=True)
-    imdbid = Column(String)
+    imdbid = Column(String(255))
     tvdbid = Column(Integer)
-    doubanid = Column(String)
+    doubanid = Column(String(255))
     # Sxx
-    seasons = Column(String)
+    seasons = Column(String(255))
     # Exx
-    episodes = Column(String)
+    episodes = Column(String(255))
     # 海报
-    image = Column(String)
+    image = Column(String(255))
     # 下载器hash
-    download_hash = Column(String, index=True)
+    download_hash = Column(String(255), index=True)
     # 转移成功状态
     status = Column(Boolean(), default=True)
     # 转移失败信息
-    errmsg = Column(String)
+    errmsg = Column(String(255))
     # 时间
-    date = Column(String, index=True)
+    date = Column(String(255), index=True)
     # 文件清单，以JSON存储
-    files = Column(String)
+    files = Column(String(255))
 
     @staticmethod
     @db_query
