@@ -71,7 +71,10 @@ def exists(media_in: schemas.MediaInfo,
         meta.year = media_in.year
     if media_in.tmdb_id or media_in.douban_id:
         mediainfo = MediaChain().recognize_media(meta=meta, mtype=mtype,
-                                                 tmdbid=media_in.tmdb_id, doubanid=media_in.douban_id)
+                                                 tmdbid=media_in.tmdb_id, doubanid=media_in.douban_id, steamid=media_in.steam_id)
+    if media_in.steam_id:
+        mediainfo = MediaChain().recognize_media(meta=meta, mtype=mtype,
+                                                 steamid=media_in.steam_id)
     else:
         mediainfo = MediaChain().recognize_by_meta(metainfo=meta)
     # 查询缺失信息

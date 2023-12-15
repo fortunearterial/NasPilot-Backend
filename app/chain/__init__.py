@@ -114,24 +114,28 @@ class ChainBase(metaclass=ABCMeta):
     def recognize_media(self, meta: MetaBase = None,
                         mtype: MediaType = None,
                         tmdbid: int = None,
-                        doubanid: str = None) -> Optional[MediaInfo]:
+                        doubanid: str = None,
+                        steamid: int = None) -> Optional[MediaInfo]:
         """
         识别媒体信息
         :param meta:     识别的元数据
         :param mtype:    识别的媒体类型，与tmdbid配套
         :param tmdbid:   tmdbid
         :param doubanid: 豆瓣ID
+        :param steamid: STEAM ID
         :return: 识别的媒体信息，包括剧集信息
         """
         # 识别用名中含指定信息情形
-        if not mtype and meta and meta.type in [MediaType.TV, MediaType.MOVIE]:
+        if not mtype and meta and meta.type in [MediaType.TV, MediaType.MOVIE, MediaType.GAME]:
             mtype = meta.type
         if not tmdbid and hasattr(meta, "tmdbid"):
             tmdbid = meta.tmdbid
         if not doubanid and hasattr(meta, "doubanid"):
             doubanid = meta.doubanid
+        if not steamid and hasattr(meta, "steamid"):
+            steamid = meta.steamid
         return self.run_module("recognize_media", meta=meta, mtype=mtype,
-                               tmdbid=tmdbid, doubanid=doubanid)
+                               tmdbid=tmdbid, doubanid=doubanid, steamid=steamid)
 
     def match_doubaninfo(self, name: str, imdbid: str = None,
                          mtype: MediaType = None, year: str = None, season: int = None) -> Optional[dict]:

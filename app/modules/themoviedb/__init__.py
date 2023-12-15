@@ -52,7 +52,7 @@ class TheMovieDbModule(_ModuleBase):
         :param tmdbid:   tmdbid
         :return: 识别的媒体信息，包括剧集信息
         """
-        if settings.RECOGNIZE_SOURCE != "themoviedb":
+        if not settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
             return None
 
         if not meta:
@@ -188,7 +188,7 @@ class TheMovieDbModule(_ModuleBase):
         :reutrn: 媒体信息列表
         """
         # 未启用时返回None
-        if settings.RECOGNIZE_SOURCE != "themoviedb":
+        if not settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
             return None
 
         if not meta.name:
@@ -312,7 +312,7 @@ class TheMovieDbModule(_ModuleBase):
         :param mediainfo:  识别的媒体信息
         :return: 更新后的媒体信息
         """
-        if settings.RECOGNIZE_SOURCE != "themoviedb":
+        if not settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
             return None
         if not mediainfo.tmdb_id:
             return mediainfo

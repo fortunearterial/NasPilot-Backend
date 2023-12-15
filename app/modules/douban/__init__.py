@@ -43,7 +43,7 @@ class DoubanModule(_ModuleBase):
         :param doubanid: 豆瓣ID
         :return: 识别的媒体信息，包括剧集信息
         """
-        if settings.RECOGNIZE_SOURCE != "douban":
+        if not settings.RECOGNIZE_SOURCE.__contains__("douban"):
             return None
 
         if not meta:
@@ -504,7 +504,7 @@ class DoubanModule(_ModuleBase):
         :reutrn: 媒体信息
         """
         # 未启用豆瓣搜索时返回None
-        if settings.RECOGNIZE_SOURCE != "douban":
+        if not settings.RECOGNIZE_SOURCE.__contains__("douban"):
             return None
 
         if not meta.name:
@@ -678,7 +678,7 @@ class DoubanModule(_ModuleBase):
         :param mediainfo:  识别的媒体信息
         :return: 更新后的媒体信息
         """
-        if settings.RECOGNIZE_SOURCE != "douban":
+        if not settings.RECOGNIZE_SOURCE.__contains__("douban"):
             return None
         if not mediainfo.douban_id:
             return None

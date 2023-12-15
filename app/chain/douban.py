@@ -61,7 +61,7 @@ class DoubanChain(ChainBase, metaclass=Singleton):
         """
         获取热门电影
         """
-        if settings.RECOGNIZE_SOURCE != "douban":
+        if not settings.RECOGNIZE_SOURCE.__contains__("douban"):
             return None
         return self.run_module("movie_hot", page=page, count=count)
 
@@ -69,7 +69,7 @@ class DoubanChain(ChainBase, metaclass=Singleton):
         """
         获取热门剧集
         """
-        if settings.RECOGNIZE_SOURCE != "douban":
+        if not settings.RECOGNIZE_SOURCE.__contains__("douban"):
             return None
         return self.run_module("tv_hot", page=page, count=count)
 

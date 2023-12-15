@@ -12,7 +12,7 @@ from app.schemas.types import MediaType
 
 class MetaVideo(MetaBase):
     """
-    识别电影、电视剧
+    识别电影、电视剧、游戏
     """
     # 控制标位区
     _stop_name_flag = False

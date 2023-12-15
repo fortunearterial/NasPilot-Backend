@@ -67,7 +67,8 @@ class TransferChain(ChainBase):
                     # 按TMDBID识别
                     mediainfo = self.recognize_media(mtype=mtype,
                                                      tmdbid=downloadhis.tmdbid,
-                                                     doubanid=downloadhis.doubanid)
+                                                     doubanid=downloadhis.doubanid,
+                                                     steamid=downloadhis.steamid)
                 else:
                     # 非MoviePilot下载的任务，按文件识别
                     mediainfo = None
@@ -502,7 +503,8 @@ class TransferChain(ChainBase):
         # 查询媒体信息
         if mtype and mediaid:
             mediainfo = self.recognize_media(mtype=mtype, tmdbid=int(mediaid) if str(mediaid).isdigit() else None,
-                                             doubanid=mediaid)
+                                             doubanid=mediaid, 
+                                             steamid=int(mediaid) if str(mediaid).isdigit() else None)
             if mediainfo:
                 # 更新媒体图片
                 self.obtain_images(mediainfo=mediainfo)

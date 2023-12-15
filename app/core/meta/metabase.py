@@ -21,7 +21,7 @@ class MetaBase(object):
     org_string: Optional[str] = None
     # 副标题
     subtitle: Optional[str] = None
-    # 类型 电影、电视剧
+    # 类型 电影、电视剧、游戏
     type: MediaType = MediaType.UNKNOWN
     # 识别的中文名
     cn_name: Optional[str] = None

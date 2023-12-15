@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     WALLPAPER: str = "tmdb"
     # 网络代理 IP:PORT
     PROXY_HOST: str = None
-    # 媒体识别来源 themoviedb/douban
+    # 媒体识别来源 themoviedb/douban/steam
     RECOGNIZE_SOURCE: str = "themoviedb"
     # 刮削来源 themoviedb/douban
     SCRAP_SOURCE: str = "themoviedb"
@@ -258,6 +258,7 @@ class Settings(BaseSettings):
                 "torrents": 100,
                 "douban": 512,
                 "fanart": 512,
+                "steam": 1024,
                 "meta": 15 * 24 * 3600
             }
         return {
@@ -266,6 +267,7 @@ class Settings(BaseSettings):
             "torrents": 50,
             "douban": 256,
             "fanart": 128,
+            "steam": 256,
             "meta": 7 * 24 * 3600
         }
 

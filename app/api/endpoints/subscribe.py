@@ -138,7 +138,7 @@ def subscribe_mediaid(
         db: Session = Depends(get_db),
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
-    根据TMDBID或豆瓣ID查询订阅 tmdb:/douban:
+    根据TMDBID或豆瓣ID查询订阅 tmdb:/douban:/steam:
     """
     result = None
     if mediaid.startswith("tmdb:"):
@@ -151,6 +151,11 @@ def subscribe_mediaid(
         if not doubanid:
             return Subscribe()
         result = Subscribe.get_by_doubanid(db, doubanid)
+    elif mediaid.startswith("steam:"):
+        steamid = mediaid[6:]
+        if not steamid:
+            return Subscribe()
+        result = Subscribe.get_by_steamid(db, steamid)
 
     if not result and title:
         meta = MetaInfo(title)
@@ -243,7 +248,7 @@ def delete_subscribe_by_mediaid(
         _: schemas.TokenPayload = Depends(verify_token)
 ) -> Any:
     """
-    根据TMDBID或豆瓣ID删除订阅 tmdb:/douban:
+    根据TMDBID或豆瓣ID删除订阅 tmdb:/douban:/steam:
     """
     if mediaid.startswith("tmdb:"):
         tmdbid = mediaid[5:]
@@ -255,6 +260,11 @@ def delete_subscribe_by_mediaid(
         if not doubanid:
             return schemas.Response(success=False)
         Subscribe().delete_by_doubanid(db, doubanid)
+    elif mediaid.startswith("steam:"):
+        steamid = mediaid[6:]
+        if not steamid:
+            return schemas.Response(success=False)
+        Subscribe().delete_by_steamid(db, steamid)
 
     return schemas.Response(success=True)
 

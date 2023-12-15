@@ -15,7 +15,7 @@ class MetaInfo(BaseModel):
     title: Optional[str] = None
     # 副标题
     subtitle: Optional[str] = None
-    # 类型 电影、电视剧
+    # 类型 电影、电视剧、游戏
     type: Optional[str] = None
     # 名称
     name: Optional[str] = None
@@ -63,7 +63,7 @@ class MediaInfo(BaseModel):
     """
     识别媒体信息
     """
-    # 类型 电影、电视剧
+    # 类型 电影、电视剧、游戏
     type: Optional[str] = None
     # 媒体标题
     title: Optional[str] = None
@@ -81,6 +81,8 @@ class MediaInfo(BaseModel):
     tvdb_id: Optional[str] = None
     # 豆瓣ID
     douban_id: Optional[str] = None
+    # STEAM ID
+    steam_id: Optional[str] = None
     # 媒体原语种
     original_language: Optional[str] = None
     # 媒体原发行标题

@@ -27,14 +27,14 @@ def search_by_id(mediaid: str,
                  area: str = "title",
                  _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
-    根据TMDBID/豆瓣ID精确搜索站点资源 tmdb:/douban:/
+    根据TMDBID/豆瓣ID精确搜索站点资源 tmdb:/douban:/steam:
     """
     torrents = []
     if mtype:
         mtype = MediaType(mtype)
     if mediaid.startswith("tmdb:"):
         tmdbid = int(mediaid.replace("tmdb:", ""))
-        if settings.RECOGNIZE_SOURCE == "douban":
+        if settings.RECOGNIZE_SOURCE.__contains__("douban"):
             # 通过TMDBID识别豆瓣ID
             doubaninfo = MediaChain().get_doubaninfo_by_tmdbid(tmdbid=tmdbid, mtype=mtype)
             if doubaninfo:
@@ -44,7 +44,7 @@ def search_by_id(mediaid: str,
             torrents = SearchChain().search_by_id(tmdbid=tmdbid, mtype=mtype, area=area)
     elif mediaid.startswith("douban:"):
         doubanid = mediaid.replace("douban:", "")
-        if settings.RECOGNIZE_SOURCE == "themoviedb":
+        if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
             # 通过豆瓣ID识别TMDBID
             tmdbinfo = MediaChain().get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
             if tmdbinfo:
@@ -52,6 +52,10 @@ def search_by_id(mediaid: str,
                                                       mtype=mtype, area=area)
         else:
             torrents = SearchChain().search_by_id(doubanid=doubanid, mtype=mtype, area=area)
+    elif mediaid.startswith("steam:"):
+        # TODO: steamid
+        steamid = mediaid.replace("steam:", "")
+        raise 
     else:
         return []
     return [torrent.to_dict() for torrent in torrents]

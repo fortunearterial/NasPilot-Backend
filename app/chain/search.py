@@ -31,7 +31,7 @@ class SearchChain(ChainBase):
         self.systemconfig = SystemConfigOper()
         self.torrenthelper = TorrentHelper()
 
-    def search_by_id(self, tmdbid: int = None, doubanid: str = None,
+    def search_by_id(self, tmdbid: int = None, doubanid: str = None, steamid: int = None, 
                      mtype: MediaType = None, area: str = "title") -> List[Context]:
         """
         根据TMDBID/豆瓣ID搜索资源，精确匹配，但不不过滤本地存在的资源
@@ -40,7 +40,7 @@ class SearchChain(ChainBase):
         :param mtype: 媒体，电影 or 电视剧
         :param area: 搜索范围，title or imdbid
         """
-        mediainfo = self.recognize_media(tmdbid=tmdbid, doubanid=doubanid, mtype=mtype)
+        mediainfo = self.recognize_media(tmdbid=tmdbid, doubanid=doubanid, steamid=steamid, mtype=mtype)
         if not mediainfo:
             logger.error(f'{tmdbid} 媒体信息识别失败！')
             return []
@@ -105,7 +105,8 @@ class SearchChain(ChainBase):
         if not mediainfo.names:
             mediainfo: MediaInfo = self.recognize_media(mtype=mediainfo.type,
                                                         tmdbid=mediainfo.tmdb_id,
-                                                        doubanid=mediainfo.douban_id)
+                                                        doubanid=mediainfo.douban_id,
+                                                        steamid=mediainfo.steam_id)
             if not mediainfo:
                 logger.error(f'媒体信息识别失败！')
                 return []

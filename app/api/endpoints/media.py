@@ -105,17 +105,19 @@ def exists(title: str = None,
 def media_info(mediaid: str, type_name: str,
                _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
-    根据媒体ID查询themoviedb或豆瓣媒体信息，type_name: 电影/电视剧
+    根据媒体ID查询themoviedb或豆瓣媒体信息，type_name: 电影/电视剧/游戏
     """
     mtype = MediaType(type_name)
-    tmdbid, doubanid = None, None
+    tmdbid, doubanid, steamid = None, None, None
     if mediaid.startswith("tmdb:"):
         tmdbid = int(mediaid[5:])
     elif mediaid.startswith("douban:"):
         doubanid = mediaid[7:]
-    if not tmdbid and not doubanid:
+    elif mediaid.startswith("steam:"):
+        steamid = int(mediaid[6:])
+    if not tmdbid and not doubanid and not steamid:
         return schemas.MediaInfo()
-    if settings.RECOGNIZE_SOURCE == "themoviedb":
+    if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
         if not tmdbid and doubanid:
             tmdbinfo = MediaChain().get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
             if tmdbinfo:
@@ -129,7 +131,7 @@ def media_info(mediaid: str, type_name: str,
                 doubanid = doubaninfo.get("id")
             else:
                 return schemas.MediaInfo()
-    mediainfo = MediaChain().recognize_media(tmdbid=tmdbid, doubanid=doubanid, mtype=mtype)
+    mediainfo = MediaChain().recognize_media(tmdbid=tmdbid, doubanid=doubanid, steamid=steamid, mtype=mtype)
     if mediainfo:
         MediaChain().obtain_images(mediainfo)
         return mediainfo.to_dict()

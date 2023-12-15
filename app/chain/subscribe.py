@@ -42,6 +42,7 @@ class SubscribeChain(ChainBase):
             mtype: MediaType = None,
             tmdbid: int = None,
             doubanid: str = None,
+            steamid: int = None,
             season: int = None,
             channel: MessageChannel = None,
             userid: str = None,
@@ -63,7 +64,7 @@ class SubscribeChain(ChainBase):
             metainfo.type = MediaType.TV
             metainfo.begin_season = season
         # 识别媒体信息
-        if settings.RECOGNIZE_SOURCE == "themoviedb":
+        if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
             # TMDB识别模式
             if not tmdbid and doubanid:
                 # 将豆瓣信息转换为TMDB信息
@@ -84,7 +85,7 @@ class SubscribeChain(ChainBase):
                     season = meta.begin_season
         # 识别失败
         if not mediainfo:
-            logger.warn(f'未识别到媒体信息，标题：{title}，tmdbid：{tmdbid}，doubanid：{doubanid}')
+            logger.warn(f'未识别到媒体信息，标题：{title}，tmdbid：{tmdbid}，doubanid：{doubanid}，steamid：{steamid}')
             return None, "未识别到媒体信息"
         # 总集数
         if mediainfo.type == MediaType.TV:
@@ -120,6 +121,8 @@ class SubscribeChain(ChainBase):
         # 合并信息
         if doubanid:
             mediainfo.douban_id = doubanid
+        if steamid:
+            mediainfo.steam_id = steamid
         # 添加订阅
         sid, err_msg = self.subscribeoper.add(mediainfo, season=season, username=username, **kwargs)
         if not sid:

@@ -21,6 +21,7 @@ class Subscribe(Base):
     imdbid = Column(String(255))
     tvdbid = Column(Integer)
     doubanid = Column(String(255), index=True)
+    steamid = Column(String(255), index=True)
     # 季号
     season = Column(Integer)
     # 海报
@@ -66,12 +67,14 @@ class Subscribe(Base):
     # 当前优先级
     current_priority = Column(Integer)
     # 保存路径
-    save_path = Column(String)
+    save_path = Column(String(255))
 
     @staticmethod
     @db_query
-    def exists(db: Session, tmdbid: int = None, doubanid: str = None, season: int = None):
-        if tmdbid:
+    def exists(db: Session, tmdbid: int = None, doubanid: str = None, steamid: int = None, season: int = None):
+        if steamid:
+            return db.query(Subscribe).filter(Subscribe.steamid == steamid).first()
+        elif tmdbid:
             if season:
                 return db.query(Subscribe).filter(Subscribe.tmdbid == tmdbid,
                                                   Subscribe.season == season).first()
@@ -109,6 +112,11 @@ class Subscribe(Base):
     def get_by_doubanid(db: Session, doubanid: str):
         return db.query(Subscribe).filter(Subscribe.doubanid == doubanid).first()
 
+    @staticmethod
+    @db_query
+    def get_by_steamid(db: Session, steamid: str):
+        return db.query(Subscribe).filter(Subscribe.steamid == steamid).first()
+
     @db_update
     def delete_by_tmdbid(self, db: Session, tmdbid: int, season: int):
         subscrbies = self.get_by_tmdbid(db, tmdbid, season)
@@ -119,6 +127,13 @@ class Subscribe(Base):
     @db_update
     def delete_by_doubanid(self, db: Session, doubanid: str):
         subscribe = self.get_by_doubanid(db, doubanid)
+        if subscribe:
+            subscribe.delete(db, subscribe.id)
+        return True
+
+    @db_update
+    def delete_by_steamid(self, db: Session, steamid: str):
+        subscribe = self.get_by_steamid(db, steamid)
         if subscribe:
             subscribe.delete(db, subscribe.id)
         return True

@@ -684,7 +684,10 @@ class DownloadChain(ChainBase):
         if not totals:
             totals = {}
 
-        if mediainfo.type == MediaType.MOVIE:
+        if mediainfo.type == MediaType.GAME:
+            # TODO: GAME
+            raise
+        elif mediainfo.type == MediaType.MOVIE:
             # 电影
             itemid = self.mediaserver.get_item_id(mtype=mediainfo.type.value,
                                                   title=mediainfo.title,
