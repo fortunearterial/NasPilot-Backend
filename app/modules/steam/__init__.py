@@ -390,7 +390,10 @@ class SteamModule(_ModuleBase):
             """
             获取STEAM游戏信息
             """
-            return self.steamapi.game_detail(steamid).get(str(steamid)).get("data")
+            schinese_info = self.steamapi.game_detail(steamid).get(str(steamid)).get("data")
+            english_info = self.steamapi.game_detail(steamid, lang="english").get(str(steamid)).get("data")
+            schinese_info["original_title"] = english_info.get("name")
+            return schinese_info
             
         if not steamid:
             return None

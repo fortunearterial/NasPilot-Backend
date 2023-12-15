@@ -261,6 +261,7 @@ class DownloadChain(ChainBase):
                 imdbid=_media.imdb_id,
                 tvdbid=_media.tvdb_id,
                 doubanid=_media.douban_id,
+                steamid=_media.steam_id,
                 seasons=_meta.season,
                 episodes=_meta.episode,
                 image=_media.get_backdrop_image(),
@@ -400,9 +401,9 @@ class DownloadChain(ChainBase):
         # 分组排序
         contexts = TorrentHelper().sort_group_torrents(contexts)
 
-        # 如果是电影，直接下载
+        # 如果是电影、游戏，直接下载
         for context in contexts:
-            if context.media_info.type == MediaType.MOVIE:
+            if context.media_info.type == MediaType.MOVIE or context.media_info.type == MediaType.GAME:
                 if self.download_single(context, save_path=save_path,
                                         channel=channel, userid=userid, username=username):
                     # 下载成功

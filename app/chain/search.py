@@ -96,7 +96,7 @@ class SearchChain(ChainBase):
         :param area: 搜索范围，title or imdbid
         """
         # 豆瓣标题处理
-        if not mediainfo.tmdb_id:
+        if mediainfo.douban_id and not mediainfo.tmdb_id:
             meta = MetaInfo(title=mediainfo.title)
             mediainfo.title = meta.name
             mediainfo.season = meta.begin_season
@@ -111,7 +111,7 @@ class SearchChain(ChainBase):
                 logger.error(f'媒体信息识别失败！')
                 return []
         # 缺失的季集
-        mediakey = mediainfo.tmdb_id or mediainfo.douban_id
+        mediakey = mediainfo.tmdb_id or mediainfo.douban_id or mediainfo.steam_id
         if no_exists and no_exists.get(mediakey):
             # 过滤剧集
             season_episodes = {sea: info.episodes
@@ -191,7 +191,9 @@ class SearchChain(ChainBase):
                     continue
                 # 比对年份
                 if mediainfo.year:
-                    if mediainfo.type == MediaType.TV:
+                    if mediainfo.type == MediaType.GAME:
+                        pass
+                    elif mediainfo.type == MediaType.TV:
                         # 剧集年份，每季的年份可能不同
                         if torrent_meta.year and torrent_meta.year not in [year for year in
                                                                            mediainfo.season_years.values()]:
@@ -274,6 +276,9 @@ class SearchChain(ChainBase):
         for indexer in self.siteshelper.get_indexers():
             # 检查站点索引开关
             if not sites or indexer.get("id") in sites:
+                if indexer.get("_support_types") and not mediainfo.type.name in indexer.get("_support_types"):
+                    logger.info(f'站点 {indexer.get("name")} 不支持媒体类型【{mediainfo.type}】')
+                    continue
                 # 站点流控
                 state, msg = self.siteshelper.check(indexer.get("domain"))
                 if state:

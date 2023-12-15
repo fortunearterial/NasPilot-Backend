@@ -175,7 +175,7 @@ class SubscribeChain(ChainBase):
             subscribes = self.subscribeoper.list(state)
         # 遍历订阅
         for subscribe in subscribes:
-            mediakey = subscribe.tmdbid or subscribe.doubanid
+            mediakey = subscribe.tmdbid or subscribe.doubanid or subscribe.steamid
             # 校验当前时间减订阅创建时间是否大于1分钟，否则跳过先，留出编辑订阅的时间
             if subscribe.date:
                 now = datetime.now()
@@ -200,10 +200,11 @@ class SubscribeChain(ChainBase):
             # 识别媒体信息
             mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                         tmdbid=subscribe.tmdbid,
-                                                        doubanid=subscribe.doubanid)
+                                                        doubanid=subscribe.doubanid,
+                                                        steamid=subscribe.steamid)
             if not mediainfo:
                 logger.warn(
-                    f'未识别到媒体信息，标题：{subscribe.name}，tmdbid：{subscribe.tmdbid}，doubanid：{subscribe.doubanid}')
+                    f'未识别到媒体信息，标题：{subscribe.name}，tmdbid：{subscribe.tmdbid}，doubanid：{subscribe.doubanid}，steamid：{subscribe.steamid}')
                 continue
 
             # 非洗版状态

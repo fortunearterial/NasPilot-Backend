@@ -27,7 +27,7 @@ class SteamApi(metaclass=Singleton):
         "steamid": "/app/%s",
 
         # game info
-        "game_detail": "/appdetails?l=schinese",
+        "game_detail": "/appdetails",
 
 
         # 电影探索
@@ -258,18 +258,18 @@ class SteamApi(metaclass=Singleton):
                 search_results.append({
                     "steam_appid": steam_appid,
                     "name": name, 
-                    "header_image": header_image, 
+                    "header_image": header_image,
                     "release_date": {
                         "date": pub_data
                     }
                 })
         return search_results
 
-    def game_detail(self, subject_id: str):
+    def game_detail(self, subject_id: str, lang: str = "schinese"):
         """
         游戏详情
         """
-        return self.__get(self._urls["game_detail"], appids=subject_id)
+        return self.__get(self._urls["game_detail"], appids=subject_id, l=lang)
         
 
     def imdbid(self, imdbid: str,

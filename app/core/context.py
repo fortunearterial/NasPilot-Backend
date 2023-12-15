@@ -540,8 +540,8 @@ class MediaInfo:
         if not self.title:
             self.title = info.get("name")
         # 原语种标题
-        if not self.original_title and info.get("package_groups"):
-            self.original_title = info.get("package_groups")[0].get("subs")[0].get("option_text").split(" - ")[0]
+        if not self.original_title:
+            self.original_title = info.get("original_title")
         # 年份
         if not self.year:
             self.year = info.get("release_date").get("date")[:4] if info.get("release_date") else None
@@ -575,7 +575,7 @@ class MediaInfo:
                 self.backdrop_path = info.get("background")
         # 简介
         if not self.overview:
-            self.overview = info.get("about_the_game") or info.get("short_description") or info.get("detailed_description") or ""
+            self.overview = info.get("short_description") or info.get("about_the_game") or info.get("detailed_description") or ""
         # 导演和演员
         if not self.directors:
             self.directors = []
@@ -597,8 +597,6 @@ class MediaInfo:
         if not self.production_countries:
             self.production_countries = [{"id": language, "name": language} for language in info.get("supported_languages", "").split(", ")]
         # 剩余属性赋值
-        if not self.tagline:
-            self.tagline = info.get("short_description")
         for key, value in info.items():
             if not hasattr(self, key):
                 setattr(self, key, value)
