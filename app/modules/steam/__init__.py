@@ -403,88 +403,6 @@ class SteamModule(_ModuleBase):
         else:
             return __steam_game()
 
-    def douban_discover(self, mtype: MediaType, sort: str, tags: str,
-                        page: int = 1, count: int = 30) -> Optional[List[dict]]:
-        """
-        发现豆瓣电影、剧集
-        :param mtype:  媒体类型
-        :param sort:  排序方式
-        :param tags:  标签
-        :param page:  页码
-        :param count:  数量
-        :return: 媒体信息列表
-        """
-        logger.info(f"开始发现豆瓣 {mtype.value} ...")
-        if mtype == MediaType.MOVIE:
-            infos = self.doubanapi.movie_recommend(start=(page - 1) * count, count=count,
-                                                   sort=sort, tags=tags)
-        else:
-            infos = self.doubanapi.tv_recommend(start=(page - 1) * count, count=count,
-                                                sort=sort, tags=tags)
-        if not infos:
-            return []
-        return infos.get("items") or []
-
-    def movie_showing(self, page: int = 1, count: int = 30) -> List[dict]:
-        """
-        获取正在上映的电影
-        """
-        infos = self.doubanapi.movie_showing(start=(page - 1) * count,
-                                             count=count)
-        if not infos:
-            return []
-        return infos.get("subject_collection_items")
-
-    def tv_weekly_chinese(self, page: int = 1, count: int = 30) -> List[dict]:
-        """
-        获取豆瓣本周口碑国产剧
-        """
-        infos = self.doubanapi.tv_chinese_best_weekly(start=(page - 1) * count,
-                                                      count=count)
-        if not infos:
-            return []
-        return infos.get("subject_collection_items")
-
-    def tv_weekly_global(self, page: int = 1, count: int = 30) -> List[dict]:
-        """
-        获取豆瓣本周口碑外国剧
-        """
-        infos = self.doubanapi.tv_global_best_weekly(start=(page - 1) * count,
-                                                     count=count)
-        if not infos:
-            return []
-        return infos.get("subject_collection_items")
-
-    def tv_animation(self, page: int = 1, count: int = 30) -> List[dict]:
-        """
-        获取豆瓣动画剧
-        """
-        infos = self.doubanapi.tv_animation(start=(page - 1) * count,
-                                            count=count)
-        if not infos:
-            return []
-        return infos.get("subject_collection_items")
-
-    def movie_hot(self, page: int = 1, count: int = 30) -> List[dict]:
-        """
-        获取豆瓣热门电影
-        """
-        infos = self.doubanapi.movie_hot_gaia(start=(page - 1) * count,
-                                              count=count)
-        if not infos:
-            return []
-        return infos.get("subject_collection_items")
-
-    def tv_hot(self, page: int = 1, count: int = 30) -> List[dict]:
-        """
-        获取豆瓣热门剧集
-        """
-        infos = self.doubanapi.tv_hot(start=(page - 1) * count,
-                                      count=count)
-        if not infos:
-            return []
-        return infos.get("subject_collection_items")
-
     def search_medias(self, meta: MetaBase) -> Optional[List[MediaInfo]]:
         """
         搜索媒体信息
@@ -531,16 +449,6 @@ class SteamModule(_ModuleBase):
                 logger.info(f"{name} 匹配到STEAM信息：{item.get('steam_appid')} {item.get('title')}")
                 return item
         return {}
-
-    def movie_top250(self, page: int = 1, count: int = 30) -> List[dict]:
-        """
-        获取豆瓣电影TOP250
-        """
-        infos = self.doubanapi.movie_top250(start=(page - 1) * count,
-                                            count=count)
-        if not infos:
-            return []
-        return infos.get("subject_collection_items")
 
     def scrape_metadata(self, path: Path, mediainfo: MediaInfo, transfer_type: str) -> None:
         """
@@ -646,53 +554,7 @@ class SteamModule(_ModuleBase):
         """
         清除缓存
         """
-        logger.info("开始清除豆瓣缓存 ...")
-        self.doubanapi.clear_cache()
+        logger.info("开始清除STEAM缓存 ...")
+        self.steamapi.clear_cache()
         self.cache.clear()
-        logger.info("豆瓣缓存清除完成")
-
-    def douban_movie_credits(self, doubanid: str, page: int = 1, count: int = 20) -> List[dict]:
-        """
-        根据TMDBID查询电影演职员表
-        :param doubanid:  豆瓣ID
-        :param page:  页码
-        :param count:  数量
-        """
-        result = self.doubanapi.movie_celebrities(subject_id=doubanid)
-        if not result:
-            return []
-        ret_list = result.get("actors") or []
-        if ret_list:
-            return ret_list[(page - 1) * count: page * count]
-        else:
-            return []
-
-    def douban_tv_credits(self, doubanid: str, page: int = 1, count: int = 20) -> List[dict]:
-        """
-        根据TMDBID查询电视剧演职员表
-        :param doubanid:  豆瓣ID
-        :param page:  页码
-        :param count:  数量
-        """
-        result = self.doubanapi.tv_celebrities(subject_id=doubanid)
-        if not result:
-            return []
-        ret_list = result.get("actors") or []
-        if ret_list:
-            return ret_list[(page - 1) * count: page * count]
-        else:
-            return []
-
-    def douban_movie_recommend(self, doubanid: str) -> List[dict]:
-        """
-        根据豆瓣ID查询推荐电影
-        :param doubanid:  豆瓣ID
-        """
-        return self.doubanapi.movie_recommendations(subject_id=doubanid) or []
-
-    def douban_tv_recommend(self, doubanid: str) -> List[dict]:
-        """
-        根据豆瓣ID查询推荐电视剧
-        :param doubanid:  豆瓣ID
-        """
-        return self.doubanapi.tv_recommendations(subject_id=doubanid) or []
+        logger.info("STEAM缓存清除完成")
