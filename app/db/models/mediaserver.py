@@ -33,9 +33,9 @@ class MediaServerItem(Base):
     # TVDBID
     tvdbid = Column(String(255), index=True)
     # 路径
-    path = Column(String(255))
+    path = Column(String(4096))
     # 季集
-    seasoninfo = Column(String(255))
+    seasoninfo = Column(String(3000))
     # 备注
     note = Column(String(255))
     # 同步时间

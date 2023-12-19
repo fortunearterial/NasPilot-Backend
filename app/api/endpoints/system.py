@@ -178,10 +178,16 @@ def latest_version(_: schemas.TokenPayload = Depends(verify_token)):
     """
     version_res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
         f"https://api.github.com/repos/jxxghp/MoviePilot/releases")
-    if version_res:
-        ver_json = version_res.json()
-        if ver_json:
-            return schemas.Response(success=True, data=ver_json)
+    version_res_ly = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
+        f"https://api.github.com/repos/fortunearterial/NasPilot-Backend/releases")
+
+    vers = []
+    ver_json = version_res.json() if version_res else []
+    ver_json_ly = version_res_ly.json() if version_res_ly else []
+    vers.extend(ver_json_ly)
+    vers.extend(ver_json)
+    if ver_json:
+        return schemas.Response(success=True, data=vers)
     return schemas.Response(success=False)
 
 

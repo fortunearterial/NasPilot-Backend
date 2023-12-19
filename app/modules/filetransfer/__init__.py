@@ -380,6 +380,15 @@ class FileTransferModule(_ModuleBase):
                 else:
                     target_dir = target_dir / mediainfo.category
 
+        if mediainfo.type == MediaType.GAME:
+            # 游戏
+            if typename_dir:
+                # 目的目录加上类型和二级分类
+                target_dir = target_dir / settings.LIBRARY_GAME_NAME / mediainfo.category
+            else:
+                # 目的目录加上二级分类
+                target_dir = target_dir / mediainfo.category
+
         return target_dir
 
     def transfer_media(self,
@@ -413,8 +422,12 @@ class FileTransferModule(_ModuleBase):
                 target_dir.mkdir(parents=True, exist_ok=True)
 
         # 重命名格式
-        rename_format = settings.TV_RENAME_FORMAT \
-            if mediainfo.type == MediaType.TV else settings.MOVIE_RENAME_FORMAT
+        if mediainfo.type == MediaType.MOVIE:
+            rename_format = settings.MOVIE_RENAME_FORMAT
+        elif mediainfo.type == MediaType.TV:
+            rename_format = settings.TV_RENAME_FORMAT
+        elif mediainfo.type == MediaType.GAME:
+            rename_format = settings.GAME_RENAME_FORMAT
 
         # 判断是否为文件夹
         if in_path.is_dir():
@@ -701,8 +714,12 @@ class FileTransferModule(_ModuleBase):
             # 媒体分类路径
             target_dir = self.__get_dest_dir(mediainfo=mediainfo, target_dir=target_dir)
             # 重命名格式
-            rename_format = settings.TV_RENAME_FORMAT \
-                if mediainfo.type == MediaType.TV else settings.MOVIE_RENAME_FORMAT
+            if mediainfo.type == MediaType.MOVIE:
+                rename_format = settings.MOVIE_RENAME_FORMAT
+            elif mediainfo.type == MediaType.TV:
+                rename_format = settings.TV_RENAME_FORMAT
+            elif mediainfo.type == MediaType.GAME:
+                rename_format = settings.GAME_RENAME_FORMAT
             # 相对路径
             meta = MetaInfo(mediainfo.title)
             rel_path = self.get_rename_path(

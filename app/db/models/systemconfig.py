@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence
+from sqlalchemy import Column, Integer, String, Sequence, Text
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -12,7 +12,7 @@ class SystemConfig(Base):
     # 主键
     key = Column(String(255), index=True)
     # 值
-    value = Column(String(255), nullable=True)
+    value = Column(Text, nullable=True)
 
     @staticmethod
     @db_query

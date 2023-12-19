@@ -104,7 +104,7 @@ class Qbittorrent(metaclass=Singleton):
         if not self.qbc:
             return None
         # completed会包含移动状态 改为获取seeding状态 包含活动上传, 正在做种, 及强制做种
-        torrents, error = self.get_torrents(status=["seeding"], ids=ids, tags=tags)
+        torrents, error = self.get_torrents(status=["seeding", "completed"], ids=ids, tags=tags)
         return None if error else torrents or []
 
     def get_downloading_torrents(self, ids: Union[str, list] = None,

@@ -142,7 +142,7 @@ class Settings(BaseSettings):
     # Transmission密码
     TR_PASSWORD: str = None
     # 种子标签
-    TORRENT_TAG: str = "MOVIEPILOT"
+    TORRENT_TAG: str = "NASPILOT"
     # 下载保存目录，容器内映射路径需要一致
     DOWNLOAD_PATH: str = None
     # 电影下载保存目录，容器内映射路径需要一致
@@ -195,6 +195,8 @@ class Settings(BaseSettings):
     LIBRARY_TV_NAME: str = "电视剧"
     # 动漫媒体库目录名，不设置时使用电视剧目录
     LIBRARY_ANIME_NAME: str = None
+    # 游戏媒体库目录名
+    LIBRARY_GAME_NAME: str = "游戏"
     # 二级分类
     LIBRARY_CATEGORY: bool = True
     # 电视剧动漫的分类genre_ids
@@ -208,6 +210,8 @@ class Settings(BaseSettings):
                             "/Season {{season}}" \
                             "/{{title}} - {{season_episode}}{% if part %}-{{part}}{% endif %}{% if episode %} - 第 {{episode}} 集{% endif %}" \
                             "{{fileExt}}"
+    # 游戏重命名格式
+    GAME_RENAME_FORMAT: str = None
     # 转移时覆盖模式
     OVERWRITE_MODE: str = "size"
     # 大内存模式

@@ -67,7 +67,7 @@ class Subscribe(Base):
     # 当前优先级
     current_priority = Column(Integer)
     # 保存路径
-    save_path = Column(String(255))
+    save_path = Column(String(4096))
 
     @staticmethod
     @db_query

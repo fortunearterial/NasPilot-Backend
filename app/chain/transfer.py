@@ -64,7 +64,9 @@ class TransferChain(ChainBase):
                 if downloadhis:
                     # 类型
                     mtype = MediaType(downloadhis.type)
-                    # 按TMDBID识别
+                    if mtype != MediaType.GAME:
+                        continue
+                    # 按STEAM ID识别
                     mediainfo = self.recognize_media(mtype=mtype,
                                                      tmdbid=downloadhis.tmdbid,
                                                      doubanid=downloadhis.doubanid,
@@ -106,7 +108,14 @@ class TransferChain(ChainBase):
             transfer_type = settings.TRANSFER_TYPE
 
         # 获取待转移路径清单
-        trans_paths = self.__get_trans_paths(path)
+        trans_paths = None
+        extensions = None
+        if mediainfo.type == MediaType.GAME:
+            trans_paths = [path]
+            extensions=['.*']
+        else:
+            trans_paths = self.__get_trans_paths(path)
+            extensions=settings.RMT_MEDIAEXT
         if not trans_paths:
             logger.warn(f"{path.name} 没有找到可转移的媒体文件")
             return False, f"{path.name} 没有找到可转移的媒体文件"
@@ -121,8 +130,9 @@ class TransferChain(ChainBase):
         self.progress.start(ProgressKey.FileTransfer)
         # 目录所有文件清单
         transfer_files = SystemUtils.list_files(directory=path,
-                                                extensions=settings.RMT_MEDIAEXT,
+                                                extensions=extensions,
                                                 min_filesize=min_filesize)
+        
         if formaterHandler:
             # 有集自定义格式，过滤文件
             transfer_files = [f for f in transfer_files if formaterHandler.match(f.name)]
@@ -156,11 +166,13 @@ class TransferChain(ChainBase):
             transfers: Dict[Tuple, TransferInfo] = {}
 
             # 如果是目录且不是⼀蓝光原盘，获取所有文件并转移
-            if (not trans_path.is_file()
+            if mediainfo.type == MediaType.GAME:
+                file_paths = [trans_path]
+            elif (not trans_path.is_file()
                     and not SystemUtils.is_bluray_dir(trans_path)):
                 # 遍历获取下载目录所有文件
                 file_paths = SystemUtils.list_files(directory=trans_path,
-                                                    extensions=settings.RMT_MEDIAEXT,
+                                                    extensions=extensions,
                                                     min_filesize=min_filesize)
             else:
                 file_paths = [trans_path]

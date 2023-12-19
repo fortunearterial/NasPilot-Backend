@@ -596,7 +596,7 @@ class DoubanModule(_ModuleBase):
         :param transfer_type: 传输类型
         :return: 成功或失败
         """
-        if settings.SCRAP_SOURCE != "douban":
+        if not settings.SCRAP_SOURCE.__contains__("douban"):
             return None
         if SystemUtils.is_bluray_dir(path):
             # 蓝光原盘

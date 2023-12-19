@@ -458,80 +458,31 @@ class SteamModule(_ModuleBase):
         :param transfer_type: 传输类型
         :return: 成功或失败
         """
-        if settings.SCRAP_SOURCE != "douban":
+        if not settings.SCRAP_SOURCE.__contains__("steam"):
             return None
-        if SystemUtils.is_bluray_dir(path):
-            # 蓝光原盘
-            logger.info(f"开始刮削蓝光原盘：{path} ...")
-            meta = MetaInfo(path.stem)
-            if not meta.name:
-                return
-            # 查询豆瓣详情
-            if not mediainfo.douban_id:
-                # 根据名称查询豆瓣数据
-                doubaninfo = self.match_doubaninfo(name=mediainfo.title,
-                                                   imdbid=mediainfo.imdb_id,
-                                                   mtype=mediainfo.type,
-                                                   year=mediainfo.year)
-                if not doubaninfo:
-                    logger.warn(f"未找到 {mediainfo.title} 的豆瓣信息")
-                    return
-                doubaninfo = self.douban_info(doubanid=doubaninfo.get("id"), mtype=mediainfo.type)
-            else:
-                doubaninfo = self.douban_info(doubanid=mediainfo.douban_id,
-                                              mtype=mediainfo.type)
-            if not doubaninfo:
-                logger(f"未获取到 {mediainfo.douban_id} 的豆瓣媒体信息，无法刮削！")
-                return
-            # 豆瓣媒体信息
-            mediainfo = MediaInfo(douban_info=doubaninfo)
-            # 补充图片
-            self.obtain_images(mediainfo)
-            # 刮削路径
-            scrape_path = path / path.name
-            self.scraper.gen_scraper_files(meta=meta,
-                                           mediainfo=mediainfo,
-                                           file_path=scrape_path,
-                                           transfer_type=transfer_type)
-        else:
-            # 目录下的所有文件
-            for file in SystemUtils.list_files(path, settings.RMT_MEDIAEXT):
-                if not file:
-                    continue
-                logger.info(f"开始刮削媒体库文件：{file} ...")
-                try:
-                    meta = MetaInfo(file.stem)
-                    if not meta.name:
-                        continue
-                    if not mediainfo.douban_id:
-                        # 根据名称查询豆瓣数据
-                        doubaninfo = self.match_doubaninfo(name=mediainfo.title,
-                                                           imdbid=mediainfo.imdb_id,
-                                                           mtype=mediainfo.type,
-                                                           year=mediainfo.year,
-                                                           season=meta.begin_season)
-                        if not doubaninfo:
-                            logger.warn(f"未找到 {mediainfo.title} 的豆瓣信息")
-                            break
-                        # 查询豆瓣详情
-                        doubaninfo = self.douban_info(doubanid=doubaninfo.get("id"), mtype=mediainfo.type)
-                    else:
-                        doubaninfo = self.douban_info(doubanid=mediainfo.douban_id,
-                                                      mtype=mediainfo.type)
-                    if not doubaninfo:
-                        logger(f"未获取到 {mediainfo.douban_id} 的豆瓣媒体信息，无法刮削！")
-                        continue
-                    # 豆瓣媒体信息
-                    mediainfo = MediaInfo(douban_info=doubaninfo)
-                    # 补充图片
-                    self.obtain_images(mediainfo)
-                    # 刮削
-                    self.scraper.gen_scraper_files(meta=meta,
-                                                   mediainfo=mediainfo,
-                                                   file_path=file,
-                                                   transfer_type=transfer_type)
-                except Exception as e:
-                    logger.error(f"刮削文件 {file} 失败，原因：{str(e)}")
+        
+        # 游戏目录
+        logger.info(f"开始刮削游戏目录：{path} ...")
+        meta = MetaInfo(path.stem)
+        if not meta.name:
+            return
+        
+        steaminfo = self.steam_info(steamid=mediainfo.steam_id,
+                                            mtype=mediainfo.type)
+        if not steaminfo:
+            logger(f"未获取到 {mediainfo.steam_id} 的STEAM媒体信息，无法刮削！")
+            return
+        # STEAM媒体信息
+        mediainfo = MediaInfo(steam_info=steaminfo)
+        # 补充图片
+        self.obtain_images(mediainfo)
+        # 刮削路径
+        scrape_path = path / path.name
+        self.scraper.gen_scraper_files(meta=meta,
+                                        mediainfo=mediainfo,
+                                        file_path=scrape_path,
+                                        transfer_type=transfer_type)
+
         logger.info(f"{path} 刮削完成")
 
     def obtain_images(self, mediainfo: MediaInfo) -> Optional[MediaInfo]:

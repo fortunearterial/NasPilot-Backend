@@ -220,7 +220,7 @@ class TheMovieDbModule(_ModuleBase):
         :param transfer_type:  转移类型
         :return: 成功或失败
         """
-        if settings.SCRAP_SOURCE != "themoviedb":
+        if not settings.SCRAP_SOURCE.__contains__("themoviedb"):
             return None
 
         if SystemUtils.is_bluray_dir(path):
