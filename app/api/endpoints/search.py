@@ -53,9 +53,8 @@ def search_by_id(mediaid: str,
         else:
             torrents = SearchChain().search_by_id(doubanid=doubanid, mtype=mtype, area=area)
     elif mediaid.startswith("steam:"):
-        # TODO: steamid
         steamid = mediaid.replace("steam:", "")
-        raise 
+        torrents = SearchChain().search_by_id(steamid=steamid, mtype=mtype, area=area)
     else:
         return []
     return [torrent.to_dict() for torrent in torrents]
