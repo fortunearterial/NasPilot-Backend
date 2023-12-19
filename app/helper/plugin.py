@@ -121,15 +121,15 @@ class PluginHelper(metaclass=Singleton):
                 "path": "plugins/autobackup/__init__.py",
                 "sha": "cd10eba3f0355d61adeb35561cb26a0a36c15a6c",
                 "size": 12385,
-                "url": "https://api.github.com/repos/jxxghp/MoviePilot-Plugins/contents/plugins/autobackup/__init__.py?ref=main",
-                "html_url": "https://github.com/jxxghp/MoviePilot-Plugins/blob/main/plugins/autobackup/__init__.py",
-                "git_url": "https://api.github.com/repos/jxxghp/MoviePilot-Plugins/git/blobs/cd10eba3f0355d61adeb35561cb26a0a36c15a6c",
-                "download_url": "https://raw.githubusercontent.com/jxxghp/MoviePilot-Plugins/main/plugins/autobackup/__init__.py",
+                "url": "https://api.github.com/repos/fortunearterial/NasPilot-Backend-Plugins/contents/plugins/autobackup/__init__.py?ref=main",
+                "html_url": "https://github.com/fortunearterial/NasPilot-Backend-Plugins/blob/main/plugins/autobackup/__init__.py",
+                "git_url": "https://api.github.com/repos/fortunearterial/NasPilot-Backend-Plugins/git/blobs/cd10eba3f0355d61adeb35561cb26a0a36c15a6c",
+                "download_url": "https://raw.githubusercontent.com/fortunearterial/NasPilot-Backend-Plugins/main/plugins/autobackup/__init__.py",
                 "type": "file",
                 "_links": {
-                    "self": "https://api.github.com/repos/jxxghp/MoviePilot-Plugins/contents/plugins/autobackup/__init__.py?ref=main",
-                    "git": "https://api.github.com/repos/jxxghp/MoviePilot-Plugins/git/blobs/cd10eba3f0355d61adeb35561cb26a0a36c15a6c",
-                    "html": "https://github.com/jxxghp/MoviePilot-Plugins/blob/main/plugins/autobackup/__init__.py"
+                    "self": "https://api.github.com/repos/fortunearterial/NasPilot-Backend-Plugins/contents/plugins/autobackup/__init__.py?ref=main",
+                    "git": "https://api.github.com/repos/fortunearterial/NasPilot-Backend-Plugins/git/blobs/cd10eba3f0355d61adeb35561cb26a0a36c15a6c",
+                    "html": "https://github.com/fortunearterial/NasPilot-Backend-Plugins/blob/main/plugins/autobackup/__init__.py"
                 }
             }
         ]

@@ -46,7 +46,7 @@ console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)
 
 # 文件日志
-file_handler = RotatingFileHandler(filename=settings.LOG_PATH / 'moviepilot.log',
+file_handler = RotatingFileHandler(filename=settings.LOG_PATH / 'naspilot.log',
                                    mode='w',
                                    maxBytes=5 * 1024 * 1024,
                                    backupCount=3,

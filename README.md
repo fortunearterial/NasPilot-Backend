@@ -1,4 +1,4 @@
-# MoviePilot
+# NasPilot
 
 基于 [NAStool](https://github.com/NAStool/nas-tools) 部分代码重新设计，聚焦自动化核心需求，减少问题同时更易于扩展和维护。
 
@@ -7,7 +7,7 @@
 发布频道：https://t.me/moviepilot_channel
 
 ## 主要特性
-- 前后端分离，基于FastApi + Vue3，前端项目地址：[MoviePilot-Frontend](https://github.com/jxxghp/MoviePilot-Frontend)，API：http://localhost:3001/docs
+- 前后端分离，基于FastApi + Vue3，前端项目地址：[NasPilot-Frontend](https://github.com/fortunearterial/NasPilot-Frontend)，API：http://localhost:3001/docs
 - 聚焦核心需求，简化功能和设置，部分设置项可直接使用默认值。
 - 重新设计了用户界面，更加美观易用。
 
@@ -15,33 +15,33 @@
 
 ### 1. **安装CookieCloud插件**
 
-站点信息需要通过CookieCloud同步获取，因此需要安装CookieCloud插件，将浏览器中的站点Cookie数据同步到云端后再同步到MoviePilot使用。 插件下载地址请点击 [这里](https://github.com/easychen/CookieCloud/releases)。
+站点信息需要通过CookieCloud同步获取，因此需要安装CookieCloud插件，将浏览器中的站点Cookie数据同步到云端后再同步到NasPilot使用。 插件下载地址请点击 [这里](https://github.com/easychen/CookieCloud/releases)。
 
 ### 2. **安装CookieCloud服务端（可选）**
 
-MoviePilot内置了公共CookieCloud服务器，如果需要自建服务，可参考 [CookieCloud](https://github.com/easychen/CookieCloud) 项目进行搭建，docker镜像请点击 [这里](https://hub.docker.com/r/easychen/cookiecloud)。
+NasPilot内置了公共CookieCloud服务器，如果需要自建服务，可参考 [CookieCloud](https://github.com/easychen/CookieCloud) 项目进行搭建，docker镜像请点击 [这里](https://hub.docker.com/r/easychen/cookiecloud)。
 
 **声明：** 本项目不会收集用户敏感数据，Cookie同步也是基于CookieCloud项目实现，非本项目提供的能力。技术角度上CookieCloud采用端到端加密，在个人不泄露`用户KEY`和`端对端加密密码`的情况下第三方无法窃取任何用户信息（包括服务器持有者）。如果你不放心，可以不使用公共服务或者不使用本项目，但如果使用后发生了任何信息泄露与本项目无关！
 
 ### 3. **安装配套管理软件**
 
-MoviePilot需要配套下载器和媒体服务器配合使用。
+NasPilot需要配套下载器和媒体服务器配合使用。
 - 下载器支持：qBittorrent、Transmission，QB版本号要求>= 4.3.9，TR版本号要求>= 3.0，推荐使用QB。
 - 媒体服务器支持：Jellyfin、Emby、Plex，推荐使用Emby。
 
-### 4. **安装MoviePilot**
+### 4. **安装NasPilot**
 
 - Docker镜像
 
-  点击 [这里](https://hub.docker.com/r/jxxghp/moviepilot) 或执行命令：
+  点击 [这里](https://hub.docker.com/r/fortunearterial/naspilot) 或执行命令：
 
   ```shell
-  docker pull jxxghp/moviepilot:latest
+  docker pull fortunearterial/naspilot:latest
   ```
 
 - Windows
 
-  下载 [MoviePilot.exe](https://github.com/jxxghp/MoviePilot/releases)，双击运行后自动生成配置文件目录，访问：http://localhost:3000
+  下载 [NasPilot.exe](https://github.com/fortunearterial/NasPilot-Backend/releases)，双击运行后自动生成配置文件目录，访问：http://localhost:3000
 
 - 群晖套件
 
@@ -49,11 +49,10 @@ MoviePilot需要配套下载器和媒体服务器配合使用。
 
 - 本地运行
 
-  1) 将工程 [MoviePilot-Plugins](https://github.com/jxxghp/MoviePilot-Plugins) plugins目录下的所有文件复制到`app/plugins`目录
-  2) 将工程 [MoviePilot-Resources](https://github.com/jxxghp/MoviePilot-Resources) resources目录下的所有文件复制到`app/helper`目录
-  3) 执行命令：`pip install -r requirements.txt` 安装依赖
-  4) 执行命令：`python app/main.py` 启动服务
-  5) 根据前端项目 [MoviePilot-Frontend](https://github.com/jxxghp/MoviePilot-Frontend) 说明，启动前端服务
+  1) 将工程 [NasPilot-Plugins](https://github.com/fortunearterial/NasPilot-Plugins) plugins目录下的所有文件复制到`app/plugins`目录
+  2) 执行命令：`pip install -r requirements.txt` 安装依赖
+  3) 执行命令：`python app/main.py` 启动服务
+  4) 根据前端项目 [NasPilot-Frontend](https://github.com/fortunearterial/NasPilot-Frontend) 说明，启动前端服务
 
 ## 配置
 
@@ -69,7 +68,7 @@ MoviePilot需要配套下载器和媒体服务器配合使用。
 - **PGID**：运行程序用户的`gid`，默认`0`
 - **UMASK**：掩码权限，默认`000`，可以考虑设置为`022`
 - **PROXY_HOST：** 网络代理，访问themoviedb或者重启更新需要使用代理访问，格式为`http(s)://ip:port`、`socks5://user:pass@host:port`
-- **MOVIEPILOT_AUTO_UPDATE：** 重启时自动更新，`true`/`release`/`dev`/`false`，默认`release`，需要能正常连接Github **注意：如果出现网络问题可以配置`PROXY_HOST`**
+- **NASPILOT_AUTO_UPDATE：** 重启时自动更新，`true`/`release`/`dev`/`false`，默认`release`，需要能正常连接Github **注意：如果出现网络问题可以配置`PROXY_HOST`**
 - **AUTO_UPDATE_RESOURCE**：启动时自动检测和更新资源包（站点索引及认证等），`true`/`false`，默认`true`，需要能正常连接Github，仅支持Docker
 - **❗AUTH_SITE：** 认证站点（认证通过后才能使用站点相关功能），支持配置多个认证站点，使用`,`分隔，如：`iyuu,hhclub`，会依次执行认证操作，直到有一个站点认证成功。  
 
@@ -96,11 +95,11 @@ MoviePilot需要配套下载器和媒体服务器配合使用。
 
 ### 2. **app.env配置文件**
 
-下载 [app.env 模板](https://github.com/jxxghp/MoviePilot/raw/main/config/app.env)，修改后放配置文件目录下，app.env 的所有配置项也可以通过环境变量进行配置。
+下载 [app.env 模板](https://github.com/fortunearterial/NasPilot-Backend/raw/main/config/app.env)，修改后放配置文件目录下，app.env 的所有配置项也可以通过环境变量进行配置。
 
 - **❗SUPERUSER：** 超级管理员用户名，默认`admin`，安装后使用该用户登录后台管理界面，**注意：启动一次后再次修改该值不会生效，除非删除数据库文件！**
 - **❗SUPERUSER_PASSWORD：** 超级管理员初始密码，默认`password`，建议修改为复杂密码，**注意：启动一次后再次修改该值不会生效，除非删除数据库文件！**
-- **❗API_TOKEN：** API密钥，默认`moviepilot`，在媒体服务器Webhook、微信回调等地址配置中需要加上`?token=`该值，建议修改为复杂字符串
+- **❗API_TOKEN：** API密钥，默认`naspilot`，在媒体服务器Webhook、微信回调等地址配置中需要加上`?token=`该值，建议修改为复杂字符串
 - **BIG_MEMORY_MODE：** 大内存模式，默认为`false`，开启后会增加缓存数量，占用更多的内存，但响应速度会更快
 - **GITHUB_TOKEN：** Github token，提高自动更新、插件安装等请求Github Api的限流阈值，格式：ghp_****
 ---
@@ -117,7 +116,7 @@ MoviePilot需要配套下载器和媒体服务器配合使用。
 - **LIBRARY_MOVIE_NAME：** 电影媒体库目录名称（不是完整路径），默认`电影`
 - **LIBRARY_TV_NAME：** 电视剧媒体库目录称（不是完整路径），默认`电视剧`
 - **LIBRARY_ANIME_NAME：** 动漫媒体库目录称（不是完整路径），默认`电视剧/动漫`
-- **LIBRARY_CATEGORY：** 媒体库二级分类开关，`true`/`false`，默认`false`，开启后会根据配置 [category.yaml](https://github.com/jxxghp/MoviePilot/raw/main/config/category.yaml) 自动在媒体库目录下建立二级目录分类
+- **LIBRARY_CATEGORY：** 媒体库二级分类开关，`true`/`false`，默认`false`，开启后会根据配置 [category.yaml](https://github.com/fortunearterial/NasPilot-Backend/raw/main/config/category.yaml) 自动在媒体库目录下建立二级目录分类
 - **❗TRANSFER_TYPE：** 整理转移方式，支持`link`/`copy`/`move`/`softlink`/`rclone_copy`/`rclone_move`  **注意：在`link`和`softlink`转移方式下，转移后的文件会继承源文件的权限掩码，不受`UMASK`影响；rclone需要自行映射rclone配置目录到容器中或在容器内完成rclone配置，节点名称必须为：`MP`**
 - **OVERWRITE_MODE：** 转移覆盖模式，默认为`size`，支持`nerver`/`size`/`always`/`latest`，分别表示`不覆盖同名文件`/`同名文件根据文件大小覆盖（大覆盖小）`/`总是覆盖同名文件`/`仅保留最新版本，删除旧版本文件（包括非同名文件）`
 ---
@@ -164,11 +163,11 @@ MoviePilot需要配套下载器和媒体服务器配合使用。
     - **SYNOLOGYCHAT_WEBHOOK：** 在Synology Chat中创建机器人，获取机器人`传入URL`
     - **SYNOLOGYCHAT_TOKEN：** SynologyChat机器人`令牌`
 ---
-- **❗DOWNLOAD_PATH：** 下载保存目录，**注意：需要将`moviepilot`及`下载器`的映射路径保持一致**，否则会导致下载文件无法转移
+- **❗DOWNLOAD_PATH：** 下载保存目录，**注意：需要将`naspilot`及`下载器`的映射路径保持一致**，否则会导致下载文件无法转移
 - **DOWNLOAD_MOVIE_PATH：** 电影下载保存目录路径，不设置则下载到`DOWNLOAD_PATH`
 - **DOWNLOAD_TV_PATH：** 电视剧下载保存目录路径，不设置则下载到`DOWNLOAD_PATH`
 - **DOWNLOAD_ANIME_PATH：** 动漫下载保存目录路径，不设置则下载到`DOWNLOAD_PATH`
-- **DOWNLOAD_CATEGORY：** 下载二级分类开关，`true`/`false`，默认`false`，开启后会根据配置 [category.yaml](https://github.com/jxxghp/MoviePilot/raw/main/config/category.yaml) 自动在下载目录下建立二级目录分类
+- **DOWNLOAD_CATEGORY：** 下载二级分类开关，`true`/`false`，默认`false`，开启后会根据配置 [category.yaml](https://github.com/fortunearterial/NasPilot-Backend/raw/main/config/category.yaml) 自动在下载目录下建立二级目录分类
 - **DOWNLOAD_SUBTITLE：** 下载站点字幕，`true`/`false`，默认`true`
 ---
 - **❗DOWNLOADER：** 下载器，支持`qbittorrent`/`transmission`，QB版本号要求>= 4.3.9，TR版本号要求>= 3.0，同时还需要配置对应渠道的环境变量，非对应渠道的变量可删除，推荐使用`qbittorrent`
@@ -188,7 +187,7 @@ MoviePilot需要配套下载器和媒体服务器配合使用。
     - **TR_USER：** transmission用户名
     - **TR_PASSWORD：** transmission密码
 - **DOWNLOADER_MONITOR：** 下载器监控，`true`/`false`，默认为`true`，开启后下载完成时才会自动整理入库
-- **TORRENT_TAG：** 下载器种子标签，默认为`MOVIEPILOT`，设置后只有MoviePilot添加的下载才会处理，留空所有下载器中的任务均会处理
+- **TORRENT_TAG：** 下载器种子标签，默认为`NASPILOT`，设置后只有NasPilot添加的下载才会处理，留空所有下载器中的任务均会处理
 ---
 - **❗MEDIASERVER：** 媒体服务器，支持`emby`/`jellyfin`/`plex`，同时开启多个使用`,`分隔。还需要配置对应媒体服务器的环境变量，非对应媒体服务器的变量可删除，推荐使用`emby`
 
@@ -264,7 +263,7 @@ MoviePilot需要配套下载器和媒体服务器配合使用。
 
 ### 4. **插件扩展**
 
-- **PLUGIN_MARKET：** 插件市场仓库地址，仅支持Github仓库`main`分支，多个地址使用`,`分隔，默认为官方插件仓库：`https://github.com/jxxghp/MoviePilot-Plugins` ，通过查看[MoviePilot-Plugins](https://github.com/jxxghp/MoviePilot-Plugins)项目的fork，或者查看频道置顶了解更多第三方插件仓库。
+- **PLUGIN_MARKET：** 插件市场仓库地址，仅支持Github仓库`main`分支，多个地址使用`,`分隔，默认为官方插件仓库：`https://github.com/fortunearterial/NasPilot-Plugins` ，通过查看[NasPilot-Plugins](https://github.com/fortunearterial/NasPilot-Plugins)项目的fork，或者查看频道置顶了解更多第三方插件仓库。
 
 
 ## 使用
@@ -273,12 +272,12 @@ MoviePilot需要配套下载器和媒体服务器配合使用。
 - 通过WEB进行管理，将WEB添加到手机桌面获得类App使用效果，管理界面端口：`3000`，后台API端口：`3001`。
 - 通过下载器监控或使用目录监控插件实现自动整理入库刮削（二选一）。
 - 通过微信/Telegram/Slack/SynologyChat远程管理，其中微信/Telegram将会自动添加操作菜单（微信菜单条数有限制，部分菜单不显示）；微信需要在官方页面设置回调地址，SynologyChat需要设置机器人传入地址，地址相对路径为：`/api/v1/message/`。
-- 设置媒体服务器Webhook，通过MoviePilot发送播放通知等。Webhook回调相对路径为`/api/v1/webhook?token=moviepilot`（`3001`端口），其中`moviepilot`为设置的`API_TOKEN`。
-- 将MoviePilot做为Radarr或Sonarr服务器添加到Overseerr或Jellyseerr（`API服务端口`），可使用Overseerr/Jellyseerr浏览订阅。
+- 设置媒体服务器Webhook，通过NasPilot发送播放通知等。Webhook回调相对路径为`/api/v1/webhook?token=naspilot`（`3001`端口），其中`naspilot`为设置的`API_TOKEN`。
+- 将NasPilot做为Radarr或Sonarr服务器添加到Overseerr或Jellyseerr（`API服务端口`），可使用Overseerr/Jellyseerr浏览订阅。
 - 映射宿主机docker.sock文件到容器`/var/run/docker.sock`，以支持内建重启操作。实例：`-v /var/run/docker.sock:/var/run/docker.sock:ro`
 
 ### **注意**
-- 容器首次启动需要下载浏览器内核，根据网络情况可能需要较长时间，此时无法登录。可映射`/moviepilot`目录避免容器重置后重新触发浏览器内核下载。 
+- 容器首次启动需要下载浏览器内核，根据网络情况可能需要较长时间，此时无法登录。可映射`/naspilot`目录避免容器重置后重新触发浏览器内核下载。 
 - 使用反向代理时，需要添加以下配置，否则可能会导致部分功能无法访问（`ip:port`修改为实际值）：
 ```nginx configuration
 location / {
@@ -302,11 +301,11 @@ location  /cgi-bin/menu/create {
 }
 ```
 
-![image](https://github.com/jxxghp/MoviePilot/assets/51039935/f2654b09-26f3-464f-a0af-1de3f97832ee)
+![image](https://github.com/fortunearterial/NasPilot-Backend/assets/51039935/f2654b09-26f3-464f-a0af-1de3f97832ee)
 
-![image](https://github.com/jxxghp/MoviePilot/assets/51039935/fcb87529-56dd-43df-8337-6e34b8582819)
+![image](https://github.com/fortunearterial/NasPilot-Backend/assets/51039935/fcb87529-56dd-43df-8337-6e34b8582819)
 
-![image](https://github.com/jxxghp/MoviePilot/assets/51039935/bfa77c71-510a-46a6-9c1e-cf98cb101e3a)
+![image](https://github.com/fortunearterial/NasPilot-Backend/assets/51039935/bfa77c71-510a-46a6-9c1e-cf98cb101e3a)
 
-![image](https://github.com/jxxghp/MoviePilot/assets/51039935/51cafd09-e38c-47f9-ae62-1e83ab8bf89b)
+![image](https://github.com/fortunearterial/NasPilot-Backend/assets/51039935/51cafd09-e38c-47f9-ae62-1e83ab8bf89b)
 

@@ -141,7 +141,7 @@ class Emby(metaclass=Singleton):
         req_url = "%semby/Users/AuthenticateByName" % self._host
         try:
             res = RequestUtils(headers={
-                'X-Emby-Authorization': f'MediaBrowser Client="MoviePilot", '
+                'X-Emby-Authorization': f'MediaBrowser Client="NasPilot", '
                                         f'Device="requests", '
                                         f'DeviceId="1", '
                                         f'Version="1.0.0", '

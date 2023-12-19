@@ -10,7 +10,7 @@ from app.utils.system import SystemUtils
 
 class Settings(BaseSettings):
     # 项目名称
-    PROJECT_NAME = "MoviePilot"
+    PROJECT_NAME = "NasPilot"
     # API路径
     API_V1_STR: str = "/api/v1"
     # 密钥
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # 数据库连接
     DB_URL:str = ""
     # API密钥，需要更换
-    API_TOKEN: str = "moviepilot"
+    API_TOKEN: str = "naspilot"
     # 登录页面电影海报,tmdb/bing
     WALLPAPER: str = "tmdb"
     # 网络代理 IP:PORT
@@ -217,7 +217,7 @@ class Settings(BaseSettings):
     # 大内存模式
     BIG_MEMORY_MODE: bool = False
     # 插件市场仓库地址，多个地址使用,分隔，地址以/结尾
-    PLUGIN_MARKET: str = "https://github.com/jxxghp/MoviePilot-Plugins"
+    PLUGIN_MARKET: str = "https://github.com/fortunearterial/NasPilot-Backend-Plugins"
     # Github token，提高请求api限流阈值 ghp_****
     GITHUB_TOKEN: str = None
     # 自动检查和更新站点资源包（站点索引、认证等）

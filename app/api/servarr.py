@@ -24,8 +24,8 @@ def arr_system_status(_: str = Depends(verify_uri_apikey)) -> Any:
     模拟Radarr、Sonarr系统状态
     """
     return {
-        "appName": "MoviePilot",
-        "instanceName": "moviepilot",
+        "appName": "NasPilot",
+        "instanceName": "naspilot",
         "version": APP_VERSION,
         "buildTime": "",
         "isDebug": False,

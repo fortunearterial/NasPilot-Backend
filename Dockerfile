@@ -1,8 +1,8 @@
 FROM python:3.11.4-slim-bullseye
-ARG MOVIEPILOT_VERSION
+ARG NASPILOT_VERSION
 ENV LANG="C.UTF-8" \
     TZ="Asia/Shanghai" \
-    HOME="/moviepilot" \
+    HOME="/naspilot" \
     CONFIG_DIR="/config" \
     TERM="xterm" \
     PUID=0 \
@@ -11,7 +11,7 @@ ENV LANG="C.UTF-8" \
     PORT=3001 \
     NGINX_PORT=3000 \
     PROXY_HOST="" \
-    MOVIEPILOT_AUTO_UPDATE=release \
+    NASPILOT_AUTO_UPDATE=release \
     AUTH_SITE="iyuu" \
     IYUU_SIGN=""
 WORKDIR "/app"
@@ -44,7 +44,7 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf \
         /tmp/* \
-        /moviepilot/.cache \
+        /naspilot/.cache \
         /var/lib/apt/lists/* \
         /var/tmp/*
 COPY requirements.txt requirements.txt
@@ -59,7 +59,7 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf \
         /tmp/* \
-        /moviepilot/.cache \
+        /naspilot/.cache \
         /var/lib/apt/lists/* \
         /var/tmp/*
 COPY . .
@@ -68,20 +68,18 @@ RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf \
     && cp -f /app/entrypoint /entrypoint \
     && chmod +x /entrypoint /usr/local/bin/mp_update \
     && mkdir -p ${HOME} /var/lib/haproxy/server-state \
-    && groupadd -r moviepilot -g 911 \
-    && useradd -r moviepilot -g moviepilot -d ${HOME} -s /bin/bash -u 911 \
+    && groupadd -r naspilot -g 911 \
+    && useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 911 \
     && python_ver=$(python3 -V | awk '{print $2}') \
     && echo "/app/" > /usr/local/lib/python${python_ver%.*}/site-packages/app.pth \
     && echo 'fs.inotify.max_user_watches=5242880' >> /etc/sysctl.conf \
     && echo 'fs.inotify.max_user_instances=5242880' >> /etc/sysctl.conf \
     && locale-gen zh_CN.UTF-8 \
-    && FRONTEND_VERSION=$(curl -sL "https://api.github.com/repos/jxxghp/MoviePilot-Frontend/releases/latest" | jq -r .tag_name) \
-    && curl -sL "https://github.com/jxxghp/MoviePilot-Frontend/releases/download/${FRONTEND_VERSION}/dist.zip" | busybox unzip -d / - \
+    && FRONTEND_VERSION=$(curl -sL "https://api.github.com/repos/fortunearterial/NasPilot-Frontend/releases/latest" | jq -r .tag_name) \
+    && curl -sL "https://github.com/fortunearterial/NasPilot-Frontend/releases/download/${FRONTEND_VERSION}/dist.zip" | busybox unzip -d / - \
     && mv /dist /public \
-    && curl -sL "https://github.com/jxxghp/MoviePilot-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
+    && curl -sL "https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
     && mv -f /tmp/MoviePilot-Plugins-main/plugins/* /app/app/plugins/ \
-    && curl -sL "https://github.com/jxxghp/MoviePilot-Resources/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
-    && mv -f /tmp/MoviePilot-Resources-main/resources/* /app/app/helper/ \
     && rm -rf /tmp/*
 EXPOSE 3000
 VOLUME [ "/config" ]

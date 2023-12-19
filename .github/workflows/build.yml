@@ -103,7 +103,7 @@ jobs:
           New-Item -Path "nginx/temp/__keep__.txt" -ItemType File -Force
           New-Item -Path "nginx/logs" -ItemType Directory -Force
           New-Item -Path "nginx/logs/__keep__.txt" -ItemType File -Force
-          Invoke-WebRequest -Uri "https://github.com/jxxghp/MoviePilot-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
+          Invoke-WebRequest -Uri "https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
           Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
           Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force
           Remove-Item -Path "MoviePilot-Plugins-main.zip"
@@ -142,7 +142,7 @@ jobs:
 
       - name: Prepare Frontend
         run: |
-          wget https://github.com/jxxghp/MoviePilot-Plugins/archive/refs/heads/main.zip
+          wget https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip
           unzip main.zip
           mv MoviePilot-Plugins-main/plugins/* app/plugins/
           rm main.zip

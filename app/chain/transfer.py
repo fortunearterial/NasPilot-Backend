@@ -72,7 +72,7 @@ class TransferChain(ChainBase):
                                                      doubanid=downloadhis.doubanid,
                                                      steamid=downloadhis.steamid)
                 else:
-                    # 非MoviePilot下载的任务，按文件识别
+                    # 非NasPilot下载的任务，按文件识别
                     mediainfo = None
 
                 # 执行转移

@@ -131,7 +131,7 @@ def get_logging(token: str):
         )
 
     def log_generator():
-        log_path = settings.LOG_PATH / 'moviepilot.log'
+        log_path = settings.LOG_PATH / 'naspilot.log'
         # 读取文件末尾50行，不使用tailer模块
         with open(log_path, 'r', encoding='utf-8') as f:
             for line in f.readlines()[-50:]:
@@ -177,7 +177,7 @@ def latest_version(_: schemas.TokenPayload = Depends(verify_token)):
     查询Github所有Release版本
     """
     version_res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
-        f"https://api.github.com/repos/jxxghp/MoviePilot/releases")
+        f"https://api.github.com/repos/fortunearterial/NasPilot-Backend/releases")
     version_res_ly = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
         f"https://api.github.com/repos/fortunearterial/NasPilot-Backend/releases")
 
