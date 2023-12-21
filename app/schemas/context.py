@@ -83,6 +83,8 @@ class MediaInfo(BaseModel):
     douban_id: Optional[str] = None
     # STEAM ID
     steam_id: Optional[str] = None
+    # JavDB ID
+    javdb_id: Optional[str] = None
     # 媒体原语种
     original_language: Optional[str] = None
     # 媒体原发行标题

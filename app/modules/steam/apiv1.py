@@ -19,7 +19,7 @@ from app.utils.singleton import Singleton
 class SteamApi(metaclass=Singleton):
     _urls = {
         # 搜索类
-        # search/results/?query&term=search_word&start: int=0&count: int=50&force_infinite=1&ndl=1&infinite=1
+        # /search/results/?query&term=search_word&start: int=0&count: int=50&force_infinite=1&ndl=1&infinite=1
         # 聚合搜索
         "search": "/search/results/?query&l=schinese&force_infinite=1&ndl=1&infinite=1",
         "steamid": "/app/%s",
@@ -129,7 +129,7 @@ class SteamApi(metaclass=Singleton):
                 relative_href = href[len("https://store.steampowered.com/app/"):]
                 steam_appid = relative_href[:relative_href.find("/")]
                 header_image = l.xpath(".//img/@src")[0]
-                name = l.xpath(".//span[@class=\"title\"]/text()")[0]
+                name = l.xpath(".//span[@class=\"title\"]/text()")[0].strip()
                 pub_data = l.xpath(".//div[contains(@class, \"search_released\")]/text()")[0].strip()
                 search_results.append({
                     "steam_appid": steam_appid,

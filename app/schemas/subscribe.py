@@ -15,6 +15,8 @@ class Subscribe(BaseModel):
     keyword: Optional[str] = None
     tmdbid: Optional[int] = None
     doubanid: Optional[str] = None
+    steamid: Optional[str] = None
+    javdbid: Optional[str] = None
     # 季号
     season: Optional[int] = None
     # 海报

@@ -43,6 +43,7 @@ class SubscribeChain(ChainBase):
             tmdbid: int = None,
             doubanid: str = None,
             steamid: int = None,
+            javdbid: str = None,
             season: int = None,
             channel: MessageChannel = None,
             userid: str = None,
@@ -63,6 +64,8 @@ class SubscribeChain(ChainBase):
         if season:
             metainfo.type = MediaType.TV
             metainfo.begin_season = season
+        if javdbid:
+            metainfo.javdbid = javdbid
         # 识别媒体信息
         if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
             # TMDB识别模式
@@ -85,7 +88,7 @@ class SubscribeChain(ChainBase):
                     season = meta.begin_season
         # 识别失败
         if not mediainfo:
-            logger.warn(f'未识别到媒体信息，标题：{title}，tmdbid：{tmdbid}，doubanid：{doubanid}，steamid：{steamid}')
+            logger.warn(f'未识别到媒体信息，标题：{title}，tmdbid：{tmdbid}，doubanid：{doubanid}，steamid：{steamid}，javdbid：{javdbid}')
             return None, "未识别到媒体信息"
         # 总集数
         if mediainfo.type == MediaType.TV:
@@ -123,6 +126,8 @@ class SubscribeChain(ChainBase):
             mediainfo.douban_id = doubanid
         if steamid:
             mediainfo.steam_id = steamid
+        if javdbid:
+            mediainfo.javdb_id = javdbid
         # 添加订阅
         sid, err_msg = self.subscribeoper.add(mediainfo, season=season, username=username, **kwargs)
         if not sid:
@@ -175,7 +180,7 @@ class SubscribeChain(ChainBase):
             subscribes = self.subscribeoper.list(state)
         # 遍历订阅
         for subscribe in subscribes:
-            mediakey = subscribe.tmdbid or subscribe.doubanid or subscribe.steamid
+            mediakey = subscribe.tmdbid or subscribe.doubanid or subscribe.steamid or subscribe.javdbid
             # 校验当前时间减订阅创建时间是否大于1分钟，否则跳过先，留出编辑订阅的时间
             if subscribe.date:
                 now = datetime.now()
@@ -201,10 +206,11 @@ class SubscribeChain(ChainBase):
             mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                         tmdbid=subscribe.tmdbid,
                                                         doubanid=subscribe.doubanid,
-                                                        steamid=subscribe.steamid)
+                                                        steamid=subscribe.steamid,
+                                                        javdbid=subscribe.javdbid)
             if not mediainfo:
                 logger.warn(
-                    f'未识别到媒体信息，标题：{subscribe.name}，tmdbid：{subscribe.tmdbid}，doubanid：{subscribe.doubanid}，steamid：{subscribe.steamid}')
+                    f'未识别到媒体信息，标题：{subscribe.name}，tmdbid：{subscribe.tmdbid}，doubanid：{subscribe.doubanid}，steamid：{subscribe.steamid}，javdbid：{subscribe.javdbid}')
                 continue
 
             # 非洗版状态

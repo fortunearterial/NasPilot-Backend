@@ -262,6 +262,7 @@ class DownloadChain(ChainBase):
                 tvdbid=_media.tvdb_id,
                 doubanid=_media.douban_id,
                 steamid=_media.steam_id,
+                javdbid=_media.javdb_id,
                 seasons=_meta.season,
                 episodes=_meta.episode,
                 image=_media.get_backdrop_image(),
@@ -403,7 +404,9 @@ class DownloadChain(ChainBase):
 
         # 如果是电影、游戏，直接下载
         for context in contexts:
-            if context.media_info.type == MediaType.MOVIE or context.media_info.type == MediaType.GAME:
+            if context.media_info.type == MediaType.MOVIE \
+                or context.media_info.type == MediaType.GAME \
+                or context.media_info.type == MediaType.JAV:
                 if self.download_single(context, save_path=save_path,
                                         channel=channel, userid=userid, username=username):
                     # 下载成功
@@ -687,6 +690,9 @@ class DownloadChain(ChainBase):
 
         if mediainfo.type == MediaType.GAME:
             # TODO: GAME
+            raise
+        elif mediainfo.type == MediaType.JAV:
+            # TODO: JAV
             raise
         elif mediainfo.type == MediaType.MOVIE:
             # 电影

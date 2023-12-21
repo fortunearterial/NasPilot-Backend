@@ -62,6 +62,8 @@ class MetaBase(object):
     # 附加信息
     tmdbid: int = None
     doubanid: str = None
+    steamid: str = None
+    javdbid: str = None
 
     # 副标题解析
     _subtitle_flag = False

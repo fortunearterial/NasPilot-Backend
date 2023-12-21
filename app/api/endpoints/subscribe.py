@@ -91,6 +91,8 @@ def create_subscribe(
                                         tmdbid=subscribe_in.tmdbid,
                                         season=subscribe_in.season,
                                         doubanid=subscribe_in.doubanid,
+                                        steamid=subscribe_in.steamid,
+                                        javdbid=subscribe_in.javdbid,
                                         username=current_user.name,
                                         best_version=subscribe_in.best_version,
                                         save_path=subscribe_in.save_path,
@@ -156,6 +158,11 @@ def subscribe_mediaid(
         if not steamid:
             return Subscribe()
         result = Subscribe.get_by_steamid(db, steamid)
+    elif mediaid.startswith("javdb:"):
+        javdbid = mediaid[6:]
+        if not javdbid:
+            return Subscribe()
+        result = Subscribe.get_by_javdbid(db, steamid)
 
     if not result and title:
         meta = MetaInfo(title)
@@ -265,6 +272,11 @@ def delete_subscribe_by_mediaid(
         if not steamid:
             return schemas.Response(success=False)
         Subscribe().delete_by_steamid(db, steamid)
+    elif mediaid.startswith("javdb:"):
+        javdbid = mediaid[6:]
+        if not javdbid:
+            return schemas.Response(success=False)
+        Subscribe().delete_by_javdbid(db, javdbid)
 
     return schemas.Response(success=True)
 

@@ -22,6 +22,7 @@ class DownloadHistory(Base):
     tvdbid = Column(Integer)
     doubanid = Column(String(255))
     steamid = Column(Integer, index=True)
+    javdbid = Column(String(10), index=True)
     # Sxx
     seasons = Column(String(255))
     # Exx

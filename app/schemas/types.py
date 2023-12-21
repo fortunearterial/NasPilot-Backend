@@ -5,6 +5,7 @@ class MediaType(Enum):
     MOVIE = '电影'
     TV = '电视剧'
     GAME = '游戏'
+    JAV = 'Jav'
     UNKNOWN = '未知'
 
 

@@ -151,6 +151,10 @@ class Settings(BaseSettings):
     DOWNLOAD_TV_PATH: str = None
     # 动漫下载保存目录，容器内映射路径需要一致
     DOWNLOAD_ANIME_PATH: str = None
+    # 游戏下载保存目录，容器内映射路径需要一致
+    DOWNLOAD_GAME_PATH: str = None
+    # Jav下载保存目录，容器内映射路径需要一致
+    DOWNLOAD_JAV_PATH: str = None
     # 下载目录二级分类
     DOWNLOAD_CATEGORY: bool = False
     # 下载站点字幕
@@ -197,6 +201,8 @@ class Settings(BaseSettings):
     LIBRARY_ANIME_NAME: str = None
     # 游戏媒体库目录名
     LIBRARY_GAME_NAME: str = "游戏"
+    # Jav媒体库目录名
+    LIBRARY_JAV_NAME: str = "Jav"
     # 二级分类
     LIBRARY_CATEGORY: bool = True
     # 电视剧动漫的分类genre_ids
@@ -212,6 +218,8 @@ class Settings(BaseSettings):
                             "{{fileExt}}"
     # 游戏重命名格式
     GAME_RENAME_FORMAT: str = None
+    # Jav重命名格式
+    JAV_RENAME_FORMAT: str = None
     # 转移时覆盖模式
     OVERWRITE_MODE: str = "size"
     # 大内存模式
@@ -263,6 +271,7 @@ class Settings(BaseSettings):
                 "douban": 512,
                 "fanart": 512,
                 "steam": 1024,
+                "javdb": 1024,
                 "meta": 15 * 24 * 3600
             }
         return {
@@ -272,6 +281,7 @@ class Settings(BaseSettings):
             "douban": 256,
             "fanart": 128,
             "steam": 256,
+            "javdb": 256,
             "meta": 7 * 24 * 3600
         }
 
@@ -332,6 +342,24 @@ class Settings(BaseSettings):
         if self.DOWNLOAD_ANIME_PATH:
             return Path(self.DOWNLOAD_ANIME_PATH)
         return self.SAVE_TV_PATH
+
+    @property
+    def SAVE_GAME_PATH(self) -> Path:
+        """
+        获取游戏下载保存目录
+        """
+        if self.DOWNLOAD_GAME_PATH:
+            return Path(self.DOWNLOAD_GAME_PATH)
+        return self.SAVE_PATH
+
+    @property
+    def SAVE_JAV_PATH(self) -> Path:
+        """
+        获取Jav下载保存目录
+        """
+        if self.DOWNLOAD_JAV_PATH:
+            return Path(self.DOWNLOAD_JAV_PATH)
+        return self.SAVE_PATH
 
     @property
     def GITHUB_HEADERS(self):

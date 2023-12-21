@@ -64,13 +64,12 @@ class TransferChain(ChainBase):
                 if downloadhis:
                     # 类型
                     mtype = MediaType(downloadhis.type)
-                    if mtype != MediaType.GAME:
-                        continue
-                    # 按STEAM ID识别
+                    # 按各ID识别
                     mediainfo = self.recognize_media(mtype=mtype,
                                                      tmdbid=downloadhis.tmdbid,
                                                      doubanid=downloadhis.doubanid,
-                                                     steamid=downloadhis.steamid)
+                                                     steamid=downloadhis.steamid,
+                                                     javdbid=downloadhis.javdbid)
                 else:
                     # 非NasPilot下载的任务，按文件识别
                     mediainfo = None
@@ -167,6 +166,8 @@ class TransferChain(ChainBase):
 
             # 如果是目录且不是⼀蓝光原盘，获取所有文件并转移
             if mediainfo.type == MediaType.GAME:
+                file_paths = [trans_path]
+            elif mediainfo.type == MediaType.JAV:
                 file_paths = [trans_path]
             elif (not trans_path.is_file()
                     and not SystemUtils.is_bluray_dir(trans_path)):
@@ -534,7 +535,8 @@ class TransferChain(ChainBase):
         if mtype and mediaid:
             mediainfo = self.recognize_media(mtype=mtype, tmdbid=int(mediaid) if str(mediaid).isdigit() else None,
                                              doubanid=mediaid, 
-                                             steamid=int(mediaid) if str(mediaid).isdigit() else None)
+                                             steamid=int(mediaid) if str(mediaid).isdigit() else None,
+                                             javdbid=mediaid)
             if mediainfo:
                 # 更新媒体图片
                 self.obtain_images(mediainfo=mediainfo)

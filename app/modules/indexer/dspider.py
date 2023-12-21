@@ -311,9 +311,10 @@ class DetailTorrentSpider:
             return self.parselinks(page_source, self.feed_links)
         
 
-    def __get_links(self, torrent):
+    def __get_links(self, torrent, sel):
         # links
         selector = {}
+        selector.update(sel)
         selector["selector"] = "a"
         selector["attribute"] = "href"
         link = torrent(selector.get('selector', '')).clone()
@@ -614,13 +615,13 @@ class DetailTorrentSpider:
         else:
             self.torrents_info['labels'] = []
 
-    def get_links(self, torrent) -> dict:
+    def get_links(self, torrent, selector: dict) -> dict:
         """
         解析单条种子数据
         """
         self.link_path = None
         try:
-            self.__get_links(torrent)
+            self.__get_links(torrent, selector)
         except Exception as err:
             logger.error("%s 搜索出现错误：%s" % (self.indexername, str(err)))
 
@@ -734,7 +735,7 @@ class DetailTorrentSpider:
             torrents_selector = links.get('selector', '')
             # 遍历种子html列表
             for torn in html_doc(torrents_selector):
-                self.get_links(PyQuery(torn))
+                self.get_links(PyQuery(torn), links)
             return self.torrents_info_array
         except Exception as err:
             self.is_error = True

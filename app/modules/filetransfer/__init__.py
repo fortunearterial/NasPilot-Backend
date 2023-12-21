@@ -389,6 +389,15 @@ class FileTransferModule(_ModuleBase):
                 # 目的目录加上二级分类
                 target_dir = target_dir / mediainfo.category
 
+        if mediainfo.type == MediaType.JAV:
+            # Jav
+            if typename_dir:
+                # 目的目录加上类型和二级分类
+                target_dir = target_dir / settings.LIBRARY_JAV_NAME / mediainfo.category
+            else:
+                # 目的目录加上二级分类
+                target_dir = target_dir / mediainfo.category
+
         return target_dir
 
     def transfer_media(self,
@@ -428,6 +437,8 @@ class FileTransferModule(_ModuleBase):
             rename_format = settings.TV_RENAME_FORMAT
         elif mediainfo.type == MediaType.GAME:
             rename_format = settings.GAME_RENAME_FORMAT
+        elif mediainfo.type == MediaType.JAV:
+            rename_format = settings.JAV_RENAME_FORMAT
 
         # 判断是否为文件夹
         if in_path.is_dir():
@@ -720,6 +731,8 @@ class FileTransferModule(_ModuleBase):
                 rename_format = settings.TV_RENAME_FORMAT
             elif mediainfo.type == MediaType.GAME:
                 rename_format = settings.GAME_RENAME_FORMAT
+            elif mediainfo.type == MediaType.JAV:
+                rename_format = settings.JAV_RENAME_FORMAT
             # 相对路径
             meta = MetaInfo(mediainfo.title)
             rel_path = self.get_rename_path(

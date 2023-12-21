@@ -165,7 +165,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                                        if not self.torrenthelper.is_invalid(_torrent.torrent_info.enclosure)]
 
         # 所有站点索引
-        site = self.siteoper.list_order_by_pri()
+        sites = self.siteoper.list_order_by_pri()
         # 遍历站点缓存资源
         for site in sites:
             # 未开启的站点不刷新

@@ -31,7 +31,7 @@ class SearchChain(ChainBase):
         self.systemconfig = SystemConfigOper()
         self.torrenthelper = TorrentHelper()
 
-    def search_by_id(self, tmdbid: int = None, doubanid: str = None, steamid: int = None, 
+    def search_by_id(self, tmdbid: int = None, doubanid: str = None, steamid: int = None, javdbid: str = None, 
                      mtype: MediaType = None, area: str = "title") -> List[Context]:
         """
         根据TMDBID/豆瓣ID搜索资源，精确匹配，但不不过滤本地存在的资源
@@ -40,7 +40,7 @@ class SearchChain(ChainBase):
         :param mtype: 媒体，电影 or 电视剧
         :param area: 搜索范围，title or imdbid
         """
-        mediainfo = self.recognize_media(tmdbid=tmdbid, doubanid=doubanid, steamid=steamid, mtype=mtype)
+        mediainfo = self.recognize_media(tmdbid=tmdbid, doubanid=doubanid, steamid=steamid, javdbid=javdbid, mtype=mtype)
         if not mediainfo:
             logger.error(f'{tmdbid} 媒体信息识别失败！')
             return []
@@ -106,12 +106,13 @@ class SearchChain(ChainBase):
             mediainfo: MediaInfo = self.recognize_media(mtype=mediainfo.type,
                                                         tmdbid=mediainfo.tmdb_id,
                                                         doubanid=mediainfo.douban_id,
-                                                        steamid=mediainfo.steam_id)
+                                                        steamid=mediainfo.steam_id,
+                                                        javdbid=mediainfo.javdb_id)
             if not mediainfo:
                 logger.error(f'媒体信息识别失败！')
                 return []
         # 缺失的季集
-        mediakey = mediainfo.tmdb_id or mediainfo.douban_id or mediainfo.steam_id
+        mediakey = mediainfo.tmdb_id or mediainfo.douban_id
         if no_exists and no_exists.get(mediakey):
             # 过滤剧集
             season_episodes = {sea: info.episodes
@@ -192,6 +193,8 @@ class SearchChain(ChainBase):
                 # 比对年份
                 if mediainfo.year:
                     if mediainfo.type == MediaType.GAME:
+                        pass
+                    elif mediainfo.type == MediaType.JAV:
                         pass
                     elif mediainfo.type == MediaType.TV:
                         # 剧集年份，每季的年份可能不同

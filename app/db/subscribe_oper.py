@@ -19,6 +19,7 @@ class SubscribeOper(DbOper):
                                      tmdbid=mediainfo.tmdb_id,
                                      doubanid=mediainfo.douban_id,
                                      steamid=mediainfo.steam_id,
+                                     javdbid=mediainfo.javdb_id,
                                      season=kwargs.get('season'))
         if not subscribe:
             subscribe = Subscribe(name=mediainfo.title,
@@ -29,6 +30,7 @@ class SubscribeOper(DbOper):
                                   tvdbid=mediainfo.tvdb_id,
                                   doubanid=mediainfo.douban_id,
                                   steamid=mediainfo.steam_id,
+                                  javdbid=mediainfo.javdb_id,
                                   poster=mediainfo.get_poster_image(),
                                   backdrop=mediainfo.get_backdrop_image(),
                                   vote=mediainfo.vote_average,
@@ -41,6 +43,7 @@ class SubscribeOper(DbOper):
                                          tmdbid=mediainfo.tmdb_id,
                                          doubanid=mediainfo.douban_id,
                                          steamid=mediainfo.steam_id,
+                                         javdbid=mediainfo.javdb_id,
                                          season=kwargs.get('season'))
             return subscribe.id, "新增订阅成功"
         else:

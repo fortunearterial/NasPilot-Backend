@@ -27,7 +27,7 @@ class SteamModule(_ModuleBase):
         self.cache = SteamCache()
 
     def stop(self):
-        pass
+        self.cache.save()
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         pass
@@ -89,7 +89,7 @@ class SteamModule(_ModuleBase):
                 info = None
 
         if info:
-            # 赋值TMDB信息并返回
+            # 赋值STEAM信息并返回
             mediainfo = MediaInfo(steam_info=info)
             if meta:
                 logger.info(f"{meta.name} STEAM识别结果：{mediainfo.type.value} "
@@ -400,8 +400,8 @@ class SteamModule(_ModuleBase):
         logger.info(f"开始获取STEAM信息：{steamid} ...")
         if mtype == MediaType.GAME:
             return __steam_game()
-        else:
-            return __steam_game()
+        
+        return None
 
     def search_medias(self, meta: MetaBase) -> Optional[List[MediaInfo]]:
         """
@@ -484,6 +484,12 @@ class SteamModule(_ModuleBase):
                                         transfer_type=transfer_type)
 
         logger.info(f"{path} 刮削完成")
+
+    def scheduler_job(self) -> None:
+        """
+        定时任务，每10分钟调用一次
+        """
+        self.cache.save()
 
     def obtain_images(self, mediainfo: MediaInfo) -> Optional[MediaInfo]:
         """
