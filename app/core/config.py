@@ -45,9 +45,9 @@ class Settings(BaseSettings):
     WALLPAPER: str = "tmdb"
     # 网络代理 IP:PORT
     PROXY_HOST: str = None
-    # 媒体识别来源 themoviedb/douban/steam
+    # 媒体识别来源 themoviedb/douban/steam/javdb
     RECOGNIZE_SOURCE: str = "themoviedb"
-    # 刮削来源 themoviedb/douban
+    # 刮削来源 themoviedb/douban/steam/javdb
     SCRAP_SOURCE: str = "themoviedb"
     # 刮削入库的媒体文件
     SCRAP_METADATA: bool = True
@@ -119,7 +119,7 @@ class Settings(BaseSettings):
     SYNOLOGYCHAT_WEBHOOK: str = ""
     # SynologyChat Token
     SYNOLOGYCHAT_TOKEN: str = ""
-    # 下载器 qbittorrent/transmission
+    # 下载器 qbittorrent/transmission/aria2/nasxunlei
     DOWNLOADER: str = "qbittorrent"
     # 下载器监控开关
     DOWNLOADER_MONITOR: bool = True
@@ -141,6 +141,16 @@ class Settings(BaseSettings):
     TR_USER: str = None
     # Transmission密码
     TR_PASSWORD: str = None
+    # ARIA2 RPC地址，IP:PORT/jsonrpc
+    ARIA2_RPC_HOST: str = None
+    # ARIA2秘钥
+    ARIA2_SECERT: str = None
+    # NAS迅雷地址，IP:PORT
+    NASXUNLEI_HOST: str = None
+    # NAS迅雷用户名
+    NASXUNLEI_USER: str = None
+    # NAS迅雷密码
+    NASXUNLEI_PASSWORD: str = None
     # 种子标签
     TORRENT_TAG: str = "NASPILOT"
     # 下载保存目录，容器内映射路径需要一致

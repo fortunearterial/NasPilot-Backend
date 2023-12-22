@@ -59,7 +59,7 @@ class SteamApi(metaclass=Singleton):
             session=self._session,
             proxies=settings.PROXY
         ).get_res(url=req_url, params=params)
-        if resp.status_code == 400 and "rate_limit" in resp.text:
+        if resp and resp.status_code == 400 and "rate_limit" in resp.text:
             return resp.json()
         return resp.json() if resp else {}
 
@@ -86,7 +86,7 @@ class SteamApi(metaclass=Singleton):
             session=self._session,
             proxies=settings.PROXY
         ).get_res(url=req_url, params=params)
-        if resp.status_code == 400 and "rate_limit" in resp.text:
+        if resp and resp.status_code == 400 and "rate_limit" in resp.text:
             return resp.json()
         return resp.json() if resp else {}
 
@@ -108,7 +108,7 @@ class SteamApi(metaclass=Singleton):
             session=self._session,
             proxies=settings.PROXY
         ).post_res(url=req_url, data=params)
-        if resp.status_code == 400 and "rate_limit" in resp.text:
+        if resp and resp.status_code == 400 and "rate_limit" in resp.text:
             return resp.json()
         return resp.json() if resp else {}
 

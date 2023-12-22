@@ -31,6 +31,7 @@ def start_subscribe_add(title: str, year: str,
 @router.get("/", summary="查询所有订阅", response_model=List[schemas.Subscribe])
 def read_subscribes(
         type_in: str = None,
+        keyword_in: str = None,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_active_user),
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
@@ -43,14 +44,14 @@ def read_subscribes(
             subscribe.sites = json.loads(subscribe.sites)
     if current_user.is_superuser:
         if type_in:
+            if type_in == MediaType.JAV.value:
+                return list(filter(lambda s: s.type == type_in and s.save_path.__contains__(keyword_in), subscribes))
             return list(filter(lambda s: s.type == type_in, subscribes))
-        else:
-            return subscribes
     else:
         if type_in:
             return list(filter(lambda s: s.type == type_in and s.username == current_user.name, subscribes))
-        else:
-            return list(filter(lambda s: s.username == current_user.name, subscribes))
+
+    return []
 
 
 @router.get("/list", summary="查询所有订阅（API_TOKEN）", response_model=List[schemas.Subscribe])

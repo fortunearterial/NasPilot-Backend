@@ -93,7 +93,7 @@ class HtmlCache(metaclass=Singleton):
             if path.exists():
                 with open(path, 'rb') as f:
                     data = pickle.load(f)
-                return data.decode("utf-8")
+                return data
             return {}
         except Exception as e:
             print(str(e))
@@ -108,7 +108,7 @@ class HtmlCache(metaclass=Singleton):
             if path.exists():
                 with open(path, 'rb') as f:
                     data = f.read()
-                return data
+                return data.decode("utf-8")
             return None
         except Exception as e:
             print(str(e))
@@ -132,6 +132,7 @@ class HtmlCache(metaclass=Singleton):
             elif html is not None:
                 # None时不缓存，此时代表网络错误，允许重复请求
                 self._meta_data[self.__get_key(url)] = {'url': "0"}
+        self.save()
 
     def save(self, force: bool = False) -> None:
         """

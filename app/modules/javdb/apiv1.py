@@ -63,7 +63,7 @@ class JavDBApi(metaclass=Singleton):
             session=self._session,
             proxies=settings.PROXY
         ).get_res(url=req_url, params=params)
-        if resp.status_code == 400 and "rate_limit" in resp.text:
+        if resp and resp.status_code == 400 and "rate_limit" in resp.text:
             return resp.json()
         return resp.text if resp else {}
 
