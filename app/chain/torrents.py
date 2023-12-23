@@ -72,7 +72,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         self.remove_cache(self._rss_file)
         logger.info(f'种子缓存数据清理完成')
 
-    # @cached(cache=TTLCache(maxsize=128, ttl=595))
+    @cached(cache=TTLCache(maxsize=128, ttl=595))
     def browse(self, site: Site) -> List[TorrentInfo]:
         """
         浏览站点首页内容，返回种子清单，TTL缓存10分钟
@@ -85,7 +85,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         indexer = self.siteshelper.get_indexer(site=site)
         return self.refresh_torrents(site=indexer)
 
-    # @cached(cache=TTLCache(maxsize=128, ttl=295))
+    @cached(cache=TTLCache(maxsize=128, ttl=295))
     def rss(self, site: Site) -> List[TorrentInfo]:
         """
         获取站点RSS内容，返回种子清单，TTL缓存5分钟
@@ -119,6 +119,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                 site_ua=indexer.get("ua") or settings.USER_AGENT,
                 site_proxy=indexer.get("proxy"),
                 site_order=indexer.get("pri"),
+                site_downloader=indexer.get("_downloader") or settings.DOWNLOADER,
                 title=item.get("title"),
                 enclosure=item.get("enclosure"),
                 page_url=item.get("link"),
@@ -129,7 +130,6 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
 
         return ret_torrents
 
-    # @cached(cache=TTLCache(maxsize=128, ttl=595))
     def search(self, site: Site, keyword: str) -> List[TorrentInfo]:
         """
         浏览站点首页内容，返回种子清单，TTL缓存10分钟
@@ -142,19 +142,19 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         indexer = self.siteshelper.get_indexer(site=site)
         return self.search_torrents(site=indexer, keywords=[keyword])
 
-    def refresh(self, stype: str = None, site_ids: List[int] = None) -> Dict[str, List[Context]]:
+    def refresh(self, stype: str = None, sites: List[int] = None) -> Dict[str, List[Context]]:
         """
         刷新站点最新资源，识别并缓存起来
         :param stype: 强制指定缓存类型，spider:爬虫缓存，rss:rss缓存
-        :param site_ids: 强制指定站点ID列表，为空则读取设置的订阅站点
+        :param sites: 强制指定站点ID列表，为空则读取设置的订阅站点
         """
         # 刷新类型
         if not stype:
             stype = settings.SUBSCRIBE_MODE
 
         # 刷新站点
-        if not site_ids:
-            site_ids = self.systemconfig.get(SystemConfigKey.RssSites) or []
+        if not sites:
+            sites = self.systemconfig.get(SystemConfigKey.RssSites) or []
 
         # 读取缓存
         torrents_cache = self.get_torrents()
@@ -165,13 +165,13 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                                        if not self.torrenthelper.is_invalid(_torrent.torrent_info.enclosure)]
 
         # 所有站点索引
-        sites = self.siteoper.list_order_by_pri()
+        pub_sites = self.siteoper.list_order_by_pri()
         # 遍历站点缓存资源
-        for site in sites:
+        for site in pub_sites:
             # 未开启的站点不刷新
-            if site_ids and site.id not in site_ids:
+            if sites and site.id not in sites:
                 continue
-            domain = StringUtils.get_url_domain(indexer.get("domain"))
+            domain = site.domain
             if stype == "spider":
                 # 刷新首页种子
                 torrents: List[TorrentInfo] = self.browse(site=site)
@@ -189,9 +189,9 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                             not in [f'{t.torrent_info.title}{t.torrent_info.description}'
                                     for t in torrents_cache.get(domain) or []]]
                 if torrents:
-                    logger.info(f'{indexer.get("name")} 有 {len(torrents)} 个新种子')
+                    logger.info(f'{site.name} 有 {len(torrents)} 个新种子')
                 else:
-                    logger.info(f'{indexer.get("name")} 没有新种子')
+                    logger.info(f'{site.name} 没有新种子')
                     continue
                 for torrent in torrents:
                     logger.info(f'处理资源：{torrent.title} ...')
@@ -218,7 +218,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                 # 回收资源
                 del torrents
             else:
-                logger.info(f'{indexer.get("name")} 没有获取到种子')
+                logger.info(f'{site.name} 没有获取到种子')
 
         # 保存缓存到本地
         if stype == "spider":

@@ -64,28 +64,36 @@ class SubscribeChain(ChainBase):
         if season:
             metainfo.type = MediaType.TV
             metainfo.begin_season = season
-        if javdbid:
-            metainfo.javdbid = javdbid
-        # 识别媒体信息
-        if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
-            # TMDB识别模式
-            if not tmdbid and doubanid:
-                # 将豆瓣信息转换为TMDB信息
-                tmdbinfo = self.mediachain.get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
-                if tmdbinfo:
-                    mediainfo = MediaInfo(tmdb_info=tmdbinfo)
-            else:
-                # 识别TMDB信息
-                mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, tmdbid=tmdbid)
+        if steamid:
+            # 识别STEAM信息
+            mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, steamid=steamid)
+        elif javdbid:
+            # 识别JavDB信息
+            mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, javdbid=javdbid)
+            if mediainfo and mediainfo.title != title:
+                logger.warn(f"{javdbid} 识别标题“{mediainfo.title}”与指定标题“{title}”不匹配！")
+                mediainfo.title = title
         else:
-            # 豆瓣识别模式
-            mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, doubanid=doubanid)
-            if mediainfo:
-                # 豆瓣标题处理
-                meta = MetaInfo(mediainfo.title)
-                mediainfo.title = meta.name
-                if not season:
-                    season = meta.begin_season
+            # 识别媒体信息
+            if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
+                # TMDB识别模式
+                if not tmdbid and doubanid:
+                    # 将豆瓣信息转换为TMDB信息
+                    tmdbinfo = self.mediachain.get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
+                    if tmdbinfo:
+                        mediainfo = MediaInfo(tmdb_info=tmdbinfo)
+                else:
+                    # 识别TMDB信息
+                    mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, tmdbid=tmdbid)
+            else:
+                # 豆瓣识别模式
+                mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, doubanid=doubanid)
+                if mediainfo:
+                    # 豆瓣标题处理
+                    meta = MetaInfo(mediainfo.title)
+                    mediainfo.title = meta.name
+                    if not season:
+                        season = meta.begin_season
         # 识别失败
         if not mediainfo:
             logger.warn(f'未识别到媒体信息，标题：{title}，tmdbid：{tmdbid}，doubanid：{doubanid}，steamid：{steamid}，javdbid：{javdbid}')

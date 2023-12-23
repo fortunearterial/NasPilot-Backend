@@ -59,13 +59,13 @@ class JavDBApi(metaclass=Singleton):
         })
         resp = RequestUtils(
             ua=settings.USER_AGENT,
-            cookies="list_mode=h; theme=auto; over18=1; _ym_uid=1702991513933832321; _ym_d=1702991513; locale=zh; _rucaptcha_session_id=556f4fb93ef6bf28395bea9047a0a2ed; _ym_isad=2; cf_clearance=wt.rbDMfSR_U9FS5l1dZ206yoJvshbRhqBLobCGacEA-1703079310-0-1-25e5af4b.c512240d.72e4f0ab-0.2.1703079310; _jdb_session=SZ%2B0%2B%2F%2BOWeVHlB%2FUbd829rNj9WyohW%2FCK%2Bp6TFkpjnq0kctM5kFKL%2FKFP49CKmsZauTSWFkzytXhSM16N%2FHVZvua06xnUEnTzmW7VvO7I3daOm9xaolm0ReFEIdHkBx1Pd9oQgQVWChqQLoYeKlpMm%2BzFcHrxqSGLpA2QcsVdUHgY%2BCMI6d6T4kHE0nRpsulYQh17RObk9AlZsMyauYUZafkWpPZ1rjQ6RW%2BU8dQgs%2Fo2JdYaNeytUwg%2BHJsMhKtnROiNhCkADS5JxRlNpP3nVuoc%2FcvJXY02QXcdLp%2BVDrgE%2FV5XB11KrqjgPsps%2BOKC5ToXOoSx9kHMjeBjMvIFj6ScKPHShibP8lfPZVIVC3ob8EfrqkeJA1JDGFo%2BdOsYc7Iyd9pkqRyylWTz6y80DhNTm2tdNhn1cBk4iu0mhumZ4F19Cl%2FUFY%2Bdxkxvz47Cot7ffps6L0qhomJgvKz5Q4Aeq%2BIZ8VMztFarz7yzFHTIg%3D%3D--3pKo3yi61TsUMy82--ujy7RriGh2M7eZcKArRb7Q%3D%3D",
+            cookies="list_mode=h; theme=auto; over18=1; _ym_uid=1702991513933832321; _ym_d=1702991513; locale=zh; _ym_isad=2; cf_clearance=jAPJ4YVONhXpDy8kBGWzmgFuDF8UJsXKu7o16PwhSSc-1703333277-0-2-25e5af4b.8dc226a.72e4f0ab-0.2.1703333277; _jdb_session=Zgwa%2BwPrhseWOrlggyh%2F0IW8raFY%2BGhrHwzLoj5UDVBg9H6Skzg0zHMAUj7P1et65KTKeg2nMeqfLTGq9GB77dvyEh%2BiUxGzdtlYVlhiFvTIFacqCV%2BonlveAYdlnGZP2bnynMYoivC03vF2GAn9hjMWUs87G6u49fa%2FhZnVU7rsVqKaRmHg%2FESPKSJD%2BYDyGdRX92rJf%2FT1qMergwkEOtNkpYYSUFeM%2BzBdAv%2BRdlbdcJSQbjv%2Fdp8WPURz%2BV7Xox1zyJEWcHYhtDNxBn3fei8fH5qjy764u6iMMI4vMY7JdNjUQ54cD2c3ss7FHyDIrEGEOYEaz2ifgZ%2BEY%2BXcC9hDxqn%2BAsf2wI%2BTcfnoizAXEgWsKRXgX9nALQnQDywclpu%2BcgSIObrVAFWB8%2FL%2BmhuB8fLNdiJ0ktG5HTfLwGKr5HfCW1lNGqlsQE16vQYaQVRMpkufihc8VpVa0Kae6dqw5fpj82ba8LoVg21y%2B2RABg%3D%3D--kjAX%2BBxOgxBRJIbY--HNc4TIZBuxbrVeQExlF2Kw%3D%3D",
             session=self._session,
             proxies=settings.PROXY
         ).get_res(url=req_url, params=params)
         if resp and resp.status_code == 400 and "rate_limit" in resp.text:
-            return resp.json()
-        return resp.text if resp else {}
+            return None
+        return resp.text if resp else None
 
     def search(self, keyword: str, start: int = 0, count: int = 20,
                ts=datetime.strftime(datetime.now(), '%Y%m%d')) -> dict:
@@ -105,7 +105,7 @@ class JavDBApi(metaclass=Singleton):
             api_result = self.__invoke(url)
             self.cache.update(url, api_result)
         html = etree.HTML(api_result)
-        if html:
+        if html is not None:
             title = html.xpath("//h2[contains(@class, 'title')]/strong/a/text()")[0].strip()
             header_image = html.xpath("//img[@class='video-cover']/@src")[0]
 

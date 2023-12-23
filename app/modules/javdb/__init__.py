@@ -141,9 +141,9 @@ class JavDBModule(_ModuleBase):
         if not settings.RECOGNIZE_SOURCE.__contains__("javdb"):
             return None
 
-        if not meta.name:
+        if not meta.org_string:
             return []
-        result = self.javdbapi.search(meta.name)
+        result = self.javdbapi.search(meta.org_string)
         if not result:
             return []
         # 返回数据

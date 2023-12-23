@@ -163,7 +163,7 @@ def subscribe_mediaid(
         javdbid = mediaid[6:]
         if not javdbid:
             return Subscribe()
-        result = Subscribe.get_by_javdbid(db, steamid)
+        result = Subscribe.get_by_javdbid(db, javdbid)
 
     if not result and title:
         meta = MetaInfo(title)

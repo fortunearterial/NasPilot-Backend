@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence, Text
+from sqlalchemy import Column, Integer, String, Sequence, Text, func
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -76,7 +76,8 @@ class Subscribe(Base):
         if steamid:
             return db.query(Subscribe).filter(Subscribe.steamid == steamid).first()
         elif javdbid:
-            return db.query(Subscribe).filter(Subscribe.javdbid == javdbid).first()
+            # 区分大小写
+            return db.query(Subscribe).filter(Subscribe.javdbid == func.binary(javdbid)).first()
         elif tmdbid:
             if season:
                 return db.query(Subscribe).filter(Subscribe.tmdbid == tmdbid,
@@ -123,7 +124,8 @@ class Subscribe(Base):
     @staticmethod
     @db_query
     def get_by_javdbid(db: Session, javdbid: str):
-        return db.query(Subscribe).filter(Subscribe.javdbid == javdbid).first()
+        # 区分大小写
+        return db.query(Subscribe).filter(Subscribe.javdbid == func.binary(javdbid)).first()
 
     @db_update
     def delete_by_tmdbid(self, db: Session, tmdbid: int, season: int):

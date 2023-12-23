@@ -49,7 +49,7 @@ class SubscribeOper(DbOper):
         else:
             return subscribe.id, "订阅已存在"
 
-    def exists(self, tmdbid: int = None, doubanid: str = None, season: int = None) -> bool:
+    def exists(self, tmdbid: int = None, doubanid: str = None, steamid: str = None, javdbid: str = None, season: int = None) -> bool:
         """
         判断是否存在
         """
@@ -60,6 +60,10 @@ class SubscribeOper(DbOper):
                 return True if Subscribe.exists(self._db, tmdbid=tmdbid) else False
         elif doubanid:
             return True if Subscribe.exists(self._db, doubanid=doubanid) else False
+        elif steamid:
+            return True if Subscribe.exists(self._db, steamid=steamid) else False
+        elif javdbid:
+            return True if Subscribe.exists(self._db, javdbid=javdbid) else False
         return False
 
     def get(self, sid: int) -> Subscribe:
