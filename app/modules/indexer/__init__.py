@@ -13,6 +13,7 @@ from app.modules.indexer.torrentleech import TorrentLeech
 from app.modules.indexer.dspider import DetailTorrentSpider
 from app.schemas.types import MediaType
 from app.utils.string import StringUtils
+from app.core.config import settings
 
 
 class IndexerModule(_ModuleBase):
@@ -118,6 +119,7 @@ class IndexerModule(_ModuleBase):
                                 site_ua=site.get("ua"),
                                 site_proxy=site.get("proxy"),
                                 site_order=site.get("pri"),
+                                site_downloader=site.get("_downloader") or settings.DOWNLOADER,
                                 **result) for result in result_array]
 
     @staticmethod

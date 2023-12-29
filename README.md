@@ -26,7 +26,7 @@ NasPilot内置了公共CookieCloud服务器，如果需要自建服务，可参�
 ### 3. **安装配套管理软件**
 
 NasPilot需要配套下载器和媒体服务器配合使用。
-- 下载器支持：qBittorrent、Transmission，QB版本号要求>= 4.3.9，TR版本号要求>= 3.0，推荐使用QB。
+- 下载器支持：qBittorrent、Transmission、Aria2、NAS迅雷，QB版本号要求>= 4.3.9，TR版本号要求>= 3.0，推荐使用QB。
 - 媒体服务器支持：Jellyfin、Emby、Plex，推荐使用Emby。
 
 ### 4. **安装NasPilot**
@@ -106,10 +106,10 @@ NasPilot需要配套下载器和媒体服务器配合使用。
 - **TMDB_API_DOMAIN：** TMDB API地址，默认`api.themoviedb.org`，也可配置为`api.tmdb.org`、`tmdb.movie-pilot.org` 或其它中转代理服务地址，能连通即可
 - **TMDB_IMAGE_DOMAIN：** TMDB图片地址，默认`image.tmdb.org`，可配置为其它中转代理以加速TMDB图片显示，如：`static-mdb.v.geilijiasu.com`
 - **WALLPAPER：** 登录首页电影海报，`tmdb`/`bing`，默认`tmdb`
-- **RECOGNIZE_SOURCE：** 媒体信息识别来源，`themoviedb`/`douban`/`steam`，多个来源使用`,`分隔，默认`themoviedb`，使用`douban`时不支持二级分类
+- **RECOGNIZE_SOURCE：** 媒体信息识别来源，`themoviedb`/`douban`/`steam`/`javdb`，多个来源使用`,`分隔，默认`themoviedb`，使用`douban`时不支持二级分类
 ---
 - **SCRAP_METADATA：** 刮削入库的媒体文件，`true`/`false`，默认`true`
-- **SCRAP_SOURCE：** 刮削元数据及图片使用的数据源，`themoviedb`/`douban`，默认`themoviedb`
+- **SCRAP_SOURCE：** 刮削元数据及图片使用的数据源，`themoviedb`/`douban`/`steam`/`javdb`，默认`themoviedb`
 - **SCRAP_FOLLOW_TMDB：** 新增已入库媒体是否跟随TMDB信息变化，`true`/`false`，默认`true`，为`false`时即使TMDB信息变化了也会仍然按历史记录中已入库的信息进行刮削
 ---
 - **❗LIBRARY_PATH：** 媒体库目录，多个目录使用`,`分隔
@@ -167,10 +167,12 @@ NasPilot需要配套下载器和媒体服务器配合使用。
 - **DOWNLOAD_MOVIE_PATH：** 电影下载保存目录路径，不设置则下载到`DOWNLOAD_PATH`
 - **DOWNLOAD_TV_PATH：** 电视剧下载保存目录路径，不设置则下载到`DOWNLOAD_PATH`
 - **DOWNLOAD_ANIME_PATH：** 动漫下载保存目录路径，不设置则下载到`DOWNLOAD_PATH`
+- **DOWNLOAD_GAME_PATH：** 游戏下载保存目录路径，不设置则下载到`DOWNLOAD_PATH`
+- **DOWNLOAD_Jav_PATH：** Jav下载保存目录路径，不设置则下载到`DOWNLOAD_PATH`
 - **DOWNLOAD_CATEGORY：** 下载二级分类开关，`true`/`false`，默认`false`，开启后会根据配置 [category.yaml](https://github.com/fortunearterial/NasPilot-Backend/raw/main/config/category.yaml) 自动在下载目录下建立二级目录分类
 - **DOWNLOAD_SUBTITLE：** 下载站点字幕，`true`/`false`，默认`true`
 ---
-- **❗DOWNLOADER：** 下载器，支持`qbittorrent`/`transmission`，QB版本号要求>= 4.3.9，TR版本号要求>= 3.0，同时还需要配置对应渠道的环境变量，非对应渠道的变量可删除，推荐使用`qbittorrent`
+- **❗DOWNLOADER：** 下载器，支持`qbittorrent`/`transmission`/`aria2`/`nasxunlei`，QB版本号要求>= 4.3.9，TR版本号要求>= 3.0，同时还需要配置对应渠道的环境变量，非对应渠道的变量可删除，推荐使用`qbittorrent`
 
   - `qbittorrent`设置项：
 
@@ -186,6 +188,17 @@ NasPilot需要配套下载器和媒体服务器配合使用。
     - **TR_HOST：** transmission地址，格式：`ip:port`，https需要添加`https://`前缀
     - **TR_USER：** transmission用户名
     - **TR_PASSWORD：** transmission密码
+
+  - `aria2`设置项：
+
+    - **ARIA2_RPC_HOST：** aria2 rpc地址，格式：`ip:port`，https需要添加`https://`前缀
+    - **ARIA2_SECERT：** aria2秘钥
+
+  - `nasxunlei`设置项：
+
+    - **NASXUNLEI_HOST：** NAS迅雷地址，格式：`ip:port`，https需要添加`https://`前缀
+    - **NASXUNLEI_USER：** NAS迅雷用户名
+    - **NASXUNLEI_PASSWORD：** NAS迅雷密码
 - **DOWNLOADER_MONITOR：** 下载器监控，`true`/`false`，默认为`true`，开启后下载完成时才会自动整理入库
 - **TORRENT_TAG：** 下载器种子标签，默认为`NASPILOT`，设置后只有NasPilot添加的下载才会处理，留空所有下载器中的任务均会处理
 ---

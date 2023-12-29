@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON
+from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON, Text
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -19,6 +19,8 @@ class Site(Base):
     url = Column(String(255), nullable=False)
     # 适用类型
     types = Column(JSON)
+    # 下载器
+    downloader = Column(String(20))
     # 站点优先级
     pri = Column(Integer, default=1)
     # FEED地址
@@ -28,7 +30,7 @@ class Site(Base):
     # XPATH
     xpath = Column(String(2000))
     # Cookie
-    cookie = Column(String(255))
+    cookie = Column(Text)
     # User-Agent
     ua = Column(String(255))
     # 是否使用代理 0-否，1-是

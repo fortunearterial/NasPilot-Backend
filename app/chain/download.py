@@ -186,17 +186,23 @@ class DownloadChain(ChainBase):
         _media = context.media_info
         _meta = context.meta_info
         _folder_name = ""
-        if not torrent_file:
-            # 下载种子文件，得到的可能是文件也可能是磁力链
-            content, _folder_name, _file_list = self.download_torrent(_torrent,
-                                                                      channel=channel,
-                                                                      userid=userid)
-            if not content:
-                return None
-        else:
-            content = torrent_file
-            # 获取种子文件的文件夹名和文件清单
-            _folder_name, _file_list = self.torrent.get_torrent_info(torrent_file)
+
+        # TODO: 区分链接类型：magnet:/.torrent/ftp:/ed2k:/普通文件
+        content = _torrent.enclosure
+        _folder_name = ""
+        _file_list = [_torrent.enclosure[_torrent.enclosure.rindex("/") + 1:]]
+
+        # if not torrent_file:
+        #     # 下载种子文件，得到的可能是文件也可能是磁力链
+        #     content, _folder_name, _file_list = self.download_torrent(_torrent,
+        #                                                               channel=channel,
+        #                                                               userid=userid)
+        #     if not content:
+        #         return None
+        # else:
+        #     content = torrent_file
+        #     # 获取种子文件的文件夹名和文件清单
+        #     _folder_name, _file_list = self.torrent.get_torrent_info(torrent_file)
 
         # 下载目录
         if not save_path:
@@ -690,10 +696,18 @@ class DownloadChain(ChainBase):
 
         if mediainfo.type == MediaType.GAME:
             # TODO: GAME
-            raise
+            return False, {}
         elif mediainfo.type == MediaType.JAV:
             # TODO: JAV
-            raise
+            return False, {}
+            # itemid = self.mediaserver.get_item_id(mtype=mediainfo.type.value,
+            #                                       title=mediainfo.title,
+            #                                       javdbid=mediainfo.javdb_id)
+            # exists_games: Optional[ExistMediaInfo] = self.media_exists(mediainfo=mediainfo, itemid=itemid)
+            # if exists_movies:
+            #     logger.info(f"媒体库中已存在Jav：{mediainfo.title_year}")
+            #     return True, {}
+            # return False, {}
         elif mediainfo.type == MediaType.MOVIE:
             # 电影
             itemid = self.mediaserver.get_item_id(mtype=mediainfo.type.value,
