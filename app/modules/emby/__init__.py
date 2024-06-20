@@ -14,8 +14,22 @@ class EmbyModule(_ModuleBase):
     def init_module(self) -> None:
         self.emby = Emby()
 
+    @staticmethod
+    def get_name() -> str:
+        return "Emby"
+
     def stop(self):
         pass
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        if self.emby.is_inactive():
+            self.emby.reconnect()
+        if not self.emby.get_user():
+            return False, "无法连接Emby，请检查参数配置"
+        return True, ""
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "MEDIASERVER", "emby"
@@ -103,13 +117,13 @@ class EmbyModule(_ModuleBase):
         media_statistic.user_count = self.emby.get_user_count()
         return [media_statistic]
 
-    def mediaserver_librarys(self, server: str) -> Optional[List[schemas.MediaServerLibrary]]:
+    def mediaserver_librarys(self, server: str = None, username: str = None) -> Optional[List[schemas.MediaServerLibrary]]:
         """
         媒体库列表
         """
-        if server != "emby":
+        if server and server != "emby":
             return None
-        return self.emby.get_librarys()
+        return self.emby.get_librarys(username)
 
     def mediaserver_items(self, server: str, library_id: str) -> Optional[Generator]:
         """
@@ -141,3 +155,29 @@ class EmbyModule(_ModuleBase):
             season=season,
             episodes=episodes
         ) for season, episodes in seasoninfo.items()]
+
+    def mediaserver_playing(self, count: int = 20,
+                            server: str = None, username: str = None) -> List[schemas.MediaServerPlayItem]:
+        """
+        获取媒体服务器正在播放信息
+        """
+        if server and server != "emby":
+            return []
+        return self.emby.get_resume(num=count, username=username)
+
+    def mediaserver_play_url(self, server: str, item_id: Union[str, int]) -> Optional[str]:
+        """
+        获取媒体库播放地址
+        """
+        if server != "emby":
+            return None
+        return self.emby.get_play_url(item_id)
+
+    def mediaserver_latest(self, count: int = 20,
+                           server: str = None, username: str = None) -> List[schemas.MediaServerPlayItem]:
+        """
+        获取媒体服务器最新入库条目
+        """
+        if server and server != "emby":
+            return []
+        return self.emby.get_latest(num=count, username=username)

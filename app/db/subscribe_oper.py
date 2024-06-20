@@ -1,3 +1,4 @@
+import json
 import time
 from typing import Tuple, List
 
@@ -22,6 +23,9 @@ class SubscribeOper(DbOper):
                                      javdbid=mediainfo.javdb_id,
                                      season=kwargs.get('season'))
         if not subscribe:
+            if kwargs.get("sites") and not isinstance(kwargs.get("sites"), str):
+                kwargs["sites"] = json.dumps(kwargs.get("sites"))
+
             subscribe = Subscribe(name=mediainfo.title,
                                   year=mediainfo.year,
                                   type=mediainfo.type.value,
@@ -29,6 +33,7 @@ class SubscribeOper(DbOper):
                                   imdbid=mediainfo.imdb_id,
                                   tvdbid=mediainfo.tvdb_id,
                                   doubanid=mediainfo.douban_id,
+                                  bangumiid=mediainfo.bangumi_id,
                                   steamid=mediainfo.steam_id,
                                   javdbid=mediainfo.javdb_id,
                                   poster=mediainfo.get_poster_image(),
@@ -93,3 +98,21 @@ class SubscribeOper(DbOper):
         subscribe = self.get(sid)
         subscribe.update(self._db, payload)
         return subscribe
+
+    def list_by_tmdbid(self, tmdbid: int, season: int = None) -> List[Subscribe]:
+        """
+        获取指定tmdb_id的订阅
+        """
+        return Subscribe.get_by_tmdbid(self._db, tmdbid=tmdbid, season=season)
+
+    def list_by_username(self, username: str, state: str = None, mtype: str = None) -> List[Subscribe]:
+        """
+        获取指定用户的订阅
+        """
+        return Subscribe.list_by_username(self._db, username=username, state=state, mtype=mtype)
+
+    def list_by_type(self, mtype: str, days: int = 7) -> Subscribe:
+        """
+        获取指定类型的订阅
+        """
+        return Subscribe.list_by_type(self._db, mtype=mtype, days=days)

@@ -15,8 +15,21 @@ class TelegramModule(_ModuleBase):
     def init_module(self) -> None:
         self.telegram = Telegram()
 
+    @staticmethod
+    def get_name() -> str:
+        return "Telegram"
+
     def stop(self):
         self.telegram.stop()
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        state = self.telegram.get_state()
+        if state:
+            return True, ""
+        return False, "Telegram未就续，请检查参数设置和网络连接"
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "MESSAGER", "telegram"

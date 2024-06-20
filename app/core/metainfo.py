@@ -6,6 +6,7 @@ import regex as re
 from app.core.config import settings
 from app.core.meta import MetaAnime, MetaVideo, MetaBase
 from app.core.meta.words import WordsMatcher
+from app.log import logger
 from app.schemas.types import MediaType
 
 
@@ -25,6 +26,8 @@ def MetaInfo(title: str, subtitle: str = None) -> MetaBase:
     # 判断是否处理文件
     if title and Path(title).suffix.lower() in settings.RMT_MEDIAEXT:
         isfile = True
+        # 去掉后缀
+        title = Path(title).stem
     else:
         isfile = False
     # 识别
@@ -35,9 +38,12 @@ def MetaInfo(title: str, subtitle: str = None) -> MetaBase:
     meta.apply_words = apply_words or []
     # 修正媒体信息
     if metainfo.get('tmdbid'):
-        meta.tmdbid = metainfo['tmdbid']
+        try:
+            meta.tmdbid = int(metainfo['tmdbid'])
+        except ValueError as _:
+            logger.warn("tmdbid 必须是数字")
     if metainfo.get('doubanid'):
-        meta.tmdbid = metainfo['doubanid']
+        meta.doubanid = metainfo['doubanid']
     if metainfo.get('type'):
         meta.type = metainfo['type']
     if metainfo.get('begin_season'):
@@ -61,7 +67,7 @@ def MetaInfoPath(path: Path) -> MetaBase:
     :param path: 路径
     """
     # 文件元数据，不包含后缀
-    file_meta = MetaInfo(title=path.stem)
+    file_meta = MetaInfo(title=path.name)
     # 上级目录元数据
     dir_meta = MetaInfo(title=path.parent.name)
     # 合并元数据

@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any, List, Dict, Tuple
+from typing import Any, List, Dict, Tuple, Optional
 
 from app.chain import ChainBase
 from app.core.config import settings
@@ -32,6 +32,8 @@ class _PluginBase(metaclass=ABCMeta):
     plugin_name: str = ""
     # 插件描述
     plugin_desc: str = ""
+    # 插件顺序
+    plugin_order: int = 9999
 
     def __init__(self):
         # 插件数据
@@ -53,11 +55,18 @@ class _PluginBase(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def get_state(self) -> bool:
+        """
+        获取插件运行状态
+        """
+        pass
+
     @staticmethod
     @abstractmethod
     def get_command() -> List[Dict[str, Any]]:
         """
-        获取插件命令
+        注册插件远程命令
         [{
             "cmd": "/xx",
             "event": EventType.xx,
@@ -71,7 +80,7 @@ class _PluginBase(metaclass=ABCMeta):
     @abstractmethod
     def get_api(self) -> List[Dict[str, Any]]:
         """
-        获取插件API
+        注册插件API
         [{
             "path": "/xx",
             "endpoint": self.xxx,
@@ -98,10 +107,52 @@ class _PluginBase(metaclass=ABCMeta):
         """
         pass
 
-    @abstractmethod
-    def get_state(self) -> bool:
+    def get_service(self) -> List[Dict[str, Any]]:
         """
-        获取插件运行状态
+        注册插件公共服务
+        [{
+            "id": "服务ID",
+            "name": "服务名称",
+            "trigger": "触发器：cron/interval/date/CronTrigger.from_crontab()",
+            "func": self.xxx,
+            "kwargs": {} # 定时器参数
+        }]
+        """
+        pass
+
+    def get_dashboard(self, key: str, **kwargs) -> Optional[Tuple[Dict[str, Any], Dict[str, Any], List[dict]]]:
+        """
+        获取插件仪表盘页面，需要返回：1、仪表板col配置字典；2、全局配置（自动刷新等）；3、仪表板页面元素配置json（含数据）
+        1、col配置参考：
+        {
+            "cols": 12, "md": 6
+        }
+        2、全局配置参考：
+        {
+            "refresh": 10, // 自动刷新时间，单位秒
+            "border": True, // 是否显示边框，默认True，为False时取消组件边框和边距，由插件自行控制
+            "title": "组件标题", // 组件标题，如有将显示该标题，否则显示插件名称
+            "subtitle": "组件子标题", // 组件子标题，缺省时不展示子标题
+        }
+        3、页面配置使用Vuetify组件拼装，参考：https://vuetifyjs.com/
+
+        kwargs参数可获取的值：1、user_agent：浏览器UA
+
+        :param key: 仪表盘key，根据指定的key返回相应的仪表盘数据，缺省时返回一个固定的仪表盘数据（兼容旧版）
+        """
+        pass
+
+    def get_dashboard_meta(self) -> Optional[List[Dict[str, str]]]:
+        """
+        获取插件仪表盘元信息
+        返回示例：
+            [{
+                "key": "dashboard1", // 仪表盘的key，在当前插件范围唯一
+                "name": "仪表盘1" // 仪表盘的名称
+            }, {
+                "key": "dashboard2",
+                "name": "仪表盘2"
+            }]
         """
         pass
 
@@ -153,7 +204,7 @@ class _PluginBase(metaclass=ABCMeta):
             plugin_id = self.__class__.__name__
         self.plugindata.save(plugin_id, key, value)
 
-    def get_data(self, key: str, plugin_id: str = None) -> Any:
+    def get_data(self, key: str = None, plugin_id: str = None) -> Any:
         """
         获取插件数据
         :param key: 数据key

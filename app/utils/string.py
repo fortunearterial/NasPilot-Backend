@@ -13,6 +13,12 @@ import dateutil.parser
 from app.schemas.types import MediaType
 
 
+_special_domains = [
+    'u2.dmhy.org',
+    'pt.ecust.pp.ua',
+]
+
+
 class StringUtils:
 
     @staticmethod
@@ -131,6 +137,13 @@ class StringUtils:
             else:
                 return False
         return True
+
+    @staticmethod
+    def is_english_word(word: str) -> bool:
+        """
+        判断是否为英文单词，有空格时返回False
+        """
+        return word.isalpha()
 
     @staticmethod
     def str_int(text: str) -> int:
@@ -258,8 +271,9 @@ class StringUtils:
         """
         if not url:
             return ""
-        if 'u2.dmhy.org' in url:
-            return 'u2.dmhy.org'
+        for domain in _special_domains:
+            if domain in url:
+                return domain
         _, netloc = StringUtils.get_url_netloc(url)
         if netloc:
             locs = netloc.split(".")
@@ -282,6 +296,18 @@ class StringUtils:
         if len(netloc) >= 2:
             return netloc[-2]
         return netloc[0]
+
+    @staticmethod
+    def get_url_host(url: str) -> str:
+        """
+        获取URL的一级域名
+        """
+        if not url:
+            return ""
+        _, netloc = StringUtils.get_url_netloc(url)
+        if not netloc:
+            return ""
+        return netloc.split(".")[-2]
 
     @staticmethod
     def get_base_url(url: str) -> str:
@@ -579,17 +605,27 @@ class StringUtils:
     def get_domain_address(address: str, prefix: bool = True) -> Tuple[Optional[str], Optional[int]]:
         """
         从地址中获取域名和端口号
+        :param address: 地址
+        :param prefix：返回域名是否要包含协议前缀
         """
         if not address:
             return None, None
+        # 去掉末尾的/
+        address = address.rstrip("/")
         if prefix and not address.startswith("http"):
+            # 如果需要包含协议前缀，但地址不包含协议前缀，则添加
             address = "http://" + address
+        elif not prefix and address.startswith("http"):
+            # 如果不需要包含协议前缀，但地址包含协议前缀，则去掉
+            address = address.split("://")[-1]
+        # 拆分域名和端口号
         parts = address.split(":")
         if len(parts) > 3:
             # 处理不希望包含多个冒号的情况（除了协议后的冒号）
             return None, None
-        domain = ":".join(parts[:-1])
-        # 检查是否包含端口号
+        # 不含端口地址
+        domain = ":".join(parts[:-1]).rstrip('/')
+        # 端口号
         try:
             port = int(parts[-1])
         except ValueError:
@@ -712,3 +748,29 @@ class StringUtils:
             return -1
         else:
             return 0
+
+    @staticmethod
+    def diff_time_str(time_str: str):
+        """
+        输入YYYY-MM-DD HH24:MI:SS 格式的时间字符串，返回距离现在的剩余时间：xx天xx小时xx分钟
+        """
+        if not time_str:
+            return ''
+        try:
+            time_obj = datetime.datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            return time_str
+        now = datetime.datetime.now()
+        diff = time_obj - now
+        diff_seconds = diff.seconds
+        diff_days = diff.days
+        diff_hours = diff_seconds // 3600
+        diff_minutes = (diff_seconds % 3600) // 60
+        if diff_days > 0:
+            return f'{diff_days}天{diff_hours}小时{diff_minutes}分钟'
+        elif diff_hours > 0:
+            return f'{diff_hours}小时{diff_minutes}分钟'
+        elif diff_minutes > 0:
+            return f'{diff_minutes}分钟'
+        else:
+            return ''

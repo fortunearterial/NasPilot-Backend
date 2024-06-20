@@ -27,11 +27,26 @@ class _ModuleBase(metaclass=ABCMeta):
         """
         pass
 
+    @staticmethod
+    @abstractmethod
+    def get_name() -> str:
+        """
+        获取模块名称
+        """
+        pass
+
     @abstractmethod
     def stop(self) -> None:
         """
         如果关闭时模块有服务需要停止，需要实现此方法
         :return: None，该方法可被多个模块同时处理
+        """
+        pass
+
+    @abstractmethod
+    def test(self) -> Tuple[bool, str]:
+        """
+        模块测试, 返回测试结果和错误信息
         """
         pass
 
@@ -59,6 +74,8 @@ def checkMessage(channel_type: MessageChannel):
                             if channel_type == MessageChannel.Slack and not switch.get("slack"):
                                 return None
                             if channel_type == MessageChannel.SynologyChat and not switch.get("synologychat"):
+                                return None
+                            if channel_type == MessageChannel.VoceChat and not switch.get("vocechat"):
                                 return None
                 return func(self, message, *args, **kwargs)
 

@@ -1,4 +1,5 @@
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Dict, Tuple, Generator, Any
 from urllib.parse import quote_plus
@@ -10,10 +11,11 @@ from app import schemas
 from app.core.config import settings
 from app.log import logger
 from app.schemas import MediaType
-from app.utils.singleton import Singleton
 
 
-class Plex(metaclass=Singleton):
+class Plex:
+
+    _plex = None
 
     def __init__(self):
         self._host = settings.PLEX_HOST
@@ -22,6 +24,12 @@ class Plex(metaclass=Singleton):
                 self._host += "/"
             if not self._host.startswith("http"):
                 self._host = "http://" + self._host
+        self._playhost = settings.PLEX_PLAY_HOST
+        if self._playhost:
+            if not self._playhost.endswith("/"):
+                self._playhost += "/"
+            if not self._playhost.startswith("http"):
+                self._playhost = "http://" + self._playhost
         self._token = settings.PLEX_TOKEN
         if self._host and self._token:
             try:
@@ -50,6 +58,43 @@ class Plex(metaclass=Singleton):
             self._plex = None
             logger.error(f"Plex服务器连接失败：{str(e)}")
 
+    @lru_cache(maxsize=10)
+    def __get_library_images(self, library_key: str, mtype: int) -> Optional[List[str]]:
+        """
+        获取媒体服务器最近添加的媒体的图片列表
+        param: library_key
+        param: type type的含义: 1 电影 2 剧集 详见 plexapi/utils.py中SEARCHTYPES的定义
+        """
+        if not self._plex:
+            return None
+        # 返回结果
+        poster_urls = {}
+        # 页码计数
+        container_start = 0
+        # 需要的总条数/每页的条数
+        total_size = 4
+        # 如果总数不足,接续获取下一页
+        while len(poster_urls) < total_size:
+            items = self._plex.fetchItems(f"/hubs/home/recentlyAdded?type={mtype}&sectionID={library_key}",
+                                          container_size=total_size,
+                                          container_start=container_start)
+            for item in items:
+                if item.type == 'episode':
+                    # 如果是剧集的单集,则去找上级的图片
+                    if item.parentThumb is not None:
+                        poster_urls[item.parentThumb] = None
+                else:
+                    # 否则就用自己的图片
+                    if item.thumb is not None:
+                        poster_urls[item.thumb] = None
+                if len(poster_urls) == total_size:
+                    break
+            if len(items) < total_size:
+                break
+            container_start += total_size
+        return [f"{self._host.rstrip('/') + url}?X-Plex-Token={self._token}" for url in
+                list(poster_urls.keys())[:total_size]]
+
     def get_librarys(self) -> List[schemas.MediaServerLibrary]:
         """
         获取媒体服务器所有媒体库列表
@@ -62,12 +107,17 @@ class Plex(metaclass=Singleton):
             logger.error(f"获取媒体服务器所有媒体库列表出错：{str(err)}")
             return []
         libraries = []
+        black_list = (settings.MEDIASERVER_SYNC_BLACKLIST or '').split(",")
         for library in self._libraries:
+            if library.title in black_list:
+                continue
             match library.type:
                 case "movie":
                     library_type = MediaType.MOVIE.value
+                    image_list = self.__get_library_images(library.key, 1)
                 case "show":
                     library_type = MediaType.TV.value
+                    image_list = self.__get_library_images(library.key, 2)
                 case _:
                     continue
             libraries.append(
@@ -75,7 +125,10 @@ class Plex(metaclass=Singleton):
                     id=library.key,
                     name=library.title,
                     path=library.locations,
-                    type=library_type
+                    type=library_type,
+                    image_list=image_list,
+                    link=f"{self._playhost or self._host}web/index.html#!/media/{self._plex.machineIdentifier}"
+                         f"/com.plexapp.plugins.library?source={library.key}"
                 )
             )
         return libraries
@@ -89,7 +142,11 @@ class Plex(metaclass=Singleton):
             return schemas.Statistic()
         sections = self._plex.library.sections()
         MovieCount = SeriesCount = EpisodeCount = 0
+        # 媒体库白名单
+        allow_library = [lib.id for lib in self.get_librarys()]
         for sec in sections:
+            if str(sec.key) not in allow_library:
+                continue
             if sec.type == "movie":
                 MovieCount += sec.totalSize
             if sec.type == "show":
@@ -179,16 +236,19 @@ class Plex(metaclass=Singleton):
         if item_id:
             videos = self._plex.fetchItem(item_id)
         else:
+            # 兼容年份为空的场景
+            kwargs = {"year": year} if year else {}
             # 根据标题和年份模糊搜索，该结果不够准确
             videos = self._plex.library.search(title=title,
-                                               year=year,
-                                               libtype="show")
+                                               libtype="show",
+                                               **kwargs)
             if (not videos
                     and original_title
                     and str(original_title) != str(title)):
                 videos = self._plex.library.search(title=original_title,
-                                                   year=year,
-                                                   libtype="show")
+                                                   libtype="show",
+                                                   **kwargs)
+
         if not videos:
             return None, {}
         if isinstance(videos, list):
@@ -257,7 +317,7 @@ class Plex(metaclass=Singleton):
             # 否则一个一个刷新
             for path, lib_key in result_dict.items():
                 logger.info(f"刷新媒体库：{lib_key} - {path}")
-                self._plex.query(f'/library/sections/{lib_key}/refresh?path={quote_plus(path)}')
+                self._plex.query(f'/library/sections/{lib_key}/refresh?path={quote_plus(str(Path(path).parent))}')
 
     @staticmethod
     def __find_librarie(path: Path, libraries: List[Any]) -> Tuple[str, str]:
@@ -318,26 +378,34 @@ class Plex(metaclass=Singleton):
 
     @staticmethod
     def __get_ids(guids: List[Any]) -> dict:
+        def parse_tmdb_id(value: str) -> (bool, int):
+            """尝试将TMDB ID字符串转换为整数。如果成功，返回(True, int)，失败则返回(False, None)。"""
+            try:
+                int_value = int(value)
+                return True, int_value
+            except ValueError:
+                return False, None
+
         guid_mapping = {
             "imdb://": "imdb_id",
             "tmdb://": "tmdb_id",
             "tvdb://": "tvdb_id"
         }
-        ids = {}
-        for prefix, varname in guid_mapping.items():
-            ids[varname] = None
+        ids = {varname: None for varname in guid_mapping.values()}
         for guid in guids:
+            guid_id = guid['id'] if isinstance(guid, dict) else guid.id
             for prefix, varname in guid_mapping.items():
-                if isinstance(guid, dict):
-                    if guid['id'].startswith(prefix):
-                        # 找到匹配的ID
-                        ids[varname] = guid['id'][len(prefix):]
-                        break
-                else:
-                    if guid.id.startswith(prefix):
-                        # 找到匹配的ID
-                        ids[varname] = guid.id[len(prefix):]
-                        break
+                if guid_id.startswith(prefix):
+                    clean_id = guid_id[len(prefix):]
+                    if varname == "tmdb_id":
+                        # tmdb_id为int，Plex可能存在脏数据，特别处理tmdb_id
+                        success, parsed_id = parse_tmdb_id(clean_id)
+                        if success:
+                            ids[varname] = parsed_id
+                    else:
+                        ids[varname] = clean_id
+                    break
+
         return ids
 
     def get_items(self, parent: str) -> Generator:
@@ -352,25 +420,29 @@ class Plex(metaclass=Singleton):
             section = self._plex.library.sectionByID(int(parent))
             if section:
                 for item in section.all():
-                    if not item:
+                    try:
+                        if not item:
+                            continue
+                        ids = self.__get_ids(item.guids)
+                        path = None
+                        if item.locations:
+                            path = item.locations[0]
+                        yield schemas.MediaServerItem(
+                            server="plex",
+                            library=item.librarySectionID,
+                            item_id=item.key,
+                            item_type=item.type,
+                            title=item.title,
+                            original_title=item.originalTitle,
+                            year=item.year,
+                            tmdbid=ids['tmdb_id'],
+                            imdbid=ids['imdb_id'],
+                            tvdbid=ids['tvdb_id'],
+                            path=path,
+                        )
+                    except Exception as e:
+                        logger.error(f"处理媒体项目时出错：{str(e)}, 跳过此项目。")
                         continue
-                    ids = self.__get_ids(item.guids)
-                    path = None
-                    if item.locations:
-                        path = item.locations[0]
-                    yield schemas.MediaServerItem(
-                        server="plex",
-                        library=item.librarySectionID,
-                        item_id=item.key,
-                        item_type=item.type,
-                        title=item.title,
-                        original_title=item.originalTitle,
-                        year=item.year,
-                        tmdbid=ids['tmdb_id'],
-                        imdbid=ids['imdb_id'],
-                        tvdbid=ids['tvdb_id'],
-                        path=path,
-                    )
         except Exception as err:
             logger.error(f"获取媒体库列表出错：{str(err)}")
         yield None
@@ -543,3 +615,111 @@ class Plex(metaclass=Singleton):
         获取plex对象，以便直接操作
         """
         return self._plex
+
+    def get_play_url(self, item_id: str) -> str:
+        """
+        拼装媒体播放链接
+        :param item_id: 媒体的的ID
+        """
+        return f'{self._playhost or self._host}web/index.html#!/server/{self._plex.machineIdentifier}/details?key={item_id}'
+
+    def get_resume(self, num: int = 12) -> Optional[List[schemas.MediaServerPlayItem]]:
+        """
+        获取继续观看的媒体
+        """
+        if not self._plex:
+            return []
+        # 媒体库白名单
+        allow_library = ",".join([lib.id for lib in self.get_librarys()])
+        params = {'contentDirectoryID': allow_library}
+        items = self._plex.fetchItems("/hubs/continueWatching/items", container_start=0, container_size=num, params=params)
+        ret_resume = []
+        for item in items:
+            item_type = MediaType.MOVIE.value if item.TYPE == "movie" else MediaType.TV.value
+            if item_type == MediaType.MOVIE.value:
+                title = item.title
+                subtitle = item.year
+            else:
+                title = item.grandparentTitle
+                subtitle = f"S{item.parentIndex}:E{item.index} - {item.title}"
+            link = self.get_play_url(item.key)
+            image = item.artUrl
+            ret_resume.append(schemas.MediaServerPlayItem(
+                id=item.key,
+                title=title,
+                subtitle=subtitle,
+                type=item_type,
+                image=image,
+                link=link,
+                percent=item.viewOffset / item.duration * 100 if item.viewOffset and item.duration else 0
+            ))
+        return ret_resume[:num]
+
+    def get_latest(self, num: int = 20) -> Optional[List[schemas.MediaServerPlayItem]]:
+        """
+        获取最近添加媒体
+        """
+        if not self._plex:
+            return None
+        # 请求参数（除黑名单）
+        allow_library = ",".join([lib.id for lib in self.get_librarys()])
+        params = {
+            "contentDirectoryID": allow_library,
+            "count": num,
+            "excludeContinueWatching": 1
+        }
+        ret_resume = []
+        sub_result = []
+        offset = 0
+        while True:
+            if len(ret_resume) >= num:
+                break
+            # 获取所有资料库
+            hubs = self._plex.fetchItems(
+                '/hubs/promoted',
+                container_start=offset,
+                container_size=num,
+                maxresults=num,
+                params=params
+            )
+            if len(hubs) == 0:
+                break
+
+            # 合并排序
+            for hub in hubs:
+                for item in hub.items:
+                    sub_result.append(item)
+            sub_result.sort(key=lambda x: x.addedAt, reverse=True)
+
+            for item in sub_result:
+                if len(ret_resume) >= num:
+                    break
+                item_type, title, image = "", "", ""
+                if item.TYPE == "movie":
+                    item_type = MediaType.MOVIE.value
+                    title = item.title
+                    image = item.posterUrl
+                elif item.TYPE == "season":
+                    item_type = MediaType.TV.value
+                    title = "%s 第%s季" % (item.parentTitle, item.index)
+                    image = item.posterUrl
+                elif item.TYPE == "episode":
+                    item_type = MediaType.TV.value
+                    title = "%s 第%s季 第%s集" % (item.grandparentTitle, item.parentIndex, item.index)
+                    thumb = (item.parentThumb or item.grandparentThumb or '').lstrip('/')
+                    image = (self._host + thumb + f"?X-Plex-Token={self._token}")
+                elif item.TYPE == "show":
+                    item_type = MediaType.TV.value
+                    title = "%s 共%s季" % (item.title, item.seasonCount)
+                    image = item.posterUrl
+                link = self.get_play_url(item.key)
+                ret_resume.append(schemas.MediaServerPlayItem(
+                    id=item.key,
+                    title=title,
+                    subtitle=item.year,
+                    type=item_type,
+                    image=image,
+                    link=link
+                ))
+            offset += num
+        return ret_resume[:num]

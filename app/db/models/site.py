@@ -33,6 +33,10 @@ class Site(Base):
     cookie = Column(Text)
     # User-Agent
     ua = Column(String(255))
+    # ApiKey
+    apikey = Column(String)
+    # Token
+    token = Column(String)
     # 是否使用代理 0-否，1-是
     proxy = Column(Integer)
     # 过滤规则
@@ -49,6 +53,8 @@ class Site(Base):
     limit_count = Column(Integer, default=0)
     # 流控间隔
     limit_seconds = Column(Integer, default=0)
+    # 超时时间
+    timeout = Column(Integer, default=0)
     # 是否启用
     is_active = Column(Boolean(), default=True)
     # 创建时间
@@ -75,6 +81,12 @@ class Site(Base):
     def list_order_by_pri(db: Session):
         result = db.query(Site).order_by(Site.pri).all()
         return list(result)
+
+    @staticmethod
+    @db_query
+    def get_domains_by_ids(db: Session, ids: list):
+        result = db.query(Site.domain).filter(Site.id.in_(ids)).all()
+        return [r[0] for r in result]
 
     @staticmethod
     @db_update

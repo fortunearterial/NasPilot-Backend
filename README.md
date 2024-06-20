@@ -6,6 +6,8 @@
 
 发布频道：https://t.me/moviepilot_channel
 
+Wiki：https://wiki.movie-pilot.org
+
 ## 主要特性
 - 前后端分离，基于FastApi + Vue3，前端项目地址：[NasPilot-Frontend](https://github.com/fortunearterial/NasPilot-Frontend)，API：http://localhost:3001/docs
 - 聚焦核心需求，简化功能和设置，部分设置项可直接使用默认值。
@@ -13,13 +15,19 @@
 
 ## 安装
 
+### 注意：管理员用户不要使用弱密码！如非必要不要暴露到公网。如被盗取管理账号权限，将会导致站点Cookie等敏感数据泄露！
+
 ### 1. **安装CookieCloud插件**
 
 站点信息需要通过CookieCloud同步获取，因此需要安装CookieCloud插件，将浏览器中的站点Cookie数据同步到云端后再同步到NasPilot使用。 插件下载地址请点击 [这里](https://github.com/easychen/CookieCloud/releases)。
 
 ### 2. **安装CookieCloud服务端（可选）**
 
-NasPilot内置了公共CookieCloud服务器，如果需要自建服务，可参考 [CookieCloud](https://github.com/easychen/CookieCloud) 项目进行搭建，docker镜像请点击 [这里](https://hub.docker.com/r/easychen/cookiecloud)。
+通过CookieCloud可以快速同步浏览器中保存的站点数据到NasPilot，支持以下服务方式：
+
+- 使用公共CookieCloud远程服务器（默认）：服务器地址为：https://movie-pilot.org/cookiecloud
+- 使用内建的本地Cookie服务：在 `设定` - `站点` 中打开`启用本地CookieCloud服务器`后，将启用内建的CookieCloud提供服务，服务地址为：`http://localhost:${NGINX_PORT}/cookiecloud/`, Cookie数据加密保存在配置文件目录下的`cookies`文件中
+- 自建服务CookieCloud服务器：参考 [CookieCloud](https://github.com/easychen/CookieCloud) 项目进行搭建，docker镜像请点击 [这里](https://hub.docker.com/r/easychen/cookiecloud)
 
 **声明：** 本项目不会收集用户敏感数据，Cookie同步也是基于CookieCloud项目实现，非本项目提供的能力。技术角度上CookieCloud采用端到端加密，在个人不泄露`用户KEY`和`端对端加密密码`的情况下第三方无法窃取任何用户信息（包括服务器持有者）。如果你不放心，可以不使用公共服务或者不使用本项目，但如果使用后发生了任何信息泄露与本项目无关！
 
@@ -41,7 +49,8 @@ NasPilot需要配套下载器和媒体服务器配合使用。
 
 - Windows
 
-  下载 [NasPilot.exe](https://github.com/fortunearterial/NasPilot-Backend/releases)，双击运行后自动生成配置文件目录，访问：http://localhost:3000
+  1. 独立执行文件版本：下载 [NasPilot.exe](https://github.com/fortunearterial/NasPilot-Backend/releases)，双击运行后自动生成配置文件目录，访问：http://localhost:3000
+  2. 安装包版本【推荐】：[Windows-MoviePilot](https://github.com/developer-wlj/Windows-MoviePilot)
 
 - 群晖套件
 
@@ -51,12 +60,14 @@ NasPilot需要配套下载器和媒体服务器配合使用。
 
   1) 将工程 [NasPilot-Plugins](https://github.com/fortunearterial/NasPilot-Plugins) plugins目录下的所有文件复制到`app/plugins`目录
   2) 执行命令：`pip install -r requirements.txt` 安装依赖
-  3) 执行命令：`python app/main.py` 启动服务
+  3) 执行命令：`PYTHONPATH=. python app/main.py` 启动服务
   4) 根据前端项目 [NasPilot-Frontend](https://github.com/fortunearterial/NasPilot-Frontend) 说明，启动前端服务
 
 ## 配置
 
-配置文件映射路径：`/config`，配置项生效优先级：环境变量 > env文件 > 默认值，**部分参数如路径映射、站点认证、权限端口、时区等必须通过环境变量进行配置**。
+大部分配置可启动后通过WEB管理界面进行配置，但仍有部分配置需要通过环境变量/配置文件进行配置。
+
+配置文件映射路径：`/config`，配置项生效优先级：环境变量 > env文件（或通过WEB界面配置） > 默认值。
 
 > ❗号标识的为必填项，其它为可选项，可选项可删除配置变量从而使用默认值。
 
@@ -69,67 +80,60 @@ NasPilot需要配套下载器和媒体服务器配合使用。
 - **UMASK**：掩码权限，默认`000`，可以考虑设置为`022`
 - **PROXY_HOST：** 网络代理，访问themoviedb或者重启更新需要使用代理访问，格式为`http(s)://ip:port`、`socks5://user:pass@host:port`
 - **NASPILOT_AUTO_UPDATE：** 重启时自动更新，`true`/`release`/`dev`/`false`，默认`release`，需要能正常连接Github **注意：如果出现网络问题可以配置`PROXY_HOST`**
-- **AUTO_UPDATE_RESOURCE**：启动时自动检测和更新资源包（站点索引及认证等），`true`/`false`，默认`true`，需要能正常连接Github，仅支持Docker
 - **❗AUTH_SITE：** 认证站点（认证通过后才能使用站点相关功能），支持配置多个认证站点，使用`,`分隔，如：`iyuu,hhclub`，会依次执行认证操作，直到有一个站点认证成功。  
 
-  配置`AUTH_SITE`后，需要根据下表配置对应站点的认证参数，认证资源`v1.0.2`支持`iyuu`/`hhclub`/`audiences`/`hddolby`/`zmpt`/`freefarm`/`hdfans`/`wintersakura`/`leaves`/`1ptba`/`icc2022`/`ptlsp`/`xingtan`/`ptvicomo`/`agsvpt`
+    配置`AUTH_SITE`后，需要根据下表配置对应站点的认证参数。
+    认证资源`v1.2.8+`支持：`iyuu`/`hhclub`/`audiences`/`hddolby`/`zmpt`/`freefarm`/`hdfans`/`wintersakura`/`leaves`/`ptba` /`icc2022`/`ptlsp`/`xingtan`/`ptvicomo`/`agsvpt`/`hdkyl`/`qingwa`/`discfan`
   
-  |      站点      |                          参数                           |
-  |:------------:|:-----------------------------------------------------:|
-  |     iyuu     |                 `IYUU_SIGN`：IYUU登录令牌                  |
-  |    hhclub    |     `HHCLUB_USERNAME`：用户名<br/>`HHCLUB_PASSKEY`：密钥     |
-  |  audiences   |    `AUDIENCES_UID`：用户ID<br/>`AUDIENCES_PASSKEY`：密钥    |
-  |   hddolby    |      `HDDOLBY_ID`：用户ID<br/>`HDDOLBY_PASSKEY`：密钥       |
-  |     zmpt     |         `ZMPT_UID`：用户ID<br/>`ZMPT_PASSKEY`：密钥         |
-  |   freefarm   |     `FREEFARM_UID`：用户ID<br/>`FREEFARM_PASSKEY`：密钥     |
-  |    hdfans    |       `HDFANS_UID`：用户ID<br/>`HDFANS_PASSKEY`：密钥       |
-  | wintersakura | `WINTERSAKURA_UID`：用户ID<br/>`WINTERSAKURA_PASSKEY`：密钥 |
-  |    leaves    |       `LEAVES_UID`：用户ID<br/>`LEAVES_PASSKEY`：密钥       |
-  |    1ptba     |        `1PTBA_UID`：用户ID<br/>`1PTBA_PASSKEY`：密钥        |
-  |   icc2022    |      `ICC2022_UID`：用户ID<br/>`ICC2022_PASSKEY`：密钥      |
-  |    ptlsp     |        `PTLSP_UID`：用户ID<br/>`PTLSP_PASSKEY`：密钥        |
-  |   xingtan    |      `XINGTAN_UID`：用户ID<br/>`XINGTAN_PASSKEY`：密钥      |
-  |   ptvicomo   |     `PTVICOMO_UID`：用户ID<br/>`PTVICOMO_PASSKEY`：密钥     |
-  |    agsvpt    |      `AGSVPT_UID`：用户ID<br/>`AGSVPT_PASSKEY`：密钥       |
+    |      站点      |                          参数                           |
+    |:------------:|:-----------------------------------------------------:|
+    |     iyuu     |                 `IYUU_SIGN`：IYUU登录令牌                  |
+    |    hhclub    |     `HHCLUB_USERNAME`：用户名<br/>`HHCLUB_PASSKEY`：密钥     |
+    |  audiences   |    `AUDIENCES_UID`：用户ID<br/>`AUDIENCES_PASSKEY`：密钥    |
+    |   hddolby    |      `HDDOLBY_ID`：用户ID<br/>`HDDOLBY_PASSKEY`：密钥       |
+    |     zmpt     |         `ZMPT_UID`：用户ID<br/>`ZMPT_PASSKEY`：密钥         |
+    |   freefarm   |     `FREEFARM_UID`：用户ID<br/>`FREEFARM_PASSKEY`：密钥     |
+    |    hdfans    |       `HDFANS_UID`：用户ID<br/>`HDFANS_PASSKEY`：密钥       |
+    | wintersakura | `WINTERSAKURA_UID`：用户ID<br/>`WINTERSAKURA_PASSKEY`：密钥 |
+    |    leaves    |       `LEAVES_UID`：用户ID<br/>`LEAVES_PASSKEY`：密钥       |
+    |     ptba     |         `PTBA_UID`：用户ID<br/>`PTBA_PASSKEY`：密钥         |
+    |   icc2022    |      `ICC2022_UID`：用户ID<br/>`ICC2022_PASSKEY`：密钥      |
+    |    ptlsp     |        `PTLSP_UID`：用户ID<br/>`PTLSP_PASSKEY`：密钥        |
+    |   xingtan    |      `XINGTAN_UID`：用户ID<br/>`XINGTAN_PASSKEY`：密钥      |
+    |   ptvicomo   |     `PTVICOMO_UID`：用户ID<br/>`PTVICOMO_PASSKEY`：密钥     |
+    |    agsvpt    |       `AGSVPT_UID`：用户ID<br/>`AGSVPT_PASSKEY`：密钥       |
+    |    hdkyl     |        `HDKYL_UID`：用户ID<br/>`HDKYL_PASSKEY`：密钥        |
+    |   qingwa    |      `QINGWA_UID`：用户ID<br/>`QINGWA_PASSKEY`：密钥      |
+    |   discfan    |      `DISCFAN_UID`：用户ID<br/>`DISCFAN_PASSKEY`：密钥      |
 
 
-### 2. **app.env配置文件**
+### 2. **环境变量 / 配置文件**
 
-下载 [app.env 模板](https://github.com/fortunearterial/NasPilot-Backend/raw/main/config/app.env)，修改后放配置文件目录下，app.env 的所有配置项也可以通过环境变量进行配置。
+配置文件名：`app.env`，放配置文件根目录。
 
 - **❗SUPERUSER：** 超级管理员用户名，默认`admin`，安装后使用该用户登录后台管理界面，**注意：启动一次后再次修改该值不会生效，除非删除数据库文件！**
-- **❗SUPERUSER_PASSWORD：** 超级管理员初始密码，默认`password`，建议修改为复杂密码，**注意：启动一次后再次修改该值不会生效，除非删除数据库文件！**
 - **❗API_TOKEN：** API密钥，默认`naspilot`，在媒体服务器Webhook、微信回调等地址配置中需要加上`?token=`该值，建议修改为复杂字符串
 - **BIG_MEMORY_MODE：** 大内存模式，默认为`false`，开启后会增加缓存数量，占用更多的内存，但响应速度会更快
+- **DOH_ENABLE：** DNS over HTTPS开关，`true`/`false`，默认`true`，开启后会使用DOH对api.themoviedb.org等域名进行解析，以减少被DNS污染的情况，提升网络连通性
+- **META_CACHE_EXPIRE：** 元数据识别缓存过期时间（小时），数字型，不配置或者配置为0时使用系统默认（大内存模式为7天，否则为3天），调大该值可减少themoviedb的访问次数
 - **GITHUB_TOKEN：** Github token，提高自动更新、插件安装等请求Github Api的限流阈值，格式：ghp_****
+- **GITHUB_PROXY：** Github代理地址，用于加速版本及插件升级安装，格式：`https://mirror.ghproxy.com/`
+- **DEV:** 开发者模式，`true`/`false`，默认`false`，仅用于本地开发使用，开启后会暂停所有定时任务，且插件代码文件的修改无需重启会自动重载生效
+- **AUTO_UPDATE_RESOURCE**：启动时自动检测和更新资源包（站点索引及认证等），`true`/`false`，默认`true`，需要能正常连接Github，仅支持Docker镜像
 ---
 - **TMDB_API_DOMAIN：** TMDB API地址，默认`api.themoviedb.org`，也可配置为`api.tmdb.org`、`tmdb.movie-pilot.org` 或其它中转代理服务地址，能连通即可
 - **TMDB_IMAGE_DOMAIN：** TMDB图片地址，默认`image.tmdb.org`，可配置为其它中转代理以加速TMDB图片显示，如：`static-mdb.v.geilijiasu.com`
 - **WALLPAPER：** 登录首页电影海报，`tmdb`/`bing`，默认`tmdb`
-- **RECOGNIZE_SOURCE：** 媒体信息识别来源，`themoviedb`/`douban`/`steam`/`javdb`，多个来源使用`,`分隔，默认`themoviedb`，使用`douban`时不支持二级分类
----
-- **SCRAP_METADATA：** 刮削入库的媒体文件，`true`/`false`，默认`true`
+- **RECOGNIZE_SOURCE：** 媒体信息识别来源，`themoviedb`/`douban`/`steam`/`javdb`，多个来源使用`,`分隔，默认`themoviedb`，使用`douban`时不支持二级分类，且受豆瓣控流限制
+- **FANART_ENABLE：** Fanart开关，`true`/`false`，默认`true`，关闭后刮削的图片类型会大幅减少
 - **SCRAP_SOURCE：** 刮削元数据及图片使用的数据源，`themoviedb`/`douban`/`steam`/`javdb`，默认`themoviedb`
 - **SCRAP_FOLLOW_TMDB：** 新增已入库媒体是否跟随TMDB信息变化，`true`/`false`，默认`true`，为`false`时即使TMDB信息变化了也会仍然按历史记录中已入库的信息进行刮削
 ---
-- **❗LIBRARY_PATH：** 媒体库目录，多个目录使用`,`分隔
-- **LIBRARY_MOVIE_NAME：** 电影媒体库目录名称（不是完整路径），默认`电影`
-- **LIBRARY_TV_NAME：** 电视剧媒体库目录称（不是完整路径），默认`电视剧`
-- **LIBRARY_ANIME_NAME：** 动漫媒体库目录称（不是完整路径），默认`电视剧/动漫`
-- **LIBRARY_CATEGORY：** 媒体库二级分类开关，`true`/`false`，默认`false`，开启后会根据配置 [category.yaml](https://github.com/fortunearterial/NasPilot-Backend/raw/main/config/category.yaml) 自动在媒体库目录下建立二级目录分类
-- **❗TRANSFER_TYPE：** 整理转移方式，支持`link`/`copy`/`move`/`softlink`/`rclone_copy`/`rclone_move`  **注意：在`link`和`softlink`转移方式下，转移后的文件会继承源文件的权限掩码，不受`UMASK`影响；rclone需要自行映射rclone配置目录到容器中或在容器内完成rclone配置，节点名称必须为：`MP`**
-- **OVERWRITE_MODE：** 转移覆盖模式，默认为`size`，支持`nerver`/`size`/`always`/`latest`，分别表示`不覆盖同名文件`/`同名文件根据文件大小覆盖（大覆盖小）`/`总是覆盖同名文件`/`仅保留最新版本，删除旧版本文件（包括非同名文件）`
----
-- **❗COOKIECLOUD_HOST：** CookieCloud服务器地址，格式：`http(s)://ip:port`，不配置默认使用内建服务器`https://movie-pilot.org/cookiecloud`
-- **❗COOKIECLOUD_KEY：** CookieCloud用户KEY
-- **❗COOKIECLOUD_PASSWORD：** CookieCloud端对端加密密码
-- **❗COOKIECLOUD_INTERVAL：** CookieCloud同步间隔（分钟）
-- **❗USER_AGENT：** CookieCloud保存Cookie对应的浏览器UA，建议配置，设置后可增加连接站点的成功率，同步站点后可以在管理界面中修改
----
-- **SUBSCRIBE_MODE：** 订阅模式，`rss`/`spider`，默认`spider`，`rss`模式通过定时刷新RSS来匹配订阅（RSS地址会自动获取，也可手动维护），对站点压力小，同时可设置订阅刷新周期，24小时运行，但订阅和下载通知不能过滤和显示免费，推荐使用rss模式。
-- **SUBSCRIBE_RSS_INTERVAL：** RSS订阅模式刷新时间间隔（分钟），默认`30`分钟，不能小于5分钟。
-- **SUBSCRIBE_SEARCH：** 订阅搜索，`true`/`false`，默认`false`，开启后会每隔24小时对所有订阅进行全量搜索，以补齐缺失剧集（一般情况下正常订阅即可，订阅搜索只做为兜底，会增加站点压力，不建议开启）。
-- **AUTO_DOWNLOAD_USER：** 远程交互搜索时自动择优下载的用户ID（消息通知渠道的用户ID），多个用户使用,分割，未设置需要选择资源或者回复`0`
+- **AUTO_DOWNLOAD_USER：** 远程交互搜索时自动择优下载的用户ID（消息通知渠道的用户ID），多个用户使用,分割，设置为 all 代表全部用户自动择优下载，未设置需要手动选择资源或者回复`0`才自动择优下载
+- **DOWNLOAD_SUBTITLE：** 下载站点字幕，`true`/`false`，默认`true`
+- **SEARCH_MULTIPLE_NAME：** 搜索时是否使用多个名称搜索，`true`/`false`，默认`false`，开启后会使用多个名称进行搜索，搜索结果会更全面，但会增加搜索时间；关闭时只要其中一个名称搜索到结果或全部名称搜索完毕即停止
+- **SUBSCRIBE_STATISTIC_SHARE：** 是否匿名分享订阅数据，用于统计和展示用户热门订阅，`true`/`false`，默认`true`
+- **PLUGIN_STATISTIC_SHARE：** 是否匿名分享插件安装统计数据，用于统计和显示插件下载安装次数，`true`/`false`，默认`true`
 ---
 - **OCR_HOST：** OCR识别服务器地址，格式：`http(s)://ip:port`，用于识别站点验证码实现自动登录获取Cookie等，不配置默认使用内建服务器`https://movie-pilot.org`，可使用 [这个镜像](https://hub.docker.com/r/jxxghp/moviepilot-ocr) 自行搭建。
 ---
@@ -226,6 +230,7 @@ NasPilot需要配套下载器和媒体服务器配合使用。
   `MOVIE_RENAME_FORMAT`支持的配置项：
 
   > `title`： TMDB/豆瓣中的标题  
+  > `en_title`： TMDB中的英文标题 （暂不支持豆瓣）
   > `original_title`： TMDB/豆瓣中的原语种标题  
   > `name`： 从文件名中识别的名称（同时存在中英文时，优先使用中文）
   > `en_name`：从文件名中识别的英文名称（可能为空）
@@ -270,7 +275,7 @@ NasPilot需要配套下载器和媒体服务器配合使用。
 
 ### 3. **优先级规则**
 
-- 仅支持使用内置规则进行排列组合，内置规则有：`蓝光原盘`、`4K`、`1080P`、`中文字幕`、`特效字幕`、`H265`、`H264`、`杜比`、`HDR`、`REMUX`、`WEB-DL`、`免费`、`国语配音` 等
+- 仅支持使用内置规则进行排列组合，通过设置多层规则来实现优先级顺序匹配
 - 符合任一层级规则的资源将被标识选中，匹配成功的层级做为该资源的优先级，排越前面优先级超高
 - 不符合过滤规则所有层级规则的资源将不会被选中
 
@@ -301,6 +306,14 @@ location / {
     proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
+- 反代使用ssl时，需要开启`http2`，否则会导致日志加载时间过长或不可用。以`Nginx`为例：
+```nginx configuration
+server {
+    listen 443 ssl;
+    http2 on;
+    # ...
+}
+```
 - 新建的企业微信应用需要固定公网IP的代理才能收到消息，代理添加以下代码：
 ```nginx configuration
 location /cgi-bin/gettoken {
@@ -314,9 +327,31 @@ location  /cgi-bin/menu/create {
 }
 ```
 
+- 部分插件功能基于文件系统监控实现（如`目录监控`等），需在宿主机上（不是docker容器内）执行以下命令并重启：
+```shell
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
+echo fs.inotify.max_user_instances=524288 | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+- 部分插件功能基于文件系统监控实现（如`目录监控`等），需在宿主机上（不是docker容器内）执行以下命令并重启：
+```shell
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
+echo fs.inotify.max_user_instances=524288 | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
 ![image](https://github.com/fortunearterial/NasPilot-Backend/assets/51039935/f2654b09-26f3-464f-a0af-1de3f97832ee)
 
-![image](https://github.com/fortunearterial/NasPilot-Backend/assets/51039935/fcb87529-56dd-43df-8337-6e34b8582819)
+![mp1](https://github.com/jxxghp/MoviePilot/assets/51039935/123a39cd-11b6-4bd3-b3a3-e3e1103416b9)
+
+![mp2](https://github.com/fortunearterial/NasPilot-Backend/assets/51039935/230de330-8162-4314-a897-0bce9b1e5d00)
+
+![mp3](https://github.com/jxxghp/MoviePilot/assets/51039935/de678f45-bbe4-4bdc-aefc-cc5ae774a726)
+
+![mp4](https://github.com/jxxghp/MoviePilot/assets/51039935/8bc6a0a5-7c57-464f-ae63-d6241310dc43)
+
+
 
 ![image](https://github.com/fortunearterial/NasPilot-Backend/assets/51039935/bfa77c71-510a-46a6-9c1e-cf98cb101e3a)
 

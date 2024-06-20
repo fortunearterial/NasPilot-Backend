@@ -22,6 +22,7 @@ class DoubanApi(metaclass=Singleton):
         # 聚合搜索
         "search": "/search/weixin",
         "search_agg": "/search",
+        "search_subject": "/search/subjects",
         "imdbid": "/movie/imdb/%s",
 
         # 电影探索
@@ -137,6 +138,10 @@ class DoubanApi(metaclass=Singleton):
         # doulist
         "doulist": "/doulist/",
         "doulist_items": "/doulist/%s/items",
+
+        # person
+        "person_detail": "/elessar/subject/",
+        "person_work": "/elessar/work_collections/%s/works",
     }
 
     _user_agents = [
@@ -176,7 +181,7 @@ class DoubanApi(metaclass=Singleton):
         """
         req_url = self._base_url + url
 
-        params = {'apiKey': self._api_key}
+        params: dict = {'apiKey': self._api_key}
         if kwargs:
             params.update(kwargs)
 
@@ -194,7 +199,7 @@ class DoubanApi(metaclass=Singleton):
             ua=choice(self._user_agents),
             session=self._session
         ).get_res(url=req_url, params=params)
-        if resp.status_code == 400 and "rate_limit" in resp.text:
+        if resp is not None and resp.status_code == 400 and "rate_limit" in resp.text:
             return resp.json()
         return resp.json() if resp else {}
 
@@ -210,7 +215,7 @@ class DoubanApi(metaclass=Singleton):
             },
             data={
                 "apikey": "0ab215a8b1977939201640fa14c66bab",
-            },
+            }
         )
         """
         req_url = self._api_url + url
@@ -223,9 +228,16 @@ class DoubanApi(metaclass=Singleton):
             ua=settings.USER_AGENT,
             session=self._session,
         ).post_res(url=req_url, data=params)
-        if resp.status_code == 400 and "rate_limit" in resp.text:
+        if resp is not None and resp.status_code == 400 and "rate_limit" in resp.text:
             return resp.json()
         return resp.json() if resp else {}
+
+    def imdbid(self, imdbid: str,
+               ts=datetime.strftime(datetime.now(), '%Y%m%d')):
+        """
+        IMDBID搜索
+        """
+        return self.__post(self._urls["imdbid"] % imdbid, _ts=ts)
 
     def search(self, keyword: str, start: int = 0, count: int = 20,
                ts=datetime.strftime(datetime.now(), '%Y%m%d')) -> dict:
@@ -234,13 +246,6 @@ class DoubanApi(metaclass=Singleton):
         """
         return self.__invoke(self._urls["search"], q=keyword,
                              start=start, count=count, _ts=ts)
-
-    def imdbid(self, imdbid: str,
-               ts=datetime.strftime(datetime.now(), '%Y%m%d')):
-        """
-        IMDBID搜索
-        """
-        return self.__post(self._urls["imdbid"] % imdbid, _ts=ts)
 
     def movie_search(self, keyword: str, start: int = 0, count: int = 20,
                      ts=datetime.strftime(datetime.now(), '%Y%m%d')):
@@ -272,6 +277,14 @@ class DoubanApi(metaclass=Singleton):
         小组搜索
         """
         return self.__invoke(self._urls["group_search"], q=keyword,
+                             start=start, count=count, _ts=ts)
+
+    def person_search(self, keyword: str, start: int = 0, count: int = 20,
+                      ts=datetime.strftime(datetime.now(), '%Y%m%d')):
+        """
+        人物搜索
+        """
+        return self.__invoke(self._urls["search_subject"], type="person", q=keyword,
                              start=start, count=count, _ts=ts)
 
     def movie_showing(self, start: int = 0, count: int = 20,
@@ -475,12 +488,36 @@ class DoubanApi(metaclass=Singleton):
         return self.__invoke(self._urls["tv_photos"] % subject_id,
                              start=start, count=count, _ts=ts)
 
+    def person_detail(self, subject_id: int):
+        """
+        用户详情
+        :param subject_id: 人物 id
+        :return:
+        """
+        return self.__invoke(self._urls["person_detail"] + str(subject_id))
+
+    def person_work(self, subject_id: int, start: int = 0, count: int = 20, sort_by: str = "time",
+                    collection_title: str = "影视",
+                    ts=datetime.strftime(datetime.now(), '%Y%m%d')):
+        """
+        用户作品集
+        :param subject_id: work_collection id
+        :param start: 开始页
+        :param count: 数量
+        :param sort_by: collection or time or vote
+        :param collection_title: 影视 or 图书 or 音乐
+        :param ts: 时间戳
+        :return:
+        """
+        return self.__invoke(self._urls["person_work"] % subject_id, sortby=sort_by, collection_title=collection_title,
+                             start=start, count=count, _ts=ts)
+
     def clear_cache(self):
         """
         清空LRU缓存
         """
         self.__invoke.cache_clear()
 
-    def __del__(self):
+    def close(self):
         if self._session:
             self._session.close()

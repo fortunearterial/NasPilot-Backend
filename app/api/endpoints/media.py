@@ -1,16 +1,14 @@
-from typing import List, Any
+from pathlib import Path
+from typing import List, Any, Union
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 
 from app import schemas
 from app.chain.media import MediaChain
 from app.core.config import settings
 from app.core.context import Context
-from app.core.metainfo import MetaInfo
+from app.core.metainfo import MetaInfo, MetaInfoPath
 from app.core.security import verify_token, verify_uri_token
-from app.db import get_db
-from app.db.mediaserver_oper import MediaServerOper
 from app.schemas import MediaType
 
 router = APIRouter()
@@ -65,40 +63,68 @@ def recognize_file2(path: str,
     return recognize_file(path)
 
 
-@router.get("/search", summary="搜索媒体信息", response_model=List[schemas.MediaInfo])
-def search_by_title(title: str,
-                    page: int = 1,
-                    count: int = 8,
-                    _: schemas.TokenPayload = Depends(verify_token)) -> Any:
-    """
-    模糊搜索媒体信息列表
-    """
-    _, medias = MediaChain().search(title=title)
-    if medias:
-        return [media.to_dict() for media in medias[(page - 1) * count: page * count]]
-    return []
-
-
-@router.get("/exists", summary="本地是否存在", response_model=schemas.Response)
-def exists(title: str = None,
-           year: int = None,
-           mtype: str = None,
-           tmdbid: int = None,
-           season: int = None,
-           db: Session = Depends(get_db),
+@router.get("/search", summary="搜索媒体/人物信息", response_model=List[dict])
+def search(title: str,
+           type: str = "media",
+           page: int = 1,
+           count: int = 8,
            _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
-    判断本地是否存在
+    模糊搜索媒体/人物信息列表 media：媒体信息，person：人物信息
     """
-    meta = MetaInfo(title)
-    if not season:
-        season = meta.begin_season
-    exist = MediaServerOper(db).exists(
-        title=meta.name, year=year, mtype=mtype, tmdbid=tmdbid, season=season
-    )
-    return schemas.Response(success=True if exist else False, data={
-        "item": exist or {}
-    })
+    def __get_source(obj: Union[dict, schemas.MediaPerson]):
+        """
+        获取对象属性
+        """
+        if isinstance(obj, dict):
+            return obj.get("source")
+        return obj.source
+
+    result = []
+    if type == "media":
+        _, medias = MediaChain().search(title=title)
+        if medias:
+            result = [media.to_dict() for media in medias]
+    else:
+        result = MediaChain().search_persons(name=title)
+    if result:
+        # 按设置的顺序对结果进行排序
+        setting_order = settings.SEARCH_SOURCE.split(',') or []
+        sort_order = {}
+        for index, source in enumerate(setting_order):
+            sort_order[source] = index
+        result = sorted(result, key=lambda x: sort_order.get(__get_source(x), 4))
+    return result[(page - 1) * count:page * count]
+
+
+@router.get("/scrape", summary="刮削媒体信息", response_model=schemas.Response)
+def scrape(path: str,
+           _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+    """
+    刮削媒体信息
+    """
+    if not path:
+        return schemas.Response(success=False, message="刮削路径无效")
+    scrape_path = Path(path)
+    if not scrape_path.exists():
+        return schemas.Response(success=False, message="刮削路径不存在")
+    # 识别
+    chain = MediaChain()
+    meta = MetaInfoPath(scrape_path)
+    mediainfo = chain.recognize_media(meta)
+    if not media_info:
+        return schemas.Response(success=False, message="刮削失败，无法识别媒体信息")
+    # 刮削
+    chain.scrape_metadata(path=scrape_path, mediainfo=mediainfo, transfer_type=settings.TRANSFER_TYPE)
+    return schemas.Response(success=True, message="刮削完成")
+
+
+@router.get("/category", summary="查询自动分类配置", response_model=dict)
+def category(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
+    """
+    查询自动分类配置
+    """
+    return MediaChain().media_category() or {}
 
 
 @router.get("/{mediaid}", summary="查询媒体详情", response_model=schemas.MediaInfo)
@@ -108,32 +134,21 @@ def media_info(mediaid: str, type_name: str,
     根据媒体ID查询themoviedb或豆瓣媒体信息，type_name: 电影/电视剧/游戏
     """
     mtype = MediaType(type_name)
-    tmdbid, doubanid, steamid, javdbid = None, None, None, None
+    tmdbid, doubanid, steamid, javdbid, bangumiid = None, None, None, None, None
     if mediaid.startswith("tmdb:"):
         tmdbid = int(mediaid[5:])
     elif mediaid.startswith("douban:"):
         doubanid = mediaid[7:]
+    elif mediaid.startswith("bangumi:"):
+        bangumiid = int(mediaid[8:])
     elif mediaid.startswith("steam:"):
         steamid = int(mediaid[6:])
     elif mediaid.startswith("javdb:"):
         javdbid = mediaid[6:]
-    if not tmdbid and not doubanid and not steamid and not javdbid:
+    if not tmdbid and not doubanid and not bangumiid and not steamid and not javdbid:
         return schemas.MediaInfo()
-    if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
-        if not tmdbid and doubanid:
-            tmdbinfo = MediaChain().get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
-            if tmdbinfo:
-                tmdbid = tmdbinfo.get("id")
-            else:
-                return schemas.MediaInfo()
-    else:
-        if not doubanid and tmdbid:
-            doubaninfo = MediaChain().get_doubaninfo_by_tmdbid(tmdbid=tmdbid, mtype=mtype)
-            if doubaninfo:
-                doubanid = doubaninfo.get("id")
-            else:
-                return schemas.MediaInfo()
-    mediainfo = MediaChain().recognize_media(tmdbid=tmdbid, doubanid=doubanid, steamid=steamid, javdbid=javdbid, mtype=mtype)
+    # 识别
+    mediainfo = MediaChain().recognize_media(tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, mtype=mtype)
     if mediainfo:
         MediaChain().obtain_images(mediainfo)
         return mediainfo.to_dict()

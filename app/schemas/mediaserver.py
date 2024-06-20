@@ -66,6 +66,10 @@ class MediaServerLibrary(BaseModel):
     type: Optional[str] = None
     # 封面图
     image: Optional[str] = None
+    # 封面图列表
+    image_list: Optional[List[str]] = None
+    # 跳转链接
+    link: Optional[str] = None
 
 
 class MediaServerItem(BaseModel):
@@ -139,3 +143,16 @@ class WebhookEventInfo(BaseModel):
     save_reason: Optional[str] = None
     item_isvirtual: Optional[bool] = None
     media_type: Optional[str] = None
+
+
+class MediaServerPlayItem(BaseModel):
+    """
+    媒体服务器可播放项目信息
+    """
+    id: Optional[Union[str, int]] = None
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    type: Optional[str] = None
+    image: Optional[str] = None
+    link: Optional[str] = None
+    percent: Optional[float] = None

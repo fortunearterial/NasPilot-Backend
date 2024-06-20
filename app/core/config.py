@@ -1,18 +1,24 @@
 import secrets
 import sys
+import threading
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional, List
 
-from pydantic import BaseSettings
+from pydantic import BaseSettings, validator
 
 from app.utils.system import SystemUtils
 
 
 class Settings(BaseSettings):
+    """
+    系统配置类
+    """
     # 项目名称
     PROJECT_NAME = "NasPilot"
     # API路径
     API_V1_STR: str = "/api/v1"
+    # 前端资源路径
+    FRONTEND_PATH: str = "/public"
     # 密钥
     SECRET_KEY: str = secrets.token_urlsafe(32)
     # 允许的域名
@@ -31,12 +37,12 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     # 是否开发模式
     DEV: bool = False
+    # 是否开启插件热加载
+    PLUGIN_AUTO_RELOAD: bool = False
     # 配置文件目录
-    CONFIG_DIR: str = None
+    CONFIG_DIR: Optional[str] = None
     # 超级管理员
     SUPERUSER: str = "admin"
-    # 超级管理员初始密码
-    SUPERUSER_PASSWORD: str = "password"
     # 数据库连接
     DB_URL:str = ""
     # API密钥，需要更换
@@ -44,13 +50,13 @@ class Settings(BaseSettings):
     # 登录页面电影海报,tmdb/bing
     WALLPAPER: str = "tmdb"
     # 网络代理 IP:PORT
-    PROXY_HOST: str = None
+    PROXY_HOST: Optional[str] = None
+    # 媒体搜索来源 themoviedb/douban/bangumi，多个用,分隔
+    SEARCH_SOURCE: str = "themoviedb,douban,bangumi"
     # 媒体识别来源 themoviedb/douban/steam/javdb
     RECOGNIZE_SOURCE: str = "themoviedb"
     # 刮削来源 themoviedb/douban/steam/javdb
     SCRAP_SOURCE: str = "themoviedb"
-    # 刮削入库的媒体文件
-    SCRAP_METADATA: bool = True
     # 新增已入库媒体是否跟随TMDB信息变化
     SCRAP_FOLLOW_TMDB: bool = True
     # TMDB图片地址
@@ -61,6 +67,8 @@ class Settings(BaseSettings):
     TMDB_API_KEY: str = "db55323b8d3e4154498498a75642b381"
     # TVDB API Key
     TVDB_API_KEY: str = "6b481081-10aa-440c-99f2-21d17717ee02"
+    # Fanart开关
+    FANART_ENABLE: bool = True
     # Fanart API Key
     FANART_API_KEY: str = "d2d31f9ecabea050fc7d68aa3146015f"
     # 支持的后缀格式
@@ -68,9 +76,11 @@ class Settings(BaseSettings):
                           '.rmvb', '.avi', '.mov', '.mpeg',
                           '.mpg', '.wmv', '.3gp', '.asf',
                           '.m4v', '.flv', '.m2ts', '.strm',
-                          '.tp']
+                          '.tp', '.f4v']
     # 支持的字幕文件后缀格式
-    RMT_SUBEXT: list = ['.srt', '.ass', '.ssa']
+    RMT_SUBEXT: list = ['.srt', '.ass', '.ssa', '.sup']
+    # 下载器临时文件后缀
+    DOWNLOAD_TMPEXT: list = ['.!qB', '.part']
     # 支持的音轨文件后缀格式
     RMT_AUDIO_TRACK_EXT: list = ['.mka']
     # 索引器
@@ -84,27 +94,27 @@ class Settings(BaseSettings):
     # 用户认证站点
     AUTH_SITE: str = ""
     # 交互搜索自动下载用户ID，使用,分割
-    AUTO_DOWNLOAD_USER: str = None
-    # 消息通知渠道 telegram/wechat/slack，多个通知渠道用,分隔
+    AUTO_DOWNLOAD_USER: Optional[str] = None
+    # 消息通知渠道 telegram/wechat/slack/synologychat/vocechat，多个通知渠道用,分隔
     MESSAGER: str = "telegram"
     # WeChat企业ID
-    WECHAT_CORPID: str = None
+    WECHAT_CORPID: Optional[str] = None
     # WeChat应用Secret
-    WECHAT_APP_SECRET: str = None
+    WECHAT_APP_SECRET: Optional[str] = None
     # WeChat应用ID
-    WECHAT_APP_ID: str = None
+    WECHAT_APP_ID: Optional[str] = None
     # WeChat代理服务器
     WECHAT_PROXY: str = "https://qyapi.weixin.qq.com"
     # WeChat Token
-    WECHAT_TOKEN: str = None
+    WECHAT_TOKEN: Optional[str] = None
     # WeChat EncodingAESKey
-    WECHAT_ENCODING_AESKEY: str = None
+    WECHAT_ENCODING_AESKEY: Optional[str] = None
     # WeChat 管理员
-    WECHAT_ADMINS: str = None
+    WECHAT_ADMINS: Optional[str] = None
     # Telegram Bot Token
-    TELEGRAM_TOKEN: str = None
+    TELEGRAM_TOKEN: Optional[str] = None
     # Telegram Chat ID
-    TELEGRAM_CHAT_ID: str = None
+    TELEGRAM_CHAT_ID: Optional[str] = None
     # Telegram 用户ID，使用,分隔
     TELEGRAM_USERS: str = ""
     # Telegram 管理员ID，使用,分隔
@@ -119,16 +129,22 @@ class Settings(BaseSettings):
     SYNOLOGYCHAT_WEBHOOK: str = ""
     # SynologyChat Token
     SYNOLOGYCHAT_TOKEN: str = ""
-    # 下载器 qbittorrent/transmission/aria2/nasxunlei
+    # VoceChat地址
+    VOCECHAT_HOST: str = ""
+    # VoceChat ApiKey
+    VOCECHAT_API_KEY: str = ""
+    # VoceChat 频道ID
+    VOCECHAT_CHANNEL_ID: str = ""
+    # 下载器 qbittorrent/transmission，启用多个下载器时使用,分隔，只有第一个会被默认使用/aria2/nasxunlei
     DOWNLOADER: str = "qbittorrent"
     # 下载器监控开关
     DOWNLOADER_MONITOR: bool = True
     # Qbittorrent地址，IP:PORT
-    QB_HOST: str = None
+    QB_HOST: Optional[str] = None
     # Qbittorrent用户名
-    QB_USER: str = None
+    QB_USER: Optional[str] = None
     # Qbittorrent密码
-    QB_PASSWORD: str = None
+    QB_PASSWORD: Optional[str] = None
     # Qbittorrent分类自动管理
     QB_CATEGORY: bool = False
     # Qbittorrent按顺序下载
@@ -136,11 +152,11 @@ class Settings(BaseSettings):
     # Qbittorrent忽略队列限制，强制继续
     QB_FORCE_RESUME: bool = False
     # Transmission地址，IP:PORT
-    TR_HOST: str = None
+    TR_HOST: Optional[str] = None
     # Transmission用户名
-    TR_USER: str = None
+    TR_USER: Optional[str] = None
     # Transmission密码
-    TR_PASSWORD: str = None
+    TR_PASSWORD: Optional[str] = None
     # ARIA2 RPC地址，IP:PORT/jsonrpc
     ARIA2_RPC_HOST: str = None
     # ARIA2秘钥
@@ -174,47 +190,43 @@ class Settings(BaseSettings):
     # 媒体服务器同步间隔（小时）
     MEDIASERVER_SYNC_INTERVAL: Optional[int] = 6
     # 媒体服务器同步黑名单，多个媒体库名称,分割
-    MEDIASERVER_SYNC_BLACKLIST: str = None
+    MEDIASERVER_SYNC_BLACKLIST: Optional[str] = None
     # EMBY服务器地址，IP:PORT
-    EMBY_HOST: str = None
+    EMBY_HOST: Optional[str] = None
+    # EMBY外网地址，http(s)://DOMAIN:PORT，未设置时使用EMBY_HOST
+    EMBY_PLAY_HOST: Optional[str] = None
     # EMBY Api Key
-    EMBY_API_KEY: str = None
+    EMBY_API_KEY: Optional[str] = None
     # Jellyfin服务器地址，IP:PORT
-    JELLYFIN_HOST: str = None
+    JELLYFIN_HOST: Optional[str] = None
+    # Jellyfin外网地址，http(s)://DOMAIN:PORT，未设置时使用JELLYFIN_HOST
+    JELLYFIN_PLAY_HOST: Optional[str] = None
     # Jellyfin Api Key
-    JELLYFIN_API_KEY: str = None
+    JELLYFIN_API_KEY: Optional[str] = None
     # Plex服务器地址，IP:PORT
-    PLEX_HOST: str = None
+    PLEX_HOST: Optional[str] = None
+    # Plex外网地址，http(s)://DOMAIN:PORT，未设置时使用PLEX_HOST
+    PLEX_PLAY_HOST: Optional[str] = None
     # Plex Token
-    PLEX_TOKEN: str = None
+    PLEX_TOKEN: Optional[str] = None
     # 转移方式 link/copy/move/softlink
     TRANSFER_TYPE: str = "copy"
+    # 是否同盘优先
+    TRANSFER_SAME_DISK: bool = True
+    # CookieCloud是否启动本地服务
+    COOKIECLOUD_ENABLE_LOCAL: Optional[bool] = False
     # CookieCloud服务器地址
     COOKIECLOUD_HOST: str = "https://movie-pilot.org/cookiecloud"
     # CookieCloud用户KEY
-    COOKIECLOUD_KEY: str = None
+    COOKIECLOUD_KEY: Optional[str] = None
     # CookieCloud端对端加密密码
-    COOKIECLOUD_PASSWORD: str = None
+    COOKIECLOUD_PASSWORD: Optional[str] = None
     # CookieCloud同步间隔（分钟）
     COOKIECLOUD_INTERVAL: Optional[int] = 60 * 24
     # OCR服务器地址
     OCR_HOST: str = "https://movie-pilot.org"
     # CookieCloud对应的浏览器UA
     USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.57"
-    # 媒体库目录，多个目录使用,分隔
-    LIBRARY_PATH: str = None
-    # 电影媒体库目录名
-    LIBRARY_MOVIE_NAME: str = "电影"
-    # 电视剧媒体库目录名
-    LIBRARY_TV_NAME: str = "电视剧"
-    # 动漫媒体库目录名，不设置时使用电视剧目录
-    LIBRARY_ANIME_NAME: str = None
-    # 游戏媒体库目录名
-    LIBRARY_GAME_NAME: str = "游戏"
-    # Jav媒体库目录名
-    LIBRARY_JAV_NAME: str = "Jav"
-    # 二级分类
-    LIBRARY_CATEGORY: bool = True
     # 电视剧动漫的分类genre_ids
     ANIME_GENREIDS = [16]
     # 电影重命名格式
@@ -237,9 +249,59 @@ class Settings(BaseSettings):
     # 插件市场仓库地址，多个地址使用,分隔，地址以/结尾
     PLUGIN_MARKET: str = "https://github.com/fortunearterial/NasPilot-Backend-Plugins"
     # Github token，提高请求api限流阈值 ghp_****
-    GITHUB_TOKEN: str = None
+    GITHUB_TOKEN: Optional[str] = None
+    # Github代理服务器，格式：https://mirror.ghproxy.com/
+    GITHUB_PROXY: Optional[str] = ''
     # 自动检查和更新站点资源包（站点索引、认证等）
     AUTO_UPDATE_RESOURCE: bool = True
+    # 元数据识别缓存过期时间（小时）
+    META_CACHE_EXPIRE: int = 0
+    # 是否启用DOH解析域名
+    DOH_ENABLE: bool = True
+    # 搜索多个名称
+    SEARCH_MULTIPLE_NAME: bool = False
+    # 订阅数据共享
+    SUBSCRIBE_STATISTIC_SHARE: bool = True
+    # 插件安装数据共享
+    PLUGIN_STATISTIC_SHARE: bool = True
+    # 服务器地址，对应 https://github.com/jxxghp/MoviePilot-Server 项目
+    MP_SERVER_HOST: str = "https://movie-pilot.org"
+
+    # 【已弃用】刮削入库的媒体文件
+    SCRAP_METADATA: bool = True
+    # 【已弃用】下载保存目录，容器内映射路径需要一致
+    DOWNLOAD_PATH: Optional[str] = None
+    # 【已弃用】电影下载保存目录，容器内映射路径需要一致
+    DOWNLOAD_MOVIE_PATH: Optional[str] = None
+    # 【已弃用】电视剧下载保存目录，容器内映射路径需要一致
+    DOWNLOAD_TV_PATH: Optional[str] = None
+    # 【已弃用】动漫下载保存目录，容器内映射路径需要一致
+    DOWNLOAD_ANIME_PATH: Optional[str] = None
+    # 【已弃用】下载目录二级分类
+    DOWNLOAD_CATEGORY: bool = False
+    # 【已弃用】媒体库目录，多个目录使用,分隔
+    LIBRARY_PATH: Optional[str] = None
+    # 【已弃用】电影媒体库目录名
+    LIBRARY_MOVIE_NAME: str = "电影"
+    # 【已弃用】电视剧媒体库目录名
+    LIBRARY_TV_NAME: str = "电视剧"
+    # 【已弃用】动漫媒体库目录名，不设置时使用电视剧目录
+    LIBRARY_ANIME_NAME: Optional[str] = None
+    # 【已弃用】二级分类
+    LIBRARY_CATEGORY: bool = True
+
+    @validator("SUBSCRIBE_RSS_INTERVAL",
+               "COOKIECLOUD_INTERVAL",
+               "MEDIASERVER_SYNC_INTERVAL",
+               "META_CACHE_EXPIRE",
+               pre=True, always=True)
+    def convert_int(cls, value):
+        if not value:
+            return 0
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            raise ValueError(f"{value} 格式错误，不是有效数字！")
 
     @property
     def INNER_CONFIG_PATH(self):
@@ -272,6 +334,10 @@ class Settings(BaseSettings):
         return self.CONFIG_PATH / "logs"
 
     @property
+    def COOKIE_PATH(self):
+        return self.CONFIG_PATH / "cookies"
+
+    @property
     def CACHE_CONF(self):
         if self.BIG_MEMORY_MODE:
             return {
@@ -282,7 +348,7 @@ class Settings(BaseSettings):
                 "fanart": 512,
                 "steam": 1024,
                 "javdb": 1024,
-                "meta": 15 * 24 * 3600
+                "meta": (self.META_CACHE_EXPIRE or 168) * 3600
             }
         return {
             "tmdb": 256,
@@ -292,7 +358,7 @@ class Settings(BaseSettings):
             "fanart": 128,
             "steam": 256,
             "javdb": 256,
-            "meta": 7 * 24 * 3600
+            "meta": (self.META_CACHE_EXPIRE or 72) * 3600
         }
 
     @property
@@ -312,66 +378,6 @@ class Settings(BaseSettings):
             }
 
     @property
-    def LIBRARY_PATHS(self) -> List[Path]:
-        if self.LIBRARY_PATH:
-            return [Path(path) for path in self.LIBRARY_PATH.split(",")]
-        return [self.CONFIG_PATH / "library"]
-
-    @property
-    def SAVE_PATH(self) -> Path:
-        """
-        获取下载保存目录
-        """
-        if self.DOWNLOAD_PATH:
-            return Path(self.DOWNLOAD_PATH)
-        return self.CONFIG_PATH / "downloads"
-
-    @property
-    def SAVE_MOVIE_PATH(self) -> Path:
-        """
-        获取电影下载保存目录
-        """
-        if self.DOWNLOAD_MOVIE_PATH:
-            return Path(self.DOWNLOAD_MOVIE_PATH)
-        return self.SAVE_PATH
-
-    @property
-    def SAVE_TV_PATH(self) -> Path:
-        """
-        获取电视剧下载保存目录
-        """
-        if self.DOWNLOAD_TV_PATH:
-            return Path(self.DOWNLOAD_TV_PATH)
-        return self.SAVE_PATH
-
-    @property
-    def SAVE_ANIME_PATH(self) -> Path:
-        """
-        获取动漫下载保存目录
-        """
-        if self.DOWNLOAD_ANIME_PATH:
-            return Path(self.DOWNLOAD_ANIME_PATH)
-        return self.SAVE_TV_PATH
-
-    @property
-    def SAVE_GAME_PATH(self) -> Path:
-        """
-        获取游戏下载保存目录
-        """
-        if self.DOWNLOAD_GAME_PATH:
-            return Path(self.DOWNLOAD_GAME_PATH)
-        return self.SAVE_PATH
-
-    @property
-    def SAVE_JAV_PATH(self) -> Path:
-        """
-        获取Jav下载保存目录
-        """
-        if self.DOWNLOAD_JAV_PATH:
-            return Path(self.DOWNLOAD_JAV_PATH)
-        return self.SAVE_PATH
-
-    @property
     def GITHUB_HEADERS(self):
         """
         Github请求头
@@ -381,6 +387,32 @@ class Settings(BaseSettings):
                 "Authorization": f"Bearer {self.GITHUB_TOKEN}"
             }
         return {}
+
+    @property
+    def DEFAULT_DOWNLOADER(self):
+        """
+        默认下载器
+        """
+        if not self.DOWNLOADER:
+            return None
+        return next((d for d in settings.DOWNLOADER.split(",") if d), None)
+
+    @property
+    def DOWNLOADERS(self):
+        """
+        下载器列表
+        """
+        if not self.DOWNLOADER:
+            return []
+        return [d for d in settings.DOWNLOADER.split(",") if d]
+
+    @property
+    def VAPID(self):
+        return {
+            "subject": f"mailto: <{self.SUPERUSER}@movie-pilot.org>",
+            "publicKey": "BH3w49sZA6jXUnE-yt4jO6VKh73lsdsvwoJ6Hx7fmPIDKoqGiUl2GEoZzy-iJfn4SfQQcx7yQdHf9RknwrL_lSM",
+            "privateKey": "JTixnYY0vEw97t9uukfO3UWKfHKJdT5kCQDiv3gu894"
+        }
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -396,12 +428,53 @@ class Settings(BaseSettings):
         with self.LOG_PATH as p:
             if not p.exists():
                 p.mkdir(parents=True, exist_ok=True)
+        with self.COOKIE_PATH as p:
+            if not p.exists():
+                p.mkdir(parents=True, exist_ok=True)
 
     class Config:
         case_sensitive = True
 
 
+class GlobalVar(object):
+    """
+    全局标识
+    """
+    # 系统停止事件
+    STOP_EVENT: threading.Event = threading.Event()
+    # webpush订阅
+    SUBSCRIPTIONS: List[dict] = []
+
+    def stop_system(self):
+        """
+        停止系统
+        """
+        self.STOP_EVENT.set()
+
+    def is_system_stopped(self):
+        """
+        是否停止
+        """
+        return self.STOP_EVENT.is_set()
+
+    def get_subscriptions(self):
+        """
+        获取webpush订阅
+        """
+        return self.SUBSCRIPTIONS
+
+    def push_subscription(self, subscription: dict):
+        """
+        添加webpush订阅
+        """
+        self.SUBSCRIPTIONS.append(subscription)
+
+
+# 实例化配置
 settings = Settings(
     _env_file=Settings().CONFIG_PATH / "app.env",
     _env_file_encoding="utf-8"
 )
+
+# 全局标识
+global_vars = GlobalVar()

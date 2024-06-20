@@ -8,10 +8,9 @@ from app.core.config import settings
 from app.log import logger
 from app.schemas import MediaType
 from app.utils.http import RequestUtils
-from app.utils.singleton import Singleton
 
 
-class Jellyfin(metaclass=Singleton):
+class Jellyfin:
 
     def __init__(self):
         self._host = settings.JELLYFIN_HOST
@@ -20,6 +19,12 @@ class Jellyfin(metaclass=Singleton):
                 self._host += "/"
             if not self._host.startswith("http"):
                 self._host = "http://" + self._host
+        self._playhost = settings.JELLYFIN_PLAY_HOST
+        if self._playhost:
+            if not self._playhost.endswith("/"):
+                self._playhost += "/"
+            if not self._playhost.startswith("http"):
+                self._playhost = "http://" + self._playhost
         self._apikey = settings.JELLYFIN_API_KEY
         self.user = self.get_user(settings.SUPERUSER)
         self.serverid = self.get_server_id()
@@ -39,13 +44,70 @@ class Jellyfin(metaclass=Singleton):
         self.user = self.get_user()
         self.serverid = self.get_server_id()
 
-    def __get_jellyfin_librarys(self) -> List[dict]:
+    def get_jellyfin_folders(self) -> List[dict]:
+        """
+        获取Jellyfin媒体库路径列表
+        """
+        if not self._host or not self._apikey:
+            return []
+        req_url = "%sLibrary/SelectableMediaFolders?api_key=%s" % (self._host, self._apikey)
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res:
+                return res.json()
+            else:
+                logger.error(f"Library/SelectableMediaFolders 未获取到返回数据")
+                return []
+        except Exception as e:
+            logger.error(f"连接Library/SelectableMediaFolders 出错：" + str(e))
+            return []
+
+    def get_jellyfin_virtual_folders(self) -> List[dict]:
+        """
+        获取Jellyfin媒体库所有路径列表（包含共享路径）
+        """
+        if not self._host or not self._apikey:
+            return []
+        req_url = "%sLibrary/VirtualFolders?api_key=%s" % (self._host, self._apikey)
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res:
+                library_items = res.json()
+                librarys = []
+                for library_item in library_items:
+                    library_name = library_item.get('Name')
+                    pathInfos = library_item.get('LibraryOptions', {}).get('PathInfos')
+                    library_paths = []
+                    for path in pathInfos:
+                        if path.get('NetworkPath'):
+                            library_paths.append(path.get('NetworkPath'))
+                        else:
+                            library_paths.append(path.get('Path'))
+
+                    if library_name and library_paths:
+                        librarys.append({
+                            'Name': library_name,
+                            'Path': library_paths
+                        })
+                return librarys
+            else:
+                logger.error(f"Library/VirtualFolders 未获取到返回数据")
+                return []
+        except Exception as e:
+            logger.error(f"连接Library/VirtualFolders 出错：" + str(e))
+            return []
+
+    def __get_jellyfin_librarys(self, username: str = None) -> List[dict]:
         """
         获取Jellyfin媒体库的信息
         """
         if not self._host or not self._apikey:
             return []
-        req_url = f"{self._host}Users/{self.user}/Views?api_key={self._apikey}"
+        if username:
+            user = self.get_user(username)
+        else:
+            user = self.user
+        req_url = f"{self._host}Users/{user}/Views?api_key={self._apikey}"
         try:
             res = RequestUtils().get_res(req_url)
             if res:
@@ -57,14 +119,17 @@ class Jellyfin(metaclass=Singleton):
             logger.error(f"连接Users/Views 出错：" + str(e))
             return []
 
-    def get_librarys(self):
+    def get_librarys(self, username: str = None) -> List[schemas.MediaServerLibrary]:
         """
         获取媒体服务器所有媒体库列表
         """
         if not self._host or not self._apikey:
             return []
         libraries = []
-        for library in self.__get_jellyfin_librarys() or []:
+        black_list = (settings.MEDIASERVER_SYNC_BLACKLIST or '').split(",")
+        for library in self.__get_jellyfin_librarys(username) or []:
+            if library.get("Name") in black_list:
+                continue
             match library.get("CollectionType"):
                 case "movies":
                     library_type = MediaType.MOVIE.value
@@ -72,13 +137,21 @@ class Jellyfin(metaclass=Singleton):
                     library_type = MediaType.TV.value
                 case _:
                     continue
+            image = self.__get_local_image_by_id(library.get("Id"))
+            link = f"{self._playhost or self._host}web/index.html#!" \
+                   f"/movies.html?topParentId={library.get('Id')}" \
+                if library_type == MediaType.MOVIE.value \
+                else f"{self._playhost or self._host}web/index.html#!" \
+                     f"/tv.html?topParentId={library.get('Id')}"
             libraries.append(
                 schemas.MediaServerLibrary(
                     server="jellyfin",
                     id=library.get("Id"),
                     name=library.get("Name"),
                     path=library.get("Path"),
-                    type=library_type
+                    type=library_type,
+                    image=image,
+                    link=link
                 ))
         return libraries
 
@@ -349,19 +422,72 @@ class Jellyfin(metaclass=Singleton):
             return None
         req_url = "%sItems/%s/RemoteImages?api_key=%s" % (self._host, item_id, self._apikey)
         try:
-            res = RequestUtils().get_res(req_url)
+            res = RequestUtils(timeout=10).get_res(req_url)
             if res:
                 images = res.json().get("Images")
                 for image in images:
                     if image.get("ProviderName") == "TheMovieDb" and image.get("Type") == image_type:
                         return image.get("Url")
+                # return images[0].get("Url") # 首选无则返回第一张
             else:
-                logger.error(f"Items/RemoteImages 未获取到返回数据")
-                return None
+                logger.info(f"Items/RemoteImages 未获取到返回数据，采用本地图片")
+                return self.generate_image_link(item_id, image_type, True)
         except Exception as e:
             logger.error(f"连接Items/Id/RemoteImages出错：" + str(e))
             return None
         return None
+
+    def generate_image_link(self, item_id: str, image_type: str, host_type: bool) -> Optional[str]:
+        """
+        根据ItemId和imageType查询本地对应图片
+        :param item_id: 在Jellyfin中的ID
+        :param image_type: 图片类型，如Backdrop、Primary
+        :param host_type: True为外网链接, False为内网链接
+        :return: 图片对应在host_type的播放器中的URL
+        """
+        if not self._playhost:
+            logger.error("Jellyfin外网播放地址未能获取或为空")
+            return None
+        # 检测是否为TV
+        _parent_id = self.get_itemId_ancestors(item_id, 0, "ParentBackdropItemId")
+        if _parent_id:
+            item_id = _parent_id
+
+        _host = self._host
+        if host_type:
+            _host = self._playhost
+        req_url = "%sItems/%s/Images/%s" % (_host, item_id, image_type)
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res and res.status_code != 404:
+                logger.info(f"影片图片链接:{res.url}")
+                return res.url
+            else:
+                logger.error("Items/Id/Images 未获取到返回数据或无该影片{}图片".format(image_type))
+                return None
+        except Exception as e:
+            logger.error(f"连接Items/Id/Images出错：" + str(e))
+            return None
+
+    def get_itemId_ancestors(self, item_id: str, index: int, key: str) -> Optional[Union[str, list, int, dict, bool]]:
+        """
+        获得itemId的父item
+        :param item_id: 在Jellyfin中剧集的ID (S01E02的E02的item_id)
+        :param index: 第几个json对象
+        :param key: 需要得到父item中的键值对
+        :return key对应类型的值
+        """
+        req_url = "%sItems/%s/Ancestors?api_key=%s" % (self._host, item_id, self._apikey)
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res:
+                return res.json()[index].get(key)
+            else:
+                logger.error(f"Items/Id/Ancestors 未获取到返回数据")
+                return None
+        except Exception as e:
+            logger.error(f"连接Items/Id/Ancestors出错：" + str(e))
+            return None
 
     def refresh_root_library(self) -> bool:
         """
@@ -463,6 +589,8 @@ class Jellyfin(metaclass=Singleton):
         eventItem.item_id = message.get('ItemId')
         eventItem.tmdb_id = message.get('Provider_tmdb')
         eventItem.overview = message.get('Overview')
+        eventItem.item_favorite = message.get('Favorite')
+        eventItem.save_reason = message.get('SaveReason')
         eventItem.device_name = message.get('DeviceName')
         eventItem.user_name = message.get('NotificationUsername')
         eventItem.client = message.get('ClientName')
@@ -484,6 +612,11 @@ class Jellyfin(metaclass=Singleton):
             eventItem.item_type = "MOV"
             eventItem.item_name = "%s %s" % (
                 message.get('Name'), "(" + str(message.get('Year')) + ")")
+
+        playback_position_ticks = message.get('PlaybackPositionTicks')
+        runtime_ticks = message.get('RunTimeTicks')
+        if playback_position_ticks is not None and runtime_ticks is not None:
+            eventItem.percentage = playback_position_ticks / runtime_ticks * 100
 
         # 获取消息图片
         if eventItem.item_id:
@@ -559,9 +692,9 @@ class Jellyfin(metaclass=Singleton):
         """
         if not self._host or not self._apikey:
             return None
-        url = url.replace("[HOST]", self._host) \
-            .replace("[APIKEY]", self._apikey) \
-            .replace("[USER]", self.user)
+        url = url.replace("[HOST]", self._host or '') \
+            .replace("[APIKEY]", self._apikey or '') \
+            .replace("[USER]", self.user or '')
         try:
             return RequestUtils(accept_type="application/json").get_res(url=url)
         except Exception as e:
@@ -577,9 +710,9 @@ class Jellyfin(metaclass=Singleton):
         """
         if not self._host or not self._apikey:
             return None
-        url = url.replace("[HOST]", self._host) \
-            .replace("[APIKEY]", self._apikey) \
-            .replace("[USER]", self.user)
+        url = url.replace("[HOST]", self._host or '') \
+            .replace("[APIKEY]", self._apikey or '') \
+            .replace("[USER]", self.user or '')
         try:
             return RequestUtils(
                 headers=headers
@@ -587,3 +720,158 @@ class Jellyfin(metaclass=Singleton):
         except Exception as e:
             logger.error(f"连接Jellyfin出错：" + str(e))
             return None
+
+    def get_play_url(self, item_id: str) -> str:
+        """
+        拼装媒体播放链接
+        :param item_id: 媒体的的ID
+        """
+        return f"{self._playhost or self._host}web/index.html#!" \
+               f"/details?id={item_id}&serverId={self.serverid}"
+
+    def __get_local_image_by_id(self, item_id: str) -> str:
+        """
+        根据ItemId从媒体服务器查询有声书图片地址
+        :param: item_id: 在Emby中的ID
+        :param: remote 是否远程使用，TG微信等客户端调用应为True
+        :param: inner 是否NT内部调用，为True是会使用NT中转
+        """
+        if not self._host or not self._apikey:
+            return ""
+        return "%sItems/%s/Images/Primary" % (self._host, item_id)
+
+    def __get_backdrop_url(self, item_id: str, image_tag: str) -> str:
+        """
+        获取Backdrop图片地址
+        :param: item_id: 在Emby中的ID
+        :param: image_tag: 图片的tag
+        :param: remote 是否远程使用，TG微信等客户端调用应为True
+        :param: inner 是否NT内部调用，为True是会使用NT中转
+        """
+        if not self._host or not self._apikey:
+            return ""
+        if not image_tag or not item_id:
+            return ""
+        return f"{self._host}Items/{item_id}/" \
+               f"Images/Backdrop?tag={image_tag}&fillWidth=666&api_key={self._apikey}"
+
+    def get_resume(self, num: int = 12, username: str = None) -> Optional[List[schemas.MediaServerPlayItem]]:
+        """
+        获得继续观看
+        """
+        if not self._host or not self._apikey:
+            return None
+        if username:
+            user = self.get_user(username)
+        else:
+            user = self.user
+        req_url = (f"{self._host}Users/{user}/Items/Resume?"
+                   f"Limit=100&MediaTypes=Video&api_key={self._apikey}&Fields=ProductionYear,Path")
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res:
+                result = res.json().get("Items") or []
+                ret_resume = []
+                # 用户媒体库文件夹列表（排除黑名单）
+                library_folders = self.get_user_library_folders()
+                for item in result:
+                    if len(ret_resume) == num:
+                        break
+                    if item.get("Type") not in ["Movie", "Episode"]:
+                        continue
+                    item_path = item.get("Path")
+                    if item_path and library_folders and not any(
+                            str(item_path).startswith(folder) for folder in library_folders):
+                        continue
+                    item_type = MediaType.MOVIE.value if item.get("Type") == "Movie" else MediaType.TV.value
+                    link = self.get_play_url(item.get("Id"))
+                    if item.get("BackdropImageTags"):
+                        image = self.__get_backdrop_url(item_id=item.get("Id"),
+                                                        image_tag=item.get("BackdropImageTags")[0])
+                    else:
+                        image = self.__get_local_image_by_id(item.get("Id"))
+                    # 小部分剧集无[xxx-S01E01-thumb.jpg]图片
+                    image_res = RequestUtils().get_res(image)
+                    if not image_res or image_res.status_code == 404:
+                        image = self.generate_image_link(item.get("Id"), "Backdrop", False)
+                    if item_type == MediaType.MOVIE.value:
+                        title = item.get("Name")
+                        subtitle = item.get("ProductionYear")
+                    else:
+                        title = f'{item.get("SeriesName")}'
+                        subtitle = f'S{item.get("ParentIndexNumber")}:{item.get("IndexNumber")} - {item.get("Name")}'
+                    ret_resume.append(schemas.MediaServerPlayItem(
+                        id=item.get("Id"),
+                        title=title,
+                        subtitle=subtitle,
+                        type=item_type,
+                        image=image,
+                        link=link,
+                        percent=item.get("UserData", {}).get("PlayedPercentage")
+                    ))
+                return ret_resume
+            else:
+                logger.error(f"Users/Items/Resume 未获取到返回数据")
+        except Exception as e:
+            logger.error(f"连接Users/Items/Resume出错：" + str(e))
+        return []
+
+    def get_latest(self, num=20, username: str = None) -> Optional[List[schemas.MediaServerPlayItem]]:
+        """
+        获得最近更新
+        """
+        if not self._host or not self._apikey:
+            return None
+        if username:
+            user = self.get_user(username)
+        else:
+            user = self.user
+        req_url = (f"{self._host}Users/{user}/Items/Latest?"
+                   f"Limit=100&MediaTypes=Video&api_key={self._apikey}&Fields=ProductionYear,Path")
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res:
+                result = res.json() or []
+                ret_latest = []
+                # 用户媒体库文件夹列表（排除黑名单）
+                library_folders = self.get_user_library_folders()
+                for item in result:
+                    if len(ret_latest) == num:
+                        break
+                    if item.get("Type") not in ["Movie", "Series"]:
+                        continue
+                    item_path = item.get("Path")
+                    if item_path and library_folders and not any(
+                            str(item_path).startswith(folder) for folder in library_folders):
+                        continue
+                    item_type = MediaType.MOVIE.value if item.get("Type") == "Movie" else MediaType.TV.value
+                    link = self.get_play_url(item.get("Id"))
+                    image = self.__get_local_image_by_id(item_id=item.get("Id"))
+                    ret_latest.append(schemas.MediaServerPlayItem(
+                        id=item.get("Id"),
+                        title=item.get("Name"),
+                        subtitle=item.get("ProductionYear"),
+                        type=item_type,
+                        image=image,
+                        link=link
+                    ))
+                return ret_latest
+            else:
+                logger.error(f"Users/Items/Latest 未获取到返回数据")
+        except Exception as e:
+            logger.error(f"连接Users/Items/Latest出错：" + str(e))
+        return []
+
+    def get_user_library_folders(self):
+        """
+        获取Emby媒体库文件夹列表（排除黑名单）
+        """
+        if not self._host or not self._apikey:
+            return []
+        library_folders = []
+        black_list = (settings.MEDIASERVER_SYNC_BLACKLIST or '').split(",")
+        for library in self.get_jellyfin_virtual_folders() or []:
+            if library.get("Name") in black_list:
+                continue
+            library_folders += [folder for folder in library.get("Path")]
+        return library_folders

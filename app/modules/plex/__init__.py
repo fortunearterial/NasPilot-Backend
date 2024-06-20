@@ -14,8 +14,22 @@ class PlexModule(_ModuleBase):
     def init_module(self) -> None:
         self.plex = Plex()
 
+    @staticmethod
+    def get_name() -> str:
+        return "Plex"
+
     def stop(self):
         pass
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        if self.plex.is_inactive():
+            self.plex.reconnect()
+        if not self.plex.get_librarys():
+            return False, "无法连接Plex，请检查参数配置"
+        return True, ""
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "MEDIASERVER", "plex"
@@ -95,11 +109,11 @@ class PlexModule(_ModuleBase):
         media_statistic.user_count = 1
         return [media_statistic]
 
-    def mediaserver_librarys(self, server: str) -> Optional[List[schemas.MediaServerLibrary]]:
+    def mediaserver_librarys(self, server: str = None, **kwargs) -> Optional[List[schemas.MediaServerLibrary]]:
         """
         媒体库列表
         """
-        if server != "plex":
+        if server and server != "plex":
             return None
         return self.plex.get_librarys()
 
@@ -133,3 +147,27 @@ class PlexModule(_ModuleBase):
             season=season,
             episodes=episodes
         ) for season, episodes in seasoninfo.items()]
+
+    def mediaserver_playing(self, count: int = 20, server: str = None, **kwargs) -> List[schemas.MediaServerPlayItem]:
+        """
+        获取媒体服务器正在播放信息
+        """
+        if server and server != "plex":
+            return []
+        return self.plex.get_resume(count)
+
+    def mediaserver_latest(self, count: int = 20, server: str = None, **kwargs) -> List[schemas.MediaServerPlayItem]:
+        """
+        获取媒体服务器最新入库条目
+        """
+        if server and server != "plex":
+            return []
+        return self.plex.get_latest(count)
+
+    def mediaserver_play_url(self, server: str, item_id: Union[str, int]) -> Optional[str]:
+        """
+        获取媒体库播放地址
+        """
+        if server != "plex":
+            return None
+        return self.plex.get_play_url(item_id)

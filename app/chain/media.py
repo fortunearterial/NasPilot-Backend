@@ -34,7 +34,7 @@ class MediaChain(ChainBase, metaclass=Singleton):
         # 识别媒体信息
         mediainfo: MediaInfo = self.recognize_media(meta=metainfo)
         if not mediainfo:
-            # 偿试使用辅助识别，如果有注册响应事件的话
+            # 尝试使用辅助识别，如果有注册响应事件的话
             if eventmanager.check(EventType.NameRecognize):
                 logger.info(f'请求辅助识别，标题：{title} ...')
                 mediainfo = self.recognize_help(title=title, org_meta=metainfo)
@@ -143,7 +143,7 @@ class MediaChain(ChainBase, metaclass=Singleton):
         # 识别媒体信息
         mediainfo = self.recognize_media(meta=file_meta)
         if not mediainfo:
-            # 偿试使用辅助识别，如果有注册响应事件的话
+            # 尝试使用辅助识别，如果有注册响应事件的话
             if eventmanager.check(EventType.NameRecognize):
                 logger.info(f'请求辅助识别，标题：{file_path.name} ...')
                 mediainfo = self.recognize_help(title=path, org_meta=file_meta)
@@ -156,9 +156,9 @@ class MediaChain(ChainBase, metaclass=Singleton):
         # 返回上下文
         return Context(meta_info=file_meta, media_info=mediainfo)
 
-    def search(self, title: str) -> Tuple[MetaBase, List[MediaInfo]]:
+    def search(self, title: str) -> Tuple[Optional[MetaBase], List[MediaInfo]]:
         """
-        搜索媒体信息
+        搜索媒体/人物信息
         :param title: 搜索内容
         :return: 识别元数据，媒体信息列表
         """
@@ -195,14 +195,11 @@ class MediaChain(ChainBase, metaclass=Singleton):
         doubaninfo = self.douban_info(doubanid=doubanid, mtype=mtype)
         if doubaninfo:
             # 优先使用原标题匹配
-            season_meta = None
             if doubaninfo.get("original_title"):
-                meta = MetaInfo(title=doubaninfo.get("original_title"))
-                season_meta = MetaInfo(title=doubaninfo.get("title"))
-                # 合并季
-                meta.begin_season = season_meta.begin_season
-            else:
                 meta = MetaInfo(title=doubaninfo.get("title"))
+                meta_org = MetaInfo(title=doubaninfo.get("original_title"))
+            else:
+                meta_org = meta = MetaInfo(title=doubaninfo.get("title"))
             # 年份
             if doubaninfo.get("year"):
                 meta.year = doubaninfo.get("year")
@@ -211,23 +208,52 @@ class MediaChain(ChainBase, metaclass=Singleton):
                 meta.type = doubaninfo.get('media_type')
             else:
                 meta.type = MediaType.MOVIE if doubaninfo.get("type") == "movie" else MediaType.TV
-            # 使用原标题识别TMDB媒体信息
-            tmdbinfo = self.match_tmdbinfo(
-                name=meta.name,
-                year=meta.year,
-                mtype=mtype or meta.type,
-                season=meta.begin_season
-            )
-            if not tmdbinfo:
-                if season_meta and season_meta.name != meta.name:
-                    # 使用主标题识别媒体信息
-                    tmdbinfo = self.match_tmdbinfo(
-                        name=season_meta.name,
-                        year=meta.year,
-                        mtype=mtype or meta.type,
-                        season=meta.begin_season
-                    )
+            # 匹配TMDB信息
+            meta_names = list(dict.fromkeys([k for k in [meta_org.name,
+                                                         meta.cn_name,
+                                                         meta.en_name] if k]))
+            for name in meta_names:
+                tmdbinfo = self.match_tmdbinfo(
+                    name=name,
+                    year=meta.year,
+                    mtype=mtype or meta.type,
+                    season=meta.begin_season
+                )
+                if tmdbinfo:
+                    break
         return tmdbinfo
+
+    def get_tmdbinfo_by_bangumiid(self, bangumiid: int) -> Optional[dict]:
+        """
+        根据BangumiID获取TMDB信息
+        """
+        bangumiinfo = self.bangumi_info(bangumiid=bangumiid)
+        if bangumiinfo:
+            # 优先使用原标题匹配
+            if bangumiinfo.get("name_cn"):
+                meta = MetaInfo(title=bangumiinfo.get("name"))
+                meta_cn = MetaInfo(title=bangumiinfo.get("name_cn"))
+            else:
+                meta_cn = meta = MetaInfo(title=bangumiinfo.get("name"))
+            # 年份
+            release_date = bangumiinfo.get("date") or bangumiinfo.get("air_date")
+            if release_date:
+                year = release_date[:4]
+            else:
+                year = None
+            # 识别TMDB媒体信息
+            meta_names = list(dict.fromkeys([k for k in [meta_cn.name,
+                                                         meta.name] if k]))
+            for name in meta_names:
+                tmdbinfo = self.match_tmdbinfo(
+                    name=name,
+                    year=year,
+                    mtype=MediaType.TV,
+                    season=meta.begin_season
+                )
+                if tmdbinfo:
+                    return tmdbinfo
+        return None
 
     def get_doubaninfo_by_tmdbid(self, tmdbid: int,
                                  mtype: MediaType = None, season: int = None) -> Optional[dict]:
@@ -259,5 +285,31 @@ class MediaChain(ChainBase, metaclass=Singleton):
                 year=year,
                 mtype=mtype,
                 imdbid=imdbid
+            )
+        return None
+
+    def get_doubaninfo_by_bangumiid(self, bangumiid: int) -> Optional[dict]:
+        """
+        根据BangumiID获取豆瓣信息
+        """
+        bangumiinfo = self.bangumi_info(bangumiid=bangumiid)
+        if bangumiinfo:
+            # 优先使用中文标题匹配
+            if bangumiinfo.get("name_cn"):
+                meta = MetaInfo(title=bangumiinfo.get("name_cn"))
+            else:
+                meta = MetaInfo(title=bangumiinfo.get("name"))
+            # 年份
+            release_date = bangumiinfo.get("date") or bangumiinfo.get("air_date")
+            if release_date:
+                year = release_date[:4]
+            else:
+                year = None
+            # 使用名称识别豆瓣媒体信息
+            return self.match_doubaninfo(
+                name=meta.name,
+                year=year,
+                mtype=MediaType.TV,
+                season=meta.begin_season
             )
         return None

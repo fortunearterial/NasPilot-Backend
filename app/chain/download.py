@@ -6,13 +6,17 @@ import time
 from pathlib import Path
 from typing import List, Optional, Tuple, Set, Dict, Union
 
+from app import schemas
 from app.chain import ChainBase
 from app.core.config import settings
 from app.core.context import MediaInfo, TorrentInfo, Context
+from app.core.event import eventmanager, Event
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfo
 from app.db.downloadhistory_oper import DownloadHistoryOper
 from app.db.mediaserver_oper import MediaServerOper
+from app.helper.directory import DirectoryHelper
+from app.helper.message import MessageHelper
 from app.helper.torrent import TorrentHelper
 from app.log import logger
 from app.schemas import ExistMediaInfo, NotExistMediaInfo, DownloadingTorrent, Notification
@@ -31,16 +35,25 @@ class DownloadChain(ChainBase):
         self.torrent = TorrentHelper()
         self.downloadhis = DownloadHistoryOper()
         self.mediaserver = MediaServerOper()
+        self.directoryhelper = DirectoryHelper()
+        self.messagehelper = MessageHelper()
 
     def post_download_message(self, meta: MetaBase, mediainfo: MediaInfo, torrent: TorrentInfo,
-                              channel: MessageChannel = None,
-                              userid: str = None):
+                              channel: MessageChannel = None, userid: str = None, username: str = None,
+                              download_episodes: str = None):
         """
         发送添加下载的消息
+        :param meta: 元数据
+        :param mediainfo: 媒体信息
+        :param torrent: 种子信息
+        :param channel: 通知渠道
+        :param userid: 用户ID，指定时精确发送对应用户
+        :param username: 通知显示的下载用户信息
+        :param download_episodes: 下载的集数
         """
         msg_text = ""
-        if userid:
-            msg_text = f"用户：{userid}"
+        if username:
+            msg_text = f"用户：{username}"
         if torrent.site_name:
             msg_text = f"{msg_text}\n站点：{torrent.site_name}"
         if meta.resource_term:
@@ -55,6 +68,8 @@ class DownloadChain(ChainBase):
             msg_text = f"{msg_text}\n种子：{torrent.title}"
         if torrent.pubdate:
             msg_text = f"{msg_text}\n发布时间：{torrent.pubdate}"
+        if torrent.freedate:
+            msg_text = f"{msg_text}\n免费时间：{StringUtils.diff_time_str(torrent.freedate)}"
         if torrent.seeders:
             msg_text = f"{msg_text}\n做种数：{torrent.seeders}"
         if torrent.uploadvolumefactor and torrent.downloadvolumefactor:
@@ -70,8 +85,9 @@ class DownloadChain(ChainBase):
         self.post_message(Notification(
             channel=channel,
             mtype=NotificationType.Download,
+            userid=userid,
             title=f"{mediainfo.title_year} "
-                  f"{meta.season_episode} 开始下载",
+                  f"{'%s %s' % (meta.season, download_episodes) if download_episodes else meta.season_episode} 开始下载",
             text=msg_text,
             image=mediainfo.get_message_image()))
 
@@ -100,17 +116,27 @@ class DownloadChain(ChainBase):
                 # 解码参数
                 req_str = base64.b64decode(base64_str.encode('utf-8')).decode('utf-8')
                 req_params: Dict[str, dict] = json.loads(req_str)
+                # 是否使用cookie
+                if not req_params.get('cookie'):
+                    cookie = None
+                # 请求头
+                if req_params.get('header'):
+                    headers = req_params.get('header')
+                else:
+                    headers = None
                 if req_params.get('method') == 'get':
                     # GET请求
                     res = RequestUtils(
                         ua=ua,
-                        cookies=cookie
+                        cookies=cookie,
+                        headers=headers
                     ).get_res(url, params=req_params.get('params'))
                 else:
                     # POST请求
                     res = RequestUtils(
                         ua=ua,
-                        cookies=cookie
+                        cookies=cookie,
+                        headers=headers
                     ).post_res(url, params=req_params.get('params'))
                 if not res:
                     return None
@@ -131,12 +157,15 @@ class DownloadChain(ChainBase):
             return None, "", []
         if torrent.enclosure.startswith("magnet:"):
             return torrent.enclosure, "", []
-
+        # Cookie
+        site_cookie = torrent.site_cookie
         if torrent.enclosure.startswith("["):
             # 需要解码获取下载地址
             torrent_url = __get_redict_url(url=torrent.enclosure,
                                            ua=torrent.site_ua,
-                                           cookie=torrent.site_cookie)
+                                           cookie=site_cookie)
+            # 涉及解析地址的不使用Cookie下载种子，否则MT会出错
+            site_cookie = None
         else:
             torrent_url = torrent.enclosure
         if not torrent_url:
@@ -145,7 +174,7 @@ class DownloadChain(ChainBase):
         # 下载种子文件
         torrent_file, content, download_folder, files, error_msg = self.torrent.download_torrent(
             url=torrent_url,
-            cookie=torrent.site_cookie,
+            cookie=site_cookie,
             ua=torrent.site_ua,
             proxy=torrent.site_proxy)
 
@@ -185,6 +214,9 @@ class DownloadChain(ChainBase):
         _torrent = context.torrent_info
         _media = context.media_info
         _meta = context.meta_info
+
+        # 实际下载的集数
+        download_episodes = StringUtils.format_ep(list(episodes)) if episodes else None
         _folder_name = ""
 
         # TODO: 区分链接类型：magnet:/.torrent/ftp:/ed2k:/普通文件
@@ -205,39 +237,35 @@ class DownloadChain(ChainBase):
         #     _folder_name, _file_list = self.torrent.get_torrent_info(torrent_file)
 
         # 下载目录
-        if not save_path:
-            if settings.DOWNLOAD_CATEGORY and _media and _media.category:
-                # 开启下载二级目录
-                if _media.type == MediaType.MOVIE:
-                    # 电影
-                    download_dir = settings.SAVE_MOVIE_PATH / _media.category
-                else:
-                    if _media.genre_ids \
-                            and set(_media.genre_ids).intersection(set(settings.ANIME_GENREIDS)):
-                        # 动漫
-                        download_dir = settings.SAVE_ANIME_PATH
-                    else:
-                        # 电视剧
-                        download_dir = settings.SAVE_TV_PATH / _media.category
-            elif _media:
-                # 未开启下载二级目录
-                if _media.type == MediaType.MOVIE:
-                    # 电影
-                    download_dir = settings.SAVE_MOVIE_PATH
-                else:
-                    if _media.genre_ids \
-                            and set(_media.genre_ids).intersection(set(settings.ANIME_GENREIDS)):
-                        # 动漫
-                        download_dir = settings.SAVE_ANIME_PATH
-                    else:
-                        # 电视剧
-                        download_dir = settings.SAVE_TV_PATH
-            else:
-                # 未识别
-                download_dir = settings.SAVE_PATH
+        if save_path:
+            # 有自定义下载目录时，尝试匹配目录配置
+            dir_info = self.directoryhelper.get_download_dir(_media, to_path=Path(save_path))
         else:
+            # 根据媒体信息查询下载目录配置
+            dir_info = self.directoryhelper.get_download_dir(_media)
+        # 拼装子目录
+        if dir_info:
+            # 一级目录
+            if not dir_info.media_type and dir_info.auto_category:
+                # 一级自动分类
+                download_dir = Path(dir_info.path) / _media.type.value
+            else:
+                # 一级不分类
+                download_dir = Path(dir_info.path)
+
+            # 二级目录
+            if not dir_info.category and dir_info.auto_category and _media and _media.category:
+                # 二级自动分类
+                download_dir = download_dir / _media.category
+        elif save_path:
             # 自定义下载目录
             download_dir = Path(save_path)
+        else:
+            # 未找到下载目录，且没有自定义下载目录
+            logger.error(f"未找到下载目录：{_media.type.value} {_media.title_year}")
+            self.messagehelper.put(f"{_media.type.value} {_media.title_year} 未找到下载目录！",
+                                   title="下载失败", role="system")
+            return None
 
         # 添加下载
         result: Optional[tuple] = self.download(content=content,
@@ -270,7 +298,7 @@ class DownloadChain(ChainBase):
                 steamid=_media.steam_id,
                 javdbid=_media.javdb_id,
                 seasons=_meta.season,
-                episodes=_meta.episode,
+                episodes=download_episodes or _meta.episode,
                 image=_media.get_backdrop_image(),
                 download_hash=_hash,
                 torrent_name=_torrent.title,
@@ -297,7 +325,7 @@ class DownloadChain(ChainBase):
                     continue
                 files_to_add.append({
                     "download_hash": _hash,
-                    "downloader": settings.DOWNLOADER,
+                    "downloader": settings.DEFAULT_DOWNLOADER,
                     "fullpath": str(download_dir / _folder_name / file),
                     "savepath": str(download_dir / _folder_name),
                     "filepath": file,
@@ -306,19 +334,22 @@ class DownloadChain(ChainBase):
             if files_to_add:
                 self.downloadhis.add_files(files_to_add)
 
-            # 发送消息
-            self.post_download_message(meta=_meta, mediainfo=_media, torrent=_torrent, channel=channel, userid=userid)
+            # 发送消息（群发，不带channel和userid）
+            self.post_download_message(meta=_meta, mediainfo=_media, torrent=_torrent,
+                                       username=username, download_episodes=download_episodes)
             # 下载成功后处理
             self.download_added(context=context, download_dir=download_dir, torrent_path=torrent_file)
             # 广播事件
             self.eventmanager.send_event(EventType.DownloadAdded, {
                 "hash": _hash,
-                "context": context
+                "context": context,
+                "username": username
             })
         else:
             # 下载失败
             logger.error(f"{_media.title_year} 添加下载任务失败："
                          f"{_torrent.title} - {_torrent.enclosure}，{error_msg}")
+            # 只发送给对应渠道和用户
             self.post_message(Notification(
                 channel=channel,
                 mtype=NotificationType.Manual,
@@ -337,7 +368,8 @@ class DownloadChain(ChainBase):
                        save_path: str = None,
                        channel: MessageChannel = None,
                        userid: str = None,
-                       username: str = None) -> Tuple[List[Context], Dict[int, Dict[int, NotExistMediaInfo]]]:
+                       username: str = None
+                       ) -> Tuple[List[Context], Dict[Union[int, str], Dict[int, NotExistMediaInfo]]]:
         """
         根据缺失数据，自动种子列表中组合择优下载
         :param contexts:  资源上下文列表
@@ -362,12 +394,13 @@ class DownloadChain(ChainBase):
             need = list(set(_need).difference(set(_current)))
             # 清除已下载的季信息
             seas = copy.deepcopy(no_exists.get(_mid))
-            for _sea in list(seas):
-                if _sea not in need:
-                    no_exists[_mid].pop(_sea)
-                if not no_exists.get(_mid) and no_exists.get(_mid) is not None:
-                    no_exists.pop(_mid)
-                    break
+            if seas:
+                for _sea in list(seas):
+                    if _sea not in need:
+                        no_exists[_mid].pop(_sea)
+                    if not no_exists.get(_mid) and no_exists.get(_mid) is not None:
+                        no_exists.pop(_mid)
+                        break
             return need
 
         def __update_episodes(_mid: Union[int, str], _sea: int, _need: list, _current: set) -> list:
@@ -413,12 +446,15 @@ class DownloadChain(ChainBase):
             if context.media_info.type == MediaType.MOVIE \
                 or context.media_info.type == MediaType.GAME \
                 or context.media_info.type == MediaType.JAV:
-                if self.download_single(context, save_path=save_path,
-                                        channel=channel, userid=userid, username=username):
+                logger.info(f"开始下载{context.media_info.type} {context.torrent_info.title} ...")
+                if self.download_single(context, save_path=save_path, channel=channel,
+                                        userid=userid, username=username):
                     # 下载成功
+                    logger.info(f"{context.torrent_info.title} 添加下载成功")
                     downloaded_list.append(context)
 
         # 电视剧整季匹配
+        logger.info(f"开始匹配电视剧整季：{no_exists}")
         if no_exists:
             # 先把整季缺失的拿出来，看是否刚好有所有季都满足的种子 {tmdbid: [seasons]}
             need_seasons: Dict[int, list] = {}
@@ -431,6 +467,7 @@ class DownloadChain(ChainBase):
                         if not need_seasons.get(need_mid):
                             need_seasons[need_mid] = []
                         need_seasons[need_mid].append(tv.season or 1)
+            logger.info(f"缺失整季：{need_seasons}")
             # 查找整季包含的种子，只处理整季没集的种子或者是集数超过季的种子
             for need_mid, need_season in need_seasons.items():
                 # 循环种子
@@ -446,23 +483,31 @@ class DownloadChain(ChainBase):
                         continue
                     # 种子的季清单
                     torrent_season = meta.season_list
+                    # 没有季的默认为第1季
+                    if not torrent_season:
+                        torrent_season = [1]
                     # 种子有集的不要
                     if meta.episode_list:
                         continue
                     # 匹配TMDBID
                     if need_mid == media.tmdb_id or need_mid == media.douban_id:
+                        # 不重复添加
+                        if context in downloaded_list:
+                            continue
                         # 种子季是需要季或者子集
                         if set(torrent_season).issubset(set(need_season)):
                             if len(torrent_season) == 1:
                                 # 只有一季的可能是命名错误，需要打开种子鉴别，只有实际集数大于等于总集数才下载
+                                logger.info(f"开始下载种子 {torrent.title} ...")
                                 content, _, torrent_files = self.download_torrent(torrent)
                                 if not content:
+                                    logger.warn(f"{torrent.title} 种子下载失败！")
                                     continue
                                 if isinstance(content, str):
                                     logger.warn(f"{meta.org_string} 下载地址是磁力链，无法确定种子文件集数")
                                     continue
                                 torrent_episodes = self.torrent.get_torrent_episodes(torrent_files)
-                                logger.info(f"{meta.org_string} 解析文件集数为 {torrent_episodes}")
+                                logger.info(f"{meta.org_string} 解析种子文件集数为 {torrent_episodes}")
                                 if not torrent_episodes:
                                     continue
                                 # 更新集数范围
@@ -473,10 +518,11 @@ class DownloadChain(ChainBase):
                                 need_total = __get_season_episodes(need_mid, torrent_season[0])
                                 if len(torrent_episodes) < need_total:
                                     logger.info(
-                                        f"{meta.org_string} 解析文件集数发现不是完整合集")
+                                        f"{meta.org_string} 解析文件集数发现不是完整合集，先放弃这个种子")
                                     continue
                                 else:
                                     # 下载
+                                    logger.info(f"开始下载 {torrent.title} ...")
                                     download_id = self.download_single(
                                         context=context,
                                         torrent_file=content if isinstance(content, Path) else None,
@@ -487,17 +533,25 @@ class DownloadChain(ChainBase):
                                     )
                             else:
                                 # 下载
-                                download_id = self.download_single(context, save_path=save_path,
-                                                                   channel=channel, userid=userid, username=username)
+                                logger.info(f"开始下载 {torrent.title} ...")
+                                download_id = self.download_single(context,
+                                                                   save_path=save_path, channel=channel,
+                                                                   userid=userid, username=username)
 
                             if download_id:
                                 # 下载成功
+                                logger.info(f"{torrent.title} 添加下载成功")
                                 downloaded_list.append(context)
                                 # 更新仍需季集
                                 need_season = __update_seasons(_mid=need_mid,
                                                                _need=need_season,
                                                                _current=torrent_season)
+                                logger.info(f"{need_mid} 剩余需要季：{need_season}")
+                                if not need_season:
+                                    # 全部下载完成
+                                    break
         # 电视剧季内的集匹配
+        logger.info(f"开始电视剧完整集匹配：{no_exists}")
         if no_exists:
             # TMDBID列表
             need_tv_list = list(no_exists)
@@ -519,7 +573,7 @@ class DownloadChain(ChainBase):
                     start_episode = tv.start_episode or 1
                     # 缺失整季的转化为缺失集进行比较
                     if not need_episodes:
-                        need_episodes = list(range(start_episode, total_episode))
+                        need_episodes = list(range(start_episode, total_episode + 1))
                     # 循环种子
                     for context in contexts:
                         # 媒体信息
@@ -547,18 +601,23 @@ class DownloadChain(ChainBase):
                             # 为需要集的子集则下载
                             if torrent_episodes.issubset(set(need_episodes)):
                                 # 下载
-                                download_id = self.download_single(context, save_path=save_path,
-                                                                   channel=channel, userid=userid, username=username)
+                                logger.info(f"开始下载 {meta.title} ...")
+                                download_id = self.download_single(context,
+                                                                   save_path=save_path, channel=channel,
+                                                                   userid=userid, username=username)
                                 if download_id:
                                     # 下载成功
+                                    logger.info(f"{meta.title} 添加下载成功")
                                     downloaded_list.append(context)
                                     # 更新仍需集数
                                     need_episodes = __update_episodes(_mid=need_mid,
                                                                       _need=need_episodes,
                                                                       _sea=need_season,
                                                                       _current=torrent_episodes)
+                                    logger.info(f"季 {need_season} 剩余需要集：{need_episodes}")
 
         # 仍然缺失的剧集，从整季中选择需要的集数文件下载，仅支持QB和TR
+        logger.info(f"开始电视剧多集拆包匹配：{no_exists}")
         if no_exists:
             # TMDBID列表
             no_exists_list = list(no_exists)
@@ -604,15 +663,17 @@ class DownloadChain(ChainBase):
                                 and len(meta.season_list) == 1 \
                                 and meta.season_list[0] == need_season:
                             # 检查种子看是否有需要的集
+                            logger.info(f"开始下载种子 {torrent.title} ...")
                             content, _, torrent_files = self.download_torrent(torrent)
                             if not content:
+                                logger.info(f"{torrent.title} 种子下载失败！")
                                 continue
                             if isinstance(content, str):
                                 logger.warn(f"{meta.org_string} 下载地址是磁力链，无法解析种子文件集数")
                                 continue
                             # 种子全部集
                             torrent_episodes = self.torrent.get_torrent_episodes(torrent_files)
-                            logger.info(f"{torrent.site_name} - {meta.org_string} 解析文件集数：{torrent_episodes}")
+                            logger.info(f"{torrent.site_name} - {meta.org_string} 解析种子文件集数：{torrent_episodes}")
                             # 选中的集
                             selected_episodes = set(torrent_episodes).intersection(set(need_episodes))
                             if not selected_episodes:
@@ -620,6 +681,7 @@ class DownloadChain(ChainBase):
                                 continue
                             logger.info(f"{torrent.site_name} - {torrent.title} 选中集数：{selected_episodes}")
                             # 添加下载
+                            logger.info(f"开始下载 {torrent.title} ...")
                             download_id = self.download_single(
                                 context=context,
                                 torrent_file=content if isinstance(content, Path) else None,
@@ -632,6 +694,7 @@ class DownloadChain(ChainBase):
                             if not download_id:
                                 continue
                             # 下载成功
+                            logger.info(f"{torrent.title} 添加下载成功")
                             downloaded_list.append(context)
                             # 更新种子集数范围
                             begin_ep = min(torrent_episodes)
@@ -642,15 +705,17 @@ class DownloadChain(ChainBase):
                                                               _need=need_episodes,
                                                               _sea=need_season,
                                                               _current=selected_episodes)
+                            logger.info(f"季 {need_season} 剩余需要集：{need_episodes}")
 
         # 返回下载的资源，剩下没下完的
+        logger.info(f"成功下载种子数：{len(downloaded_list)}，剩余未下载的剧集：{no_exists}")
         return downloaded_list, no_exists
 
     def get_no_exists_info(self, meta: MetaBase,
                            mediainfo: MediaInfo,
                            no_exists: Dict[int, Dict[int, NotExistMediaInfo]] = None,
                            totals: Dict[int, int] = None
-                           ) -> Tuple[bool, Dict[int, Dict[int, NotExistMediaInfo]]]:
+                           ) -> Tuple[bool, Dict[Union[int, str], Dict[int, NotExistMediaInfo]]]:
         """
         检查媒体库，查询是否存在，对于剧集同时返回不存在的季集信息
         :param meta: 元数据
@@ -837,6 +902,7 @@ class DownloadChain(ChainBase):
                 }
                 # 下载用户
                 torrent.userid = history.userid
+                torrent.username = history.username
             ret_torrents.append(torrent)
         return ret_torrents
 
@@ -855,3 +921,26 @@ class DownloadChain(ChainBase):
         删除下载任务
         """
         return self.remove_torrents(hashs=[hash_str])
+
+    @eventmanager.register(EventType.DownloadFileDeleted)
+    def download_file_deleted(self, event: Event):
+        """
+        下载文件删除时，同步删除下载任务
+        """
+        if not event:
+            return
+        hash_str = event.event_data.get("hash")
+        if not hash_str:
+            return
+        logger.warn(f"检测到下载源文件被删除，删除下载任务（不含文件）：{hash_str}")
+        # 先查询种子
+        torrents: List[schemas.TransferTorrent] = self.list_torrents(hashs=[hash_str])
+        if torrents:
+            self.remove_torrents(hashs=[hash_str], delete_file=False)
+            # 发出下载任务删除事件，如需处理辅种，可监听该事件
+            self.eventmanager.send_event(EventType.DownloadDeleted, {
+                "hash": hash_str,
+                "torrents": [torrent.dict() for torrent in torrents]
+            })
+        else:
+            logger.info(f"没有在下载器中查询到 {hash_str} 对应的下载任务")

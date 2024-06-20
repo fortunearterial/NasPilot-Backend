@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -16,6 +16,8 @@ class Plugin(BaseModel):
     plugin_icon: Optional[str] = None
     # 插件版本
     plugin_version: Optional[str] = None
+    # 插件标签
+    plugin_label: Optional[str] = None
     # 插件作者
     plugin_author: Optional[str] = None
     # 作者主页
@@ -38,3 +40,26 @@ class Plugin(BaseModel):
     is_local: Optional[bool] = False
     # 仓库地址
     repo_url: Optional[str] = None
+    # 安装次数
+    install_count: Optional[int] = 0
+    # 更新记录
+    history: Optional[dict] = {}
+    # 添加时间，值越小表示越靠后发布
+    add_time: Optional[int] = 0
+
+
+class PluginDashboard(Plugin):
+    """
+    插件仪表盘
+    """
+    id: Optional[str] = None
+    # 名称
+    name: Optional[str] = None
+    # 仪表板key
+    key: Optional[str] = None
+    # 全局配置
+    attrs: Optional[dict] = {}
+    # col列数
+    cols: Optional[dict] = {}
+    # 页面元素
+    elements: Optional[List[dict]] = []

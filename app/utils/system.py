@@ -71,8 +71,8 @@ class SystemUtils:
         """
         return True if platform.machine() == 'aarch64' else False
 
-    @property
-    def platform(self) -> str:
+    @staticmethod
+    def platform() -> str:
         """
         获取系统平台
         """
@@ -118,12 +118,13 @@ class SystemUtils:
         硬链接
         """
         try:
-            # link到当前目录并改名
-            tmp_path = src.parent / (dest.name + ".mp")
+            # 准备目标路径，增加后缀 .mp
+            tmp_path = dest.with_suffix(dest.suffix + ".mp")
+            # 检查目标路径是否已存在，如果存在则先unlink
             if tmp_path.exists():
                 tmp_path.unlink()
             tmp_path.hardlink_to(src)
-            # 移动到目标目录
+            # 硬链接完成，移除 .mp 后缀
             shutil.move(tmp_path, dest)
             return 0, ""
         except Exception as err:
@@ -389,6 +390,8 @@ class SystemUtils:
         """
         判断是否为蓝光原盘目录
         """
+        if not dir_path.is_dir():
+            return False
         # 蓝光原盘目录必备的文件或文件夹
         required_files = ['BDMV', 'CERTIFICATE']
         # 检查目录下是否存在所需文件或文件夹
@@ -435,6 +438,8 @@ class SystemUtils:
         """
         执行Docker重启操作
         """
+        if not SystemUtils.is_docker():
+            return False, "非Docker环境，无法重启！"
         try:
             # 创建 Docker 客户端
             client = docker.DockerClient(base_url='tcp://127.0.0.1:38379')
@@ -461,3 +466,38 @@ class SystemUtils:
         except Exception as err:
             print(str(err))
             return False, f"重启时发生错误：{str(err)}"
+
+    @staticmethod
+    def is_hardlink(src: Path, dest: Path) -> bool:
+        """判断是否为硬链接"""
+        try:
+            if not src.exists() or not dest.exists():
+                return False
+            if src.is_file():
+                # 如果是文件，直接比较文件
+                return src.samefile(dest)
+            else:
+                for src_file in src.glob("**/*"):
+                    if src_file.is_dir():
+                        continue
+                    # 计算目标文件路径
+                    relative_path = src_file.relative_to(src)
+                    target_file = dest.joinpath(relative_path)
+                    # 检查是否是硬链接
+                    if not target_file.exists() or not src_file.samefile(target_file):
+                        return False
+                return True
+        except (PermissionError, FileNotFoundError, ValueError, OSError) as e:
+            print(f"Error occurred: {e}")
+            return False
+
+    @staticmethod
+    def is_same_disk(src: Path, dest: Path) -> bool:
+        """
+        判断两个路径是否在同一磁盘
+        """
+        if not src.exists() or not dest.exists():
+            return False
+        if os.name == "nt":
+            return src.drive == dest.drive
+        return os.stat(src).st_dev == os.stat(dest).st_dev

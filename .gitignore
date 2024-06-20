@@ -4,6 +4,9 @@
 build/
 dist/
 nginx/
+config/cookies/**
 config/
 *.c
 *.pyc
+.vscode
+venv

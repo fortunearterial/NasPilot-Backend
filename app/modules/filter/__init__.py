@@ -39,11 +39,18 @@ class FilterModule(_ModuleBase):
         # 中字
         "CNSUB": {
             "include": [
-                r'[中国國繁简](/|\s|\\|\|)?[繁简英粤]|[英简繁](/|\s|\\|\|)?[中繁简]|繁體|简体|[中国國][字配]|国语|國語|中文|中字'],
+                r'[中国國繁简](/|\s|\\|\|)?[繁简英粤]|[英简繁](/|\s|\\|\|)?[中繁简]'
+                r'|繁體|简体|[中国國][字配]|国语|國語|中文|中字|简日|繁日|简繁|繁体'
+                r'|([\s,.-\[])(CHT|CHS|cht|chs)(|[\s,.-\]])'],
             "exclude": [],
             "tmdb": {
                 "original_language": "zh,cn"
             }
+        },
+        # 官种
+        "GZ": {
+            "include": [r'官方', r'官种'],
+            "match": ["labels"]
         },
         # 特效字幕
         "SPECSUB": {
@@ -129,7 +136,14 @@ class FilterModule(_ModuleBase):
     def init_module(self) -> None:
         self.parser = RuleParser()
 
+    @staticmethod
+    def get_name() -> str:
+        return "过滤器"
+
     def stop(self):
+        pass
+
+    def test(self):
         pass
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
@@ -153,12 +167,13 @@ class FilterModule(_ModuleBase):
         # 返回种子列表
         ret_torrents = []
         for torrent in torrent_list:
-            # 能命中优先级的才返回
-            if not self.__get_order(torrent, rule_string):
-                continue
             # 季集数过滤
             if season_episodes \
                     and not self.__match_season_episodes(torrent, season_episodes):
+                continue
+            # 能命中优先级的才返回
+            if not self.__get_order(torrent, rule_string):
+                logger.debug(f"种子 {torrent.site_name} - {torrent.title} {torrent.description} 不匹配优先级规则")
                 continue
             ret_torrents.append(torrent)
 
@@ -181,7 +196,7 @@ class FilterModule(_ModuleBase):
         torrent_episodes = meta.episode_list
         if not set(torrent_seasons).issubset(set(seasons)):
             # 种子季不在过滤季中
-            logger.info(f"种子 {torrent.site_name} - {torrent.title} 不是需要的季")
+            logger.debug(f"种子 {torrent.site_name} - {torrent.title} 包含季 {torrent_seasons} 不是需要的季 {list(seasons)}")
             return False
         if not torrent_episodes:
             # 整季按匹配处理
@@ -191,7 +206,7 @@ class FilterModule(_ModuleBase):
             if need_episodes \
                     and not set(torrent_episodes).intersection(set(need_episodes)):
                 # 单季集没有交集的不要
-                logger.info(f"种子 {torrent.site_name} - {torrent.title} "
+                logger.debug(f"种子 {torrent.site_name} - {torrent.title} "
                             f"集 {torrent_episodes} 没有需要的集：{need_episodes}")
                 return False
         return True
@@ -213,7 +228,7 @@ class FilterModule(_ModuleBase):
             if self.__match_group(torrent, parsed_group.as_list()[0]):
                 # 出现匹配时中断
                 matched = True
-                logger.info(f"种子 {torrent.site_name} - {torrent.title} 优先级为 {100 - res_order + 1}")
+                logger.debug(f"种子 {torrent.site_name} - {torrent.title} 优先级为 {100 - res_order + 1}")
                 torrent.pri_order = res_order
                 break
             # 优先级降低，继续匹配
@@ -253,14 +268,30 @@ class FilterModule(_ModuleBase):
         # 符合TMDB规则的直接返回True，即不过滤
         if tmdb and self.__match_tmdb(tmdb):
             return True
+        # 匹配项：标题、副标题、标签
+        content = f"{torrent.title} {torrent.description} {' '.join(torrent.labels or [])}"
+        # 只匹配指定关键字
+        match_content = []
+        matchs = self.rule_set[rule_name].get("match") or []
+        if matchs:
+            for match in matchs:
+                if not hasattr(torrent, match):
+                    continue
+                match_value = getattr(torrent, match)
+                if not match_value:
+                    continue
+                if isinstance(match_value, list):
+                    match_content.extend(match_value)
+                else:
+                    match_content.append(match_value)
+        if match_content:
+            content = " ".join(match_content)
         # 包含规则项
         includes = self.rule_set[rule_name].get("include") or []
         # 排除规则项
         excludes = self.rule_set[rule_name].get("exclude") or []
         # FREE规则
         downloadvolumefactor = self.rule_set[rule_name].get("downloadvolumefactor")
-        # 匹配项
-        content = f"{torrent.title} {torrent.description} {' '.join(torrent.labels or [])}"
         for include in includes:
             if not re.search(r"%s" % include, content, re.IGNORECASE):
                 # 未发现包含项
@@ -307,7 +338,7 @@ class FilterModule(_ModuleBase):
                     info_values = [str(info_value).upper()]
             # 过滤值转化为数组
             if value.find(",") != -1:
-                values = [str(val).upper() for val in value.split(",")]
+                values = [str(val).upper() for val in value.split(",") if val]
             else:
                 values = [str(value).upper()]
             # 没有交集为不匹配

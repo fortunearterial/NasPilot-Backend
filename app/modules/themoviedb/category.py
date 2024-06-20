@@ -18,9 +18,12 @@ class CategoryHelper(metaclass=Singleton):
 
     def __init__(self):
         self._category_path: Path = settings.CONFIG_PATH / "category.yaml"
-        # 二级分类策略关闭
-        if not settings.LIBRARY_CATEGORY:
-            return
+        self.init()
+
+    def init(self):
+        """
+        初始化
+        """
         try:
             if not self._category_path.exists():
                 shutil.copy(settings.INNER_CONFIG_PATH / "category.yaml", self._category_path)
@@ -85,7 +88,7 @@ class CategoryHelper(metaclass=Singleton):
 
     def get_tv_category(self, tmdb_info) -> str:
         """
-        判断电视剧的分类
+        判断电视剧的分类，包括动漫
         :param tmdb_info: 识别的TMDB中的信息
         :return: 二级分类的名称
         """
@@ -123,7 +126,7 @@ class CategoryHelper(metaclass=Singleton):
                         info_values = [str(info_value).upper()]
 
                 if value.find(",") != -1:
-                    values = [str(val).upper() for val in value.split(",")]
+                    values = [str(val).upper() for val in value.split(",") if val]
                 else:
                     values = [str(value).upper()]
 

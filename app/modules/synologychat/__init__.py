@@ -13,8 +13,21 @@ class SynologyChatModule(_ModuleBase):
     def init_module(self) -> None:
         self.synologychat = SynologyChat()
 
+    @staticmethod
+    def get_name() -> str:
+        return "Synology Chat"
+
     def stop(self):
         pass
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        state = self.synologychat.get_state()
+        if state:
+            return True, ""
+        return False, "SynologyChat未就续，请检查参数设置、网络连接以及机器人是否可见"
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "MESSAGER", "synologychat"

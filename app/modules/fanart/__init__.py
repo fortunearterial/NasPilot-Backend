@@ -317,8 +317,23 @@ class FanartModule(_ModuleBase):
     def stop(self):
         pass
 
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        ret = RequestUtils().get_res("https://webservice.fanart.tv")
+        if ret and ret.status_code == 200:
+            return True, ""
+        elif ret:
+            return False, f"无法连接fanart，错误码：{ret.status_code}"
+        return False, "fanart网络连接失败"
+
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "FANART_API_KEY", True
+
+    @staticmethod
+    def get_name() -> str:
+        return "Fanart"
 
     def obtain_images(self, mediainfo: MediaInfo) -> Optional[MediaInfo]:
         """
@@ -326,6 +341,8 @@ class FanartModule(_ModuleBase):
         :param mediainfo:  识别的媒体信息
         :return: 更新后的媒体信息
         """
+        if not settings.FANART_ENABLE:
+            return None
         if not mediainfo.tmdb_id and not mediainfo.tvdb_id:
             return None
         if mediainfo.type == MediaType.MOVIE:

@@ -1,6 +1,6 @@
 import json
 import threading
-from typing import List, Union
+from typing import List, Union, Optional
 
 from app import schemas
 from app.chain import ChainBase
@@ -20,11 +20,11 @@ class MediaServerChain(ChainBase):
         super().__init__()
         self.dboper = MediaServerOper()
 
-    def librarys(self, server: str) -> List[schemas.MediaServerLibrary]:
+    def librarys(self, server: str = None, username: str = None) -> List[schemas.MediaServerLibrary]:
         """
         获取媒体服务器所有媒体库
         """
-        return self.run_module("mediaserver_librarys", server=server)
+        return self.run_module("mediaserver_librarys", server=server, username=username)
 
     def items(self, server: str, library_id: Union[str, int]) -> List[schemas.MediaServerItem]:
         """
@@ -44,24 +44,44 @@ class MediaServerChain(ChainBase):
         """
         return self.run_module("mediaserver_tv_episodes", server=server, item_id=item_id)
 
+    def playing(self, count: int = 20, server: str = None, username: str = None) -> List[schemas.MediaServerPlayItem]:
+        """
+        获取媒体服务器正在播放信息
+        """
+        return self.run_module("mediaserver_playing", count=count, server=server, username=username)
+
+    def latest(self, count: int = 20, server: str = None, username: str = None) -> List[schemas.MediaServerPlayItem]:
+        """
+        获取媒体服务器最新入库条目
+        """
+        return self.run_module("mediaserver_latest", count=count, server=server, username=username)
+
+    def get_play_url(self, server: str, item_id: Union[str, int]) -> Optional[str]:
+        """
+        获取播放地址
+        """
+        return self.run_module("mediaserver_play_url", server=server, item_id=item_id)
+
     def sync(self):
         """
         同步媒体库所有数据到本地数据库
         """
+        # 设置的媒体服务器
+        if not settings.MEDIASERVER:
+            return
+        # 同步黑名单
+        sync_blacklist = settings.MEDIASERVER_SYNC_BLACKLIST.split(
+            ",") if settings.MEDIASERVER_SYNC_BLACKLIST else []
+        mediaservers = settings.MEDIASERVER.split(",")
         with lock:
             # 汇总统计
             total_count = 0
             # 清空登记薄
             self.dboper.empty()
-            # 同步黑名单
-            sync_blacklist = settings.MEDIASERVER_SYNC_BLACKLIST.split(
-                ",") if settings.MEDIASERVER_SYNC_BLACKLIST else []
-            # 设置的媒体服务器
-            if not settings.MEDIASERVER:
-                return
-            mediaservers = settings.MEDIASERVER.split(",")
             # 遍历媒体服务器
             for mediaserver in mediaservers:
+                if not mediaserver:
+                    continue
                 logger.info(f"开始同步媒体库 {mediaserver} 的数据 ...")
                 for library in self.librarys(mediaserver):
                     # 同步黑名单 跳过

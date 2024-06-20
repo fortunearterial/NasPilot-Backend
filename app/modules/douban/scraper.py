@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 from typing import Union
 from xml.dom import minidom
@@ -30,6 +29,9 @@ class DoubanScraper:
         :param force_nfo: 强制生成NFO
         :param force_img: 强制生成图片
         """
+
+        if not mediainfo or not file_path:
+            return
 
         self._transfer_type = transfer_type
         self._force_nfo = force_nfo
@@ -83,10 +85,6 @@ class DoubanScraper:
 
     @staticmethod
     def __gen_common_nfo(mediainfo: MediaInfo, doc, root):
-        # 添加时间
-        DomUtils.add_node(doc, root, "dateadded",
-                          time.strftime('%Y-%m-%d %H:%M:%S',
-                                        time.localtime(time.time())))
         # 简介
         xplot = DomUtils.add_node(doc, root, "plot")
         xplot.appendChild(doc.createCDATASection(mediainfo.overview or ""))
@@ -166,8 +164,6 @@ class DoubanScraper:
         logger.info(f"正在生成季NFO文件：{season_path.name}")
         doc = minidom.Document()
         root = DomUtils.add_node(doc, doc, "season")
-        # 添加时间
-        DomUtils.add_node(doc, root, "dateadded", time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
         # 简介
         xplot = DomUtils.add_node(doc, root, "plot")
         xplot.appendChild(doc.createCDATASection(mediainfo.overview or ""))

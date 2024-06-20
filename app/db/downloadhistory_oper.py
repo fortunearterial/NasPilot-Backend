@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import List
 
 from app.db import DbOper
@@ -10,12 +9,12 @@ class DownloadHistoryOper(DbOper):
     下载历史管理
     """
 
-    def get_by_path(self, path: Path) -> DownloadHistory:
+    def get_by_path(self, path: str) -> DownloadHistory:
         """
         按路径查询下载记录
         :param path: 数据key
         """
-        return DownloadHistory.get_by_path(self._db, str(path))
+        return DownloadHistory.get_by_path(self._db, path)
 
     def get_by_hash(self, download_hash: str) -> DownloadHistory:
         """
@@ -132,3 +131,11 @@ class DownloadHistoryOper(DbOper):
                                             type=type,
                                             tmdbid=tmdbid,
                                             seasons=seasons)
+
+    def list_by_type(self, mtype: str, days: int = 7) -> List[DownloadHistory]:
+        """
+        获取指定类型的下载历史
+        """
+        return DownloadHistory.list_by_type(db=self._db,
+                                            mtype=mtype,
+                                            days=days)

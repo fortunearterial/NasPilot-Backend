@@ -1,4 +1,4 @@
-FROM python:3.11.4-slim-bullseye
+FROM python:3.11.4-slim-bookworm
 ARG NASPILOT_VERSION
 ENV LANG="C.UTF-8" \
     TZ="Asia/Shanghai" \
@@ -16,6 +16,7 @@ ENV LANG="C.UTF-8" \
     IYUU_SIGN=""
 WORKDIR "/app"
 RUN apt-get update -y \
+    && apt-get upgrade -y \
     && apt-get -y install \
         musl-dev \
         nginx \
@@ -33,6 +34,7 @@ RUN apt-get update -y \
         fuse3 \
         rsync \
         ffmpeg \
+        nano \
     && \
     if [ "$(uname -m)" = "x86_64" ]; \
         then ln -s /usr/lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so.1; \

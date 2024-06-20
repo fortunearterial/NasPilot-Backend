@@ -1,4 +1,4 @@
-import time
+import traceback
 from pathlib import Path
 from typing import Union
 from xml.dom import minidom
@@ -7,6 +7,7 @@ from requests import RequestException
 
 from app.core.config import settings
 from app.core.context import MediaInfo
+from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfo
 from app.log import logger
 from app.schemas.types import MediaType
@@ -26,15 +27,19 @@ class TmdbScraper:
         self.tmdb = tmdb
 
     def gen_scraper_files(self, mediainfo: MediaInfo, file_path: Path, transfer_type: str,
-                          force_nfo: bool = False, force_img: bool = False):
+                          metainfo: MetaBase = None, force_nfo: bool = False, force_img: bool = False):
         """
         生成刮削文件，包括NFO和图片，传入路径为文件路径
         :param mediainfo: 媒体信息
+        :param metainfo: 源文件的识别元数据
         :param file_path: 文件路径或者目录路径
         :param transfer_type: 传输类型
         :param force_nfo: 是否强制生成NFO
         :param force_img: 是否强制生成图片
         """
+
+        if not mediainfo or not file_path:
+            return
 
         self._transfer_type = transfer_type
         self._force_nfo = force_nfo
@@ -72,8 +77,10 @@ class TmdbScraper:
                                               file_path=image_path)
             # 电视剧，路径为每一季的文件名 名称/Season xx/名称 SxxExx.xxx
             else:
-                # 识别
-                meta = MetaInfo(file_path.stem)
+                # 如果有上游传入的元信息则使用，否则使用文件名识别
+                meta = metainfo or MetaInfo(file_path.name)
+                if meta.begin_season is None:
+                    meta.begin_season = mediainfo.season if mediainfo.season is not None else 1
                 # 根目录不存在时才处理
                 if self._force_nfo or not file_path.parent.with_name("tvshow.nfo").exists():
                     # 根目录描述文件
@@ -81,7 +88,7 @@ class TmdbScraper:
                                            dir_path=file_path.parents[1])
                 # 生成根目录图片
                 for attr_name, attr_value in vars(mediainfo).items():
-                    if attr_value \
+                    if attr_name \
                             and attr_name.endswith("_path") \
                             and not attr_name.startswith("season") \
                             and attr_value \
@@ -135,23 +142,21 @@ class TmdbScraper:
                                                        file_path=file_path)
                     # 集的图片
                     episode_image = episodeinfo.get("still_path")
-                    image_path = file_path.with_name(file_path.stem + "-thumb").with_suffix(Path(episode_image).suffix)
-                    if episode_image and (self._force_img or not image_path.exists()):
-                        self.__save_image(
-                            f"https://{settings.TMDB_IMAGE_DOMAIN}/t/p/original{episode_image}",
-                            image_path)
+                    if episode_image:
+                        image_path = file_path.with_name(file_path.stem + "-thumb.jpg").with_suffix(
+                            Path(episode_image).suffix)
+                        if self._force_img or not image_path.exists():
+                            self.__save_image(
+                                f"https://{settings.TMDB_IMAGE_DOMAIN}/t/p/original{episode_image}",
+                                image_path)
         except Exception as e:
-            logger.error(f"{file_path} 刮削失败：{str(e)}")
+            logger.error(f"{file_path} 刮削失败：{str(e)} - {traceback.format_exc()}")
 
     @staticmethod
     def __gen_common_nfo(mediainfo: MediaInfo, doc, root):
         """
         生成公共NFO
         """
-        # 添加时间
-        DomUtils.add_node(doc, root, "dateadded",
-                          time.strftime('%Y-%m-%d %H:%M:%S',
-                                        time.localtime(time.time())))
         # TMDB
         DomUtils.add_node(doc, root, "tmdbid", mediainfo.tmdb_id or "")
         uniqueid_tmdb = DomUtils.add_node(doc, root, "uniqueid", mediainfo.tmdb_id or "")
@@ -264,9 +269,6 @@ class TmdbScraper:
         logger.info(f"正在生成季NFO文件：{season_path.name}")
         doc = minidom.Document()
         root = DomUtils.add_node(doc, doc, "season")
-        # 添加时间
-        DomUtils.add_node(doc, root, "dateadded",
-                          time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
         # 简介
         xplot = DomUtils.add_node(doc, root, "plot")
         xplot.appendChild(doc.createCDATASection(seasoninfo.get("overview") or ""))
@@ -303,10 +305,8 @@ class TmdbScraper:
         logger.info(f"正在生成剧集NFO文件：{file_path.name}")
         doc = minidom.Document()
         root = DomUtils.add_node(doc, doc, "episodedetails")
-        # 添加时间
-        DomUtils.add_node(doc, root, "dateadded", time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
         # TMDBID
-        uniqueid = DomUtils.add_node(doc, root, "uniqueid", str(tmdbid))
+        uniqueid = DomUtils.add_node(doc, root, "uniqueid", str(episodeinfo.get("id")))
         uniqueid.setAttribute("type", "tmdb")
         uniqueid.setAttribute("default", "true")
         # tmdbid
@@ -357,7 +357,7 @@ class TmdbScraper:
         """
         try:
             logger.info(f"正在下载{file_path.stem}图片：{url} ...")
-            r = RequestUtils().get_res(url=url, raise_exception=True)
+            r = RequestUtils(proxies=settings.PROXY).get_res(url=url, raise_exception=True)
             if r:
                 if self._transfer_type in ['rclone_move', 'rclone_copy']:
                     self.__save_remove_file(file_path, r.content)

@@ -16,32 +16,42 @@ class TorrentStatus(Enum):
 
 # 可监听事件
 class EventType(Enum):
-    # 插件重载
+    # 插件需要重载
     PluginReload = "plugin.reload"
     # 插件动作
     PluginAction = "plugin.action"
     # 执行命令
     CommandExcute = "command.excute"
-    # 站点删除
+    # 站点已删除
     SiteDeleted = "site.deleted"
-    # Webhook消息
-    WebhookMessage = "webhook.message"
+    # 站点已更新
+    SiteUpdated = "site.updated"
     # 转移完成
     TransferComplete = "transfer.complete"
-    # 添加下载
+    # 下载已添加
     DownloadAdded = "download.added"
     # 删除历史记录
     HistoryDeleted = "history.deleted"
     # 删除下载源文件
     DownloadFileDeleted = "downloadfile.deleted"
-    # 用户外来消息
+    # 删除下载任务
+    DownloadDeleted = "download.deleted"
+    # 收到用户外来消息
     UserMessage = "user.message"
-    # 通知消息
+    # 收到Webhook消息
+    WebhookMessage = "webhook.message"
+    # 发送消息通知
     NoticeMessage = "notice.message"
     # 名称识别请求
     NameRecognize = "name.recognize"
     # 名称识别结果
     NameRecognizeResult = "name.recognize.result"
+    # 订阅已添加
+    SubscribeAdded = "subscribe.added"
+    # 订阅已完成
+    SubscribeComplete = "subscribe.complete"
+    # 系统错误
+    SystemError = "system.error"
 
 
 # 系统配置Key字典
@@ -76,6 +86,16 @@ class SystemConfigKey(Enum):
     DefaultSearchFilterRules = "DefaultSearchFilterRules"
     # 转移屏蔽词
     TransferExcludeWords = "TransferExcludeWords"
+    # 插件安装统计
+    PluginInstallReport = "PluginInstallReport"
+    # 订阅统计
+    SubscribeReport = "SubscribeReport"
+    # 用户自定义CSS
+    UserCustomCSS = "UserCustomCSS"
+    # 下载目录定义
+    DownloadDirectories = "DownloadDirectories"
+    # 媒体库目录定义
+    LibraryDirectories = "LibraryDirectories"
 
 
 # 处理进度Key字典
@@ -106,6 +126,8 @@ class NotificationType(Enum):
     MediaServer = "媒体服务器通知"
     # 处理失败需要人工干预
     Manual = "手动处理通知"
+    # 插件消息
+    Plugin = "插件消息"
 
 
 class MessageChannel(Enum):
@@ -116,3 +138,12 @@ class MessageChannel(Enum):
     Telegram = "Telegram"
     Slack = "Slack"
     SynologyChat = "SynologyChat"
+    VoceChat = "VoceChat"
+    Web = "Web"
+    WebPush = "WebPush"
+
+
+# 用户配置Key字典
+class UserConfigKey(Enum):
+    # 监控面板
+    Dashboard = "Dashboard"

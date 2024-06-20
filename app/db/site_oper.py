@@ -63,6 +63,12 @@ class SiteOper(DbOper):
         """
         return Site.get_by_domain(self._db, domain)
 
+    def get_domains_by_ids(self, ids: List[int]) -> List[str]:
+        """
+        按ID获取站点域名
+        """
+        return Site.get_domains_by_ids(self._db, ids)
+
     def get_by_url(self, url: str) -> Site:
         """
         按地址获取站点

@@ -8,11 +8,10 @@ from qbittorrentapi.transfer import TransferInfoDictionary
 
 from app.core.config import settings
 from app.log import logger
-from app.utils.singleton import Singleton
 from app.utils.string import StringUtils
 
 
-class Qbittorrent(metaclass=Singleton):
+class Qbittorrent:
     _host: str = None
     _port: int = None
     _username: str = None
@@ -120,6 +119,21 @@ class Qbittorrent(metaclass=Singleton):
                                             tags=tags)
         return None if error else torrents or []
 
+    def delete_torrents_tag(self, ids: Union[str, list], tag: Union[str, list]) -> bool:
+        """
+        删除Tag
+        :param ids: 种子Hash列表
+        :param tag: 标签内容
+        """
+        if not self.qbc:
+            return False
+        try:
+            self.qbc.torrents_delete_tags(torrent_hashes=ids, tags=tag)
+            return True
+        except Exception as err:
+            logger.error(f"删除种子Tag出错：{str(err)}")
+            return False
+
     def remove_torrents_tag(self, ids: Union[str, list], tag: Union[str, list]) -> bool:
         """
         移除种子Tag
@@ -129,7 +143,7 @@ class Qbittorrent(metaclass=Singleton):
         if not self.qbc:
             return False
         try:
-            self.qbc.torrents_delete_tags(torrent_hashes=ids, tags=tag)
+            self.qbc.torrents_remove_tags(torrent_hashes=ids, tags=tag)
             return True
         except Exception as err:
             logger.error(f"移除种子Tag出错：{str(err)}")
@@ -180,7 +194,7 @@ class Qbittorrent(metaclass=Singleton):
         通过标签多次尝试获取刚添加的种子ID，并移除标签
         """
         torrent_id = None
-        # QB添加下载后需要时间，重试5次每次等待5秒
+        # QB添加下载后需要时间，重试10次每次等待3秒
         for i in range(1, 10):
             time.sleep(3)
             torrent_id = self.__get_last_add_torrentid_by_tag(tags=tags,
@@ -188,7 +202,7 @@ class Qbittorrent(metaclass=Singleton):
             if torrent_id is None:
                 continue
             else:
-                self.remove_torrents_tag(torrent_id, tags)
+                self.delete_torrents_tag(torrent_id, tags)
                 break
         return torrent_id
 
@@ -357,6 +371,24 @@ class Qbittorrent(metaclass=Singleton):
         except Exception as err:
             logger.error(f"设置速度限制出错：{str(err)}")
             return False
+
+    def get_speed_limit(self) -> Optional[Tuple[float, float]]:
+        """
+        获取QB速度
+        :return: 返回download_limit 和upload_limit ，默认是0
+        """
+        if not self.qbc:
+            return None
+
+        download_limit = 0
+        upload_limit = 0
+        try:
+            download_limit = self.qbc.transfer.download_limit
+            upload_limit = self.qbc.transfer.upload_limit
+        except Exception as err:
+            logger.error(f"获取速度限制出错：{str(err)}")
+
+        return download_limit / 1024, upload_limit / 1024
 
     def recheck_torrents(self, ids: Union[str, list]) -> bool:
         """

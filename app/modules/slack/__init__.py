@@ -16,8 +16,21 @@ class SlackModule(_ModuleBase):
     def init_module(self) -> None:
         self.slack = Slack()
 
+    @staticmethod
+    def get_name() -> str:
+        return "Slack"
+
     def stop(self):
         self.slack.stop()
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        state = self.slack.get_state()
+        if state:
+            return True, ""
+        return False, "Slack未就续，请检查参数设置和网络连接"
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "MESSAGER", "slack"

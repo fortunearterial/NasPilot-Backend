@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import schemas
 from app.chain.transfer import TransferChain
-from app.core.security import verify_token
+from app.core.security import verify_token, verify_uri_token
 from app.db import get_db
 from app.db.models.transferhistory import TransferHistory
 from app.schemas import MediaType
@@ -19,6 +19,7 @@ def manual_transfer(path: str = None,
                     logid: int = None,
                     target: str = None,
                     tmdbid: int = None,
+                    doubanid: str = None,
                     type_name: str = None,
                     season: int = None,
                     transfer_type: str = None,
@@ -27,6 +28,7 @@ def manual_transfer(path: str = None,
                     episode_part: str = None,
                     episode_offset: int = 0,
                     min_filesize: int = 0,
+                    scrape: bool = None,
                     db: Session = Depends(get_db),
                     _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
@@ -36,13 +38,15 @@ def manual_transfer(path: str = None,
     :param target: 目标路径
     :param type_name: 媒体类型、电影/电视剧
     :param tmdbid: tmdbid
+    :param doubanid: 豆瓣ID
     :param season: 剧集季号
-    :param transfer_type: 转移类型，move/copy
+    :param transfer_type: 转移类型，move/copy 等
     :param episode_format: 剧集识别格式
     :param episode_detail: 剧集识别详细信息
     :param episode_part: 剧集识别分集信息
     :param episode_offset: 剧集识别偏移量
     :param min_filesize: 最小文件大小(MB)
+    :param scrape: 是否刮削元数据
     :param db: 数据库
     :param _: Token校验
     """
@@ -56,16 +60,16 @@ def manual_transfer(path: str = None,
             return schemas.Response(success=False, message=f"历史记录不存在，ID：{logid}")
         # 强制转移
         force = True
-        # 源路径
-        in_path = Path(history.src)
-        # 目的路径
-        if history.dest and str(history.dest) != "None":
-            # 删除旧的已整理文件
-            transfer.delete_files(Path(history.dest))
-            if not target:
-                target = transfer.get_root_path(path=history.dest,
-                                                type_name=history.type,
-                                                category=history.category)
+        if history.status and ("move" in history.mode):
+            # 重新整理成功的转移，则使用成功的 dest 做 in_path
+            in_path = Path(history.dest)
+        else:
+            # 源路径
+            in_path = Path(history.src)
+            # 目的路径
+            if history.dest and str(history.dest) != "None":
+                # 删除旧的已整理文件
+                transfer.delete_files(Path(history.dest))
     elif path:
         in_path = Path(path)
     else:
@@ -87,11 +91,13 @@ def manual_transfer(path: str = None,
         in_path=in_path,
         target=target,
         tmdbid=tmdbid,
+        doubanid=doubanid,
         mtype=mtype,
         season=season,
         transfer_type=transfer_type,
         epformat=epformat,
         min_filesize=min_filesize,
+        scrape=scrape,
         force=force
     )
     # 失败
@@ -100,4 +106,13 @@ def manual_transfer(path: str = None,
             errormsg = f"整理完成，{len(errormsg)} 个文件转移失败！"
         return schemas.Response(success=False, message=errormsg)
     # 成功
+    return schemas.Response(success=True)
+
+
+@router.get("/now", summary="立即执行下载器文件整理", response_model=schemas.Response)
+def now(_: str = Depends(verify_uri_token)) -> Any:
+    """
+    立即执行下载器文件整理 API_TOKEN认证（?token=xxx）
+    """
+    TransferChain().process()
     return schemas.Response(success=True)

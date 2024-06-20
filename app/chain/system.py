@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 from typing import Union
 
 from app.chain import ChainBase
@@ -40,19 +41,31 @@ class SystemChain(ChainBase, metaclass=Singleton):
             }, self._restart_file)
         SystemUtils.restart()
 
+    def __get_version_message(self) -> str:
+        """
+        获取版本信息文本
+        """
+        server_release_version = self.__get_server_release_version()
+        front_release_version = self.__get_front_release_version()
+        server_local_version = self.get_server_local_version()
+        front_local_version = self.get_frontend_version()
+        if server_release_version == server_local_version:
+            title = f"当前后端版本：{server_local_version}，已是最新版本\n"
+        else:
+            title = f"当前后端版本：{server_local_version}，远程版本：{server_release_version}\n"
+        if front_release_version == front_local_version:
+            title += f"当前前端版本：{front_local_version}，已是最新版本"
+        else:
+            title += f"当前前端版本：{front_local_version}，远程版本：{front_release_version}"
+        return title
+
     def version(self, channel: MessageChannel, userid: Union[int, str]):
         """
         查看当前版本、远程版本
         """
-        release_version = self.__get_release_version()
-        local_version = self.get_local_version()
-        if release_version == local_version:
-            title = f"当前版本：{local_version}，已是最新版本"
-        else:
-            title = f"当前版本：{local_version}，远程版本：{release_version}"
-
         self.post_message(Notification(channel=channel,
-                                       title=title, userid=userid))
+                                       title=self.__get_version_message(),
+                                       userid=userid))
 
     def restart_finish(self):
         """
@@ -71,33 +84,50 @@ class SystemChain(ChainBase, metaclass=Singleton):
             userid = restart_channel.get('userid')
 
             # 版本号
-            release_version = self.__get_release_version()
-            local_version = self.get_local_version()
-            if release_version == local_version:
-                title = f"当前版本：{local_version}"
-            else:
-                title = f"当前版本：{local_version}，远程版本：{release_version}"
+            title = self.__get_version_message()
             self.post_message(Notification(channel=channel,
-                                           title=f"系统已重启完成！{title}",
+                                           title=f"系统已重启完成！\n{title}",
                                            userid=userid))
             self.remove_cache(self._restart_file)
 
     @staticmethod
-    def __get_release_version():
+    def __get_server_release_version():
         """
-        获取最新版本
+        获取后端最新版本
         """
-        version_res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
-            "https://api.github.com/repos/fortunearterial/NasPilot-Backend/releases/latest")
-        if version_res:
-            ver_json = version_res.json()
-            version = f"{ver_json['tag_name']}"
-            return version
-        else:
+        try:
+            version_res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
+                "https://api.github.com/repos/fortunearterial/NasPilot-Backend/releases/latest")
+            if version_res:
+                ver_json = version_res.json()
+                version = f"{ver_json['tag_name']}"
+                return version
+            else:
+                return None
+        except Exception as err:
+            logger.error(f"获取后端最新版本失败：{str(err)}")
             return None
 
     @staticmethod
-    def get_local_version():
+    def __get_front_release_version():
+        """
+        获取前端最新版本
+        """
+        try:
+            version_res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
+                "https://api.github.com/repos/jxxghp/MoviePilot-Frontend/releases/latest")
+            if version_res:
+                ver_json = version_res.json()
+                version = f"{ver_json['tag_name']}"
+                return version
+            else:
+                return None
+        except Exception as err:
+            logger.error(f"获取前端最新版本失败：{str(err)}")
+            return None
+
+    @staticmethod
+    def get_server_local_version():
         """
         查看当前版本
         """
@@ -117,3 +147,20 @@ class SystemChain(ChainBase, metaclass=Singleton):
                     return None
             except Exception as err:
                 logger.error(f"加载版本文件 {version_file} 出错：{str(err)}")
+
+    @staticmethod
+    def get_frontend_version():
+        """
+        获取前端版本
+        """
+        version_file = Path(settings.FRONTEND_PATH) / "version.txt"
+        if version_file.exists():
+            try:
+                with open(version_file, 'r') as f:
+                    version = str(f.read()).strip()
+                return version
+            except Exception as err:
+                logger.error(f"加载版本文件 {version_file} 出错：{str(err)}")
+        else:
+            logger.warn("未找到前端版本文件，请正确设置 FRONTEND_PATH")
+            return None

@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.get("/last", summary="查询搜索结果", response_model=List[schemas.Context])
-async def search_latest(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
+def search_latest(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     查询搜索结果
     """
@@ -21,17 +21,19 @@ async def search_latest(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
     return [torrent.to_dict() for torrent in torrents]
 
 
-@router.get("/media/{mediaid}", summary="精确搜索资源", response_model=List[schemas.Context])
+@router.get("/media/{mediaid}", summary="精确搜索资源", response_model=schemas.Response)
 def search_by_id(mediaid: str,
                  mtype: str = None,
                  area: str = "title",
+                 season: str = None,
                  _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
-    根据TMDBID/豆瓣ID精确搜索站点资源 tmdb:/douban:/steam:
+    根据TMDBID/豆瓣ID精确搜索站点资源 tmdb:/douban:/bangumi:/steam:/javdb:
     """
-    torrents = []
     if mtype:
         mtype = MediaType(mtype)
+    if season:
+        season = int(season)s
     if mediaid.startswith("tmdb:"):
         tmdbid = int(mediaid.replace("tmdb:", ""))
         if settings.RECOGNIZE_SOURCE.__contains__("douban"):
@@ -39,9 +41,11 @@ def search_by_id(mediaid: str,
             doubaninfo = MediaChain().get_doubaninfo_by_tmdbid(tmdbid=tmdbid, mtype=mtype)
             if doubaninfo:
                 torrents = SearchChain().search_by_id(doubanid=doubaninfo.get("id"),
-                                                      mtype=mtype, area=area)
+                                                      mtype=mtype, area=area, season=season)
+            else:
+                return schemas.Response(success=False, message="未识别到豆瓣媒体信息")
         else:
-            torrents = SearchChain().search_by_id(tmdbid=tmdbid, mtype=mtype, area=area)
+            torrents = SearchChain().search_by_id(tmdbid=tmdbid, mtype=mtype, area=area, season=season)
     elif mediaid.startswith("douban:"):
         doubanid = mediaid.replace("douban:", "")
         if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
@@ -49,9 +53,34 @@ def search_by_id(mediaid: str,
             tmdbinfo = MediaChain().get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
             if tmdbinfo:
                 torrents = SearchChain().search_by_id(tmdbid=tmdbinfo.get("id"),
-                                                      mtype=mtype, area=area)
+                                                      mtype=mtype, area=area, season=season)
+            else:
+                return schemas.Response(success=False, message="未识别到TMDB媒体信息")
         else:
-            torrents = SearchChain().search_by_id(doubanid=doubanid, mtype=mtype, area=area)
+            torrents = SearchChain().search_by_id(doubanid=doubanid, mtype=mtype, area=area, season=season)
+    elif mediaid.startswith("bangumi:"):
+        bangumiid = int(mediaid.replace("bangumi:", ""))
+        if settings.RECOGNIZE_SOURCE == "themoviedb":
+            # 通过BangumiID识别TMDBID
+            tmdbinfo = MediaChain().get_tmdbinfo_by_bangumiid(bangumiid=bangumiid)
+            if tmdbinfo:
+                torrents = SearchChain().search_by_id(tmdbid=tmdbinfo.get("id"),
+                                                      mtype=mtype, area=area, season=season)
+            else:
+                return schemas.Response(success=False, message="未识别到TMDB媒体信息")
+        else:
+            # 通过BangumiID识别豆瓣ID
+            doubaninfo = MediaChain().get_doubaninfo_by_bangumiid(bangumiid=bangumiid)
+            if doubaninfo:
+                torrents = SearchChain().search_by_id(doubanid=doubaninfo.get("id"),
+                                                      mtype=mtype, area=area, season=season)
+            else:
+                return schemas.Response(success=False, message="未识别到豆瓣媒体信息")
+    else:
+        return schemas.Response(success=False, message="未知的媒体ID")
+
+    if not torrents:
+        return schemas.Response(success=False, message="未搜索到任何资源")
     elif mediaid.startswith("steam:"):
         steamid = mediaid.replace("steam:", "")
         torrents = SearchChain().search_by_id(steamid=steamid, mtype=mtype, area=area)
@@ -59,17 +88,18 @@ def search_by_id(mediaid: str,
         javdbid = mediaid.replace("javdb:", "")
         torrents = SearchChain().search_by_id(javdbid=javdbid, mtype=mtype, area=area)
     else:
-        return []
-    return [torrent.to_dict() for torrent in torrents]
+        return schemas.Response(success=True, data=[torrent.to_dict() for torrent in torrents])
 
 
-@router.get("/title", summary="模糊搜索资源", response_model=List[schemas.TorrentInfo])
-async def search_by_title(keyword: str = None,
-                          page: int = 0,
-                          site: int = None,
-                          _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+@router.get("/title", summary="模糊搜索资源", response_model=schemas.Response)
+def search_by_title(keyword: str = None,
+                    page: int = 0,
+                    site: int = None,
+                    _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     根据名称模糊搜索站点资源，支持分页，关键词为空是返回首页资源
     """
     torrents = SearchChain().search_by_title(title=keyword, page=page, site=site)
-    return [torrent.to_dict() for torrent in torrents]
+    if not torrents:
+        return schemas.Response(success=False, message="未搜索到任何资源")
+    return schemas.Response(success=True, data=[torrent.to_dict() for torrent in torrents])

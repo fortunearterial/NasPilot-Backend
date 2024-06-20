@@ -23,8 +23,22 @@ class QbittorrentModule(_ModuleBase):
     def init_module(self) -> None:
         self.qbittorrent = Qbittorrent()
 
+    @staticmethod
+    def get_name() -> str:
+        return "Qbittorrent"
+
     def stop(self):
         pass
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        if self.qbittorrent.is_inactive():
+            self.qbittorrent.reconnect()
+        if not self.qbittorrent.transfer_info():
+            return False, "无法获取Qbittorrent状态，请检查参数配置"
+        return True, ""
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "DOWNLOADER", "qbittorrent"
@@ -38,7 +52,8 @@ class QbittorrentModule(_ModuleBase):
             self.qbittorrent.reconnect()
 
     def download(self, content: Union[Path, str], download_dir: Path, cookie: str,
-                 episodes: Set[int] = None, category: str = None) -> Optional[Tuple[Optional[str], str]]:
+                 episodes: Set[int] = None, category: str = None,
+                 downloader: str = settings.DEFAULT_DOWNLOADER) -> Optional[Tuple[Optional[str], str]]:
         """
         根据种子文件，选择并添加下载任务
         :param content:  种子文件地址或者磁力链接
@@ -46,6 +61,7 @@ class QbittorrentModule(_ModuleBase):
         :param cookie:  cookie
         :param episodes:  需要下载的集数
         :param category:  分类
+        :param downloader:  下载器
         :return: 种子Hash，错误信息
         """
 
@@ -63,8 +79,12 @@ class QbittorrentModule(_ModuleBase):
                 logger.error(f"获取种子名称失败：{e}")
                 return "", 0
 
+        # 不是默认下载器不处理
+        if downloader != "qbittorrent":
+            return None
+
         if not content:
-            return
+            return None
         if isinstance(content, Path) and not content.exists():
             return None, f"种子文件不存在：{content}"
 
@@ -113,7 +133,7 @@ class QbittorrentModule(_ModuleBase):
             # 获取种子Hash
             torrent_hash = self.qbittorrent.get_torrent_id_by_tag(tags=tag)
             if not torrent_hash:
-                return None, f"获取种子Hash失败：{content}"
+                return None, f"下载任务添加成功，但获取Qbittorrent任务信息失败：{content}"
             else:
                 if is_paused:
                     # 种子文件
@@ -151,13 +171,18 @@ class QbittorrentModule(_ModuleBase):
                     return torrent_hash, "添加下载成功"
 
     def list_torrents(self, status: TorrentStatus = None,
-                      hashs: Union[list, str] = None) -> Optional[List[Union[TransferTorrent, DownloadingTorrent]]]:
+                      hashs: Union[list, str] = None,
+                      downloader: str = settings.DEFAULT_DOWNLOADER
+                      ) -> Optional[List[Union[TransferTorrent, DownloadingTorrent]]]:
         """
         获取下载器种子列表
         :param status:  种子状态
         :param hashs:  种子Hash
+        :param downloader:  下载器
         :return: 下载器中符合状态的种子列表
         """
+        if downloader != "qbittorrent":
+            return None
         ret_torrents = []
         if hashs:
             # 按Hash获取
@@ -167,11 +192,12 @@ class QbittorrentModule(_ModuleBase):
                 if content_path:
                     torrent_path = Path(content_path)
                 else:
-                    torrent_path = settings.SAVE_PATH / torrent.get('name')
+                    torrent_path = torrent.get('save_path') / torrent.get('name')
                 ret_torrents.append(TransferTorrent(
                     title=torrent.get('name'),
                     path=torrent_path,
                     hash=torrent.get('hash'),
+                    size=torrent.get('total_size'),
                     tags=torrent.get('tags')
                 ))
         elif status == TorrentStatus.TRANSFER:
@@ -186,7 +212,7 @@ class QbittorrentModule(_ModuleBase):
                 if content_path:
                     torrent_path = Path(content_path)
                 else:
-                    torrent_path = settings.SAVE_PATH / torrent.get('name')
+                    torrent_path = torrent.get('save_path') / torrent.get('name')
                 ret_torrents.append(TransferTorrent(
                     title=torrent.get('name'),
                     path=torrent_path,
@@ -206,7 +232,7 @@ class QbittorrentModule(_ModuleBase):
                     season_episode=meta.season_episode,
                     progress=torrent.get('progress') * 100,
                     size=torrent.get('total_size'),
-                    state="paused" if torrent.get('state') == "paused" else "downloading",
+                    state="paused" if torrent.get('state') in ("paused", "pausedDL") else "downloading",
                     dlspeed=StringUtils.str_filesize(torrent.get('dlspeed')),
                     upspeed=StringUtils.str_filesize(torrent.get('upspeed')),
                     left_time=StringUtils.str_secends(
@@ -217,13 +243,16 @@ class QbittorrentModule(_ModuleBase):
             return None
         return ret_torrents
 
-    def transfer_completed(self, hashs: Union[str, list],
-                           path: Path = None) -> None:
+    def transfer_completed(self, hashs: str, path: Path = None,
+                           downloader: str = settings.DEFAULT_DOWNLOADER) -> None:
         """
         转移完成后的处理
         :param hashs:  种子Hash
         :param path:  源目录
+        :param downloader:  下载器
         """
+        if downloader != "qbittorrent":
+            return
         self.qbittorrent.set_torrents_tag(ids=hashs, tags=['已整理'])
         # 移动模式删除种子
         if settings.TRANSFER_TYPE == "move":
@@ -236,47 +265,61 @@ class QbittorrentModule(_ModuleBase):
                     logger.warn(f"删除残留文件夹：{path}")
                     shutil.rmtree(path, ignore_errors=True)
 
-    def remove_torrents(self, hashs: Union[str, list]) -> bool:
+    def remove_torrents(self, hashs: Union[str, list], delete_file: bool = True,
+                        downloader: str = settings.DEFAULT_DOWNLOADER) -> Optional[bool]:
         """
         删除下载器种子
         :param hashs:  种子Hash
+        :param delete_file:  是否删除文件
+        :param downloader:  下载器
         :return: bool
         """
-        return self.qbittorrent.delete_torrents(delete_file=True, ids=hashs)
+        if downloader != "qbittorrent":
+            return None
+        return self.qbittorrent.delete_torrents(delete_file=delete_file, ids=hashs)
 
-    def start_torrents(self, hashs: Union[list, str]) -> bool:
+    def start_torrents(self, hashs: Union[list, str],
+                       downloader: str = settings.DEFAULT_DOWNLOADER) -> Optional[bool]:
         """
         开始下载
         :param hashs:  种子Hash
+        :param downloader:  下载器
         :return: bool
         """
+        if downloader != "qbittorrent":
+            return None
         return self.qbittorrent.start_torrents(ids=hashs)
 
-    def stop_torrents(self, hashs: Union[list, str]) -> bool:
+    def stop_torrents(self, hashs: Union[list, str], downloader: str = settings.DEFAULT_DOWNLOADER) -> Optional[bool]:
         """
         停止下载
         :param hashs:  种子Hash
+        :param downloader:  下载器
         :return: bool
         """
+        if downloader != "qbittorrent":
+            return None
         return self.qbittorrent.stop_torrents(ids=hashs)
 
-    def torrent_files(self, tid: str) -> Optional[TorrentFilesList]:
+    def torrent_files(self, tid: str, downloader: str = settings.DEFAULT_DOWNLOADER) -> Optional[TorrentFilesList]:
         """
         获取种子文件列表
         """
+        if downloader != "qbittorrent":
+            return None
         return self.qbittorrent.get_files(tid=tid)
 
-    def downloader_info(self) -> schemas.DownloaderInfo:
+    def downloader_info(self) -> [schemas.DownloaderInfo]:
         """
         下载器信息
         """
         # 调用Qbittorrent API查询实时信息
         info = self.qbittorrent.transfer_info()
         if not info:
-            return schemas.DownloaderInfo()
-        return schemas.DownloaderInfo(
+            return [schemas.DownloaderInfo()]
+        return [schemas.DownloaderInfo(
             download_speed=info.get("dl_info_speed"),
             upload_speed=info.get("up_info_speed"),
             download_size=info.get("dl_info_data"),
             upload_size=info.get("up_info_data")
-        )
+        )]

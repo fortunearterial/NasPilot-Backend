@@ -1,18 +1,22 @@
 import json
 from typing import List, Any
 
+import cn2an
 from fastapi import APIRouter, Request, BackgroundTasks, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 
 from app import schemas
 from app.chain.subscribe import SubscribeChain
 from app.core.config import settings
+from app.core.context import MediaInfo
 from app.core.metainfo import MetaInfo
 from app.core.security import verify_token, verify_uri_token
 from app.db import get_db
 from app.db.models.subscribe import Subscribe
+from app.db.models.subscribehistory import SubscribeHistory
 from app.db.models.user import User
 from app.db.userauth import get_current_active_user
+from app.helper.subscribe import SubscribeHelper
 from app.scheduler import Scheduler
 from app.schemas.types import MediaType
 
@@ -41,7 +45,12 @@ def read_subscribes(
     subscribes = Subscribe.list(db)
     for subscribe in subscribes:
         if subscribe.sites:
-            subscribe.sites = json.loads(subscribe.sites)
+            try:
+                subscribe.sites = json.loads(str(subscribe.sites))
+            except json.JSONDecodeError:
+                subscribe.sites = []
+        else:
+            subscribe.sites = []
     if current_user.is_superuser:
         if type_in:
             if type_in == MediaType.JAV.value:
@@ -77,7 +86,7 @@ def create_subscribe(
     else:
         mtype = None
     # 豆瓣标理
-    if subscribe_in.doubanid:
+    if subscribe_in.doubanid or subscribe_in.bangumiid:
         meta = MetaInfo(subscribe_in.name)
         subscribe_in.name = meta.name
         subscribe_in.season = meta.begin_season
@@ -92,15 +101,17 @@ def create_subscribe(
                                         tmdbid=subscribe_in.tmdbid,
                                         season=subscribe_in.season,
                                         doubanid=subscribe_in.doubanid,
+                                        bangumiid=subscribe_in.bangumiid,
                                         steamid=subscribe_in.steamid,
                                         javdbid=subscribe_in.javdbid,
                                         username=current_user.name,
                                         best_version=subscribe_in.best_version,
                                         save_path=subscribe_in.save_path,
+                                        search_imdbid=subscribe_in.search_imdbid,
                                         exist_ok=True)
-    return schemas.Response(success=True if sid else False, message=message, data={
-        "id": sid
-    })
+    return schemas.Response(
+        success=bool(sid), message=message, data={"id": sid}
+    )
 
 
 @router.put("/", summary="更新订阅", response_model=schemas.Response)
@@ -129,6 +140,9 @@ def update_subscribe(
             subscribe_dict["lack_episode"] = (subscribe.lack_episode
                                               + (subscribe_in.total_episode
                                                  - (subscribe.total_episode or 0)))
+    # 是否手动修改过总集数
+    if subscribe_in.total_episode != subscribe.total_episode:
+        subscribe_dict["manual_total_episode"] = 1
     subscribe.update(db, subscribe_dict)
     return schemas.Response(success=True)
 
@@ -141,9 +155,10 @@ def subscribe_mediaid(
         db: Session = Depends(get_db),
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
-    根据TMDBID或豆瓣ID查询订阅 tmdb:/douban:/steam:
+    根据 mediaId 查询订阅 tmdb:/douban:/steam:/javdb:
     """
     result = None
+    title_check = False
     if mediaid.startswith("tmdb:"):
         tmdbid = mediaid[5:]
         if not tmdbid or not str(tmdbid).isdigit():
@@ -154,7 +169,13 @@ def subscribe_mediaid(
         if not doubanid:
             return Subscribe()
         result = Subscribe.get_by_doubanid(db, doubanid)
-    elif mediaid.startswith("steam:"):
+        if not result and title:
+            title_check = True
+    elif mediaid.startswith("bangumi:"):
+        bangumiid = mediaid[8:]
+        if not bangumiid or not str(bangumiid).isdigit():
+            return Subscribe()
+        result = Subscribe.get_by_bangumiid(db, int(bangumiid))    elif mediaid.startswith("steam:"):
         steamid = mediaid[6:]
         if not steamid:
             return Subscribe()
@@ -165,14 +186,19 @@ def subscribe_mediaid(
             return Subscribe()
         result = Subscribe.get_by_javdbid(db, javdbid)
 
-    if not result and title:
+        if not result and title:
+            title_check = True
+    # 使用名称检查订阅
+    if title_check and title:
         meta = MetaInfo(title)
         if season:
             meta.begin_season = season
         result = Subscribe.get_by_title(db, title=meta.name, season=meta.begin_season)
-
     if result and result.sites:
-        result.sites = json.loads(result.sites)
+        try:
+            result.sites = json.loads(result.sites)
+        except json.JSONDecodeError:
+            result.sites = []
 
     return result if result else Subscribe()
 
@@ -185,6 +211,23 @@ def refresh_subscribes(
     """
     Scheduler().start("subscribe_refresh")
     return schemas.Response(success=True)
+
+
+@router.get("/reset/{subid}", summary="重置订阅", response_model=schemas.Response)
+def reset_subscribes(
+        subid: int,
+        db: Session = Depends(get_db),
+        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+    """
+    重置订阅
+    """
+    subscribe = Subscribe.get(db, subid)
+    if subscribe:
+        subscribe.update(db, {
+            "note": None
+        })
+        return schemas.Response(success=True)
+    return schemas.Response(success=False, message="订阅不存在")
 
 
 @router.get("/check", summary="刷新订阅 TMDB 信息", response_model=schemas.Response)
@@ -207,9 +250,11 @@ def search_subscribes(
     background_tasks.add_task(
         Scheduler().start,
         job_id="subscribe_search",
-        sid=None,
-        state='R',
-        manual=True
+        **{
+            "sid": None,
+            "state": 'R',
+            "manual": True
+        }
     )
     return schemas.Response(success=True)
 
@@ -225,27 +270,13 @@ def search_subscribe(
     background_tasks.add_task(
         Scheduler().start,
         job_id="subscribe_search",
-        sid=subscribe_id,
-        state=None,
-        manual=True
+        **{
+            "sid": subscribe_id,
+            "state": None,
+            "manual": True
+        }
     )
     return schemas.Response(success=True)
-
-
-@router.get("/{subscribe_id}", summary="订阅详情", response_model=schemas.Subscribe)
-def read_subscribe(
-        subscribe_id: int,
-        db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
-    """
-    根据订阅编号查询订阅信息
-    """
-    if not subscribe_id:
-        return Subscribe()
-    subscribe = Subscribe.get(db, subscribe_id)
-    if subscribe and subscribe.sites:
-        subscribe.sites = json.loads(subscribe.sites)
-    return subscribe
 
 
 @router.delete("/media/{mediaid}", summary="删除订阅", response_model=schemas.Response)
@@ -279,19 +310,6 @@ def delete_subscribe_by_mediaid(
             return schemas.Response(success=False)
         Subscribe().delete_by_javdbid(db, javdbid)
 
-    return schemas.Response(success=True)
-
-
-@router.delete("/{subscribe_id}", summary="删除订阅", response_model=schemas.Response)
-def delete_subscribe(
-        subscribe_id: int,
-        db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)
-) -> Any:
-    """
-    删除订阅信息
-    """
-    Subscribe.delete(db, subscribe_id)
     return schemas.Response(success=True)
 
 
@@ -345,4 +363,121 @@ async def seerr_subscribe(request: Request, background_tasks: BackgroundTasks,
                                       season=season,
                                       username=user_name)
 
+    return schemas.Response(success=True)
+
+
+@router.get("/history/{mtype}", summary="查询订阅历史", response_model=List[schemas.Subscribe])
+def read_subscribe(
+        mtype: str,
+        page: int = 1,
+        count: int = 30,
+        db: Session = Depends(get_db),
+        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+    """
+    查询电影/电视剧订阅历史
+    """
+    historys = SubscribeHistory.list_by_type(db, mtype=mtype, page=page, count=count)
+    for history in historys:
+        if history and history.sites:
+            try:
+                history.sites = json.loads(history.sites)
+            except json.JSONDecodeError:
+                history.sites = []
+    return historys
+
+
+@router.delete("/history/{history_id}", summary="删除订阅历史", response_model=schemas.Response)
+def delete_subscribe(
+        history_id: int,
+        db: Session = Depends(get_db),
+        _: schemas.TokenPayload = Depends(verify_token)
+) -> Any:
+    """
+    删除订阅历史
+    """
+    SubscribeHistory.delete(db, history_id)
+    return schemas.Response(success=True)
+
+
+@router.get("/popular", summary="热门订阅（基于用户共享数据）", response_model=List[schemas.MediaInfo])
+def popular_subscribes(
+        stype: str,
+        page: int = 1,
+        count: int = 30,
+        min_sub: int = None,
+        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+    """
+    查询热门订阅
+    """
+    subscribes = SubscribeHelper().get_statistic(stype=stype, page=page, count=count)
+    if subscribes:
+        ret_medias = []
+        for sub in subscribes:
+            # 订阅人数
+            count = sub.get("count")
+            if min_sub and count < min_sub:
+                continue
+            media = MediaInfo()
+            media.type = MediaType(sub.get("type"))
+            media.tmdb_id = sub.get("tmdbid")
+            # 处理标题
+            title = sub.get("name")
+            season = sub.get("season")
+            if season and int(season) > 1 and media.tmdb_id:
+                # 小写数据转大写
+                season_str = cn2an.an2cn(season, "low")
+                title = f"{title} 第{season_str}季"
+            media.title = title
+            media.year = sub.get("year")
+            media.douban_id = sub.get("doubanid")
+            media.bangumi_id = sub.get("bangumiid")
+            media.tvdb_id = sub.get("tvdbid")
+            media.imdb_id = sub.get("imdbid")
+            media.season = sub.get("season")
+            media.overview = sub.get("description")
+            media.vote_average = sub.get("vote")
+            media.poster_path = sub.get("poster")
+            media.backdrop_path = sub.get("backdrop")
+            media.popularity = count
+            ret_medias.append(media)
+        return [media.to_dict() for media in ret_medias]
+    return []
+
+
+@router.get("/{subscribe_id}", summary="订阅详情", response_model=schemas.Subscribe)
+def read_subscribe(
+        subscribe_id: int,
+        db: Session = Depends(get_db),
+        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+    """
+    根据订阅编号查询订阅信息
+    """
+    if not subscribe_id:
+        return Subscribe()
+    subscribe = Subscribe.get(db, subscribe_id)
+    if subscribe and subscribe.sites:
+        try:
+            subscribe.sites = json.loads(subscribe.sites)
+        except json.JSONDecodeError:
+            subscribe.sites = []
+    return subscribe
+
+
+@router.delete("/{subscribe_id}", summary="删除订阅", response_model=schemas.Response)
+def delete_subscribe(
+        subscribe_id: int,
+        db: Session = Depends(get_db),
+        _: schemas.TokenPayload = Depends(verify_token)
+) -> Any:
+    """
+    删除订阅信息
+    """
+    subscribe = Subscribe.get(db, subscribe_id)
+    if subscribe:
+        subscribe.delete(db, subscribe_id)
+    # 统计订阅
+    SubscribeHelper().sub_done_async({
+        "tmdbid": subscribe.tmdbid,
+        "doubanid": subscribe.doubanid
+    })
     return schemas.Response(success=True)

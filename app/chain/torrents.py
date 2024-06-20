@@ -1,4 +1,5 @@
 import re
+import traceback
 from typing import Dict, List, Union
 
 from cachetools import cached, TTLCache
@@ -16,7 +17,7 @@ from app.helper.sites import SitesHelper
 from app.helper.torrent import TorrentHelper
 from app.log import logger
 from app.schemas import Notification
-from app.schemas.types import SystemConfigKey, MessageChannel, NotificationType
+from app.schemas.types import SystemConfigKey, MessageChannel, NotificationType, MediaType
 from app.utils.singleton import Singleton
 from app.utils.string import StringUtils
 
@@ -99,7 +100,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
             return []
         logger.info(f'开始获取站点 {site.name} RSS ...')
         indexer = self.siteshelper.get_indexer(site=site)
-        rss_items = self.rsshelper.parse(indexer.get("rss"), True if indexer.get("proxy") else False)
+        rss_items = self.rsshelper.parse(indexer.get("rss"), True if indexer.get("proxy") else False, timeout=int(site.get("timeout") or 30))
         if rss_items is None:
             # rss过期，尝试保留原配置生成新的rss
             self.__renew_rss_url(domain=site.domain, site=indexer)
@@ -166,12 +167,15 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
 
         # 所有站点索引
         pub_sites = self.siteoper.list_order_by_pri()
+        # 需要刷新的站点domain
+        domains = []
         # 遍历站点缓存资源
         for site in pub_sites:
             # 未开启的站点不刷新
             if sites and site.id not in sites:
                 continue
             domain = site.domain
+            domains.append(domain)
             if stype == "spider":
                 # 刷新首页种子
                 torrents: List[TorrentInfo] = self.browse(site=site)
@@ -197,10 +201,16 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                     logger.info(f'处理资源：{torrent.title} ...')
                     # 识别
                     meta = MetaInfo(title=torrent.title, subtitle=torrent.description)
+                    if torrent.title != meta.org_string:
+                        logger.info(f'种子名称应用识别词后发生改变：{torrent.title} => {meta.org_string}')
+                    # 使用站点种子分类，校正类型识别
+                    if meta.type != MediaType.TV \
+                            and torrent.category == MediaType.TV.value:
+                        meta.type = MediaType.TV
                     # 识别媒体信息
                     mediainfo: MediaInfo = self.mediachain.recognize_by_meta(meta)
                     if not mediainfo:
-                        logger.warn(f'未识别到媒体信息，标题：{torrent.title}')
+                        logger.warn(f'{torrent.title} 未识别到媒体信息')
                         # 存储空的媒体信息
                         mediainfo = MediaInfo()
                     # 清理多余数据
@@ -226,7 +236,9 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         else:
             self.save_cache(torrents_cache, self._rss_file)
 
-        # 返回
+        # 去除不在站点范围内的缓存种子
+        if sites and torrents_cache:
+            torrents_cache = {k: v for k, v in torrents_cache.items() if k in domains}
         return torrents_cache
 
     def __renew_rss_url(self, domain: str, site: dict):
@@ -260,5 +272,5 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                 self.post_message(
                     Notification(mtype=NotificationType.SiteMessage, title=f"站点 {domain} RSS链接已过期"))
         except Exception as e:
-            print(str(e))
+            logger.error(f"站点 {domain} RSS链接自动获取失败：{str(e)} - {traceback.format_exc()}")
             self.post_message(Notification(mtype=NotificationType.SiteMessage, title=f"站点 {domain} RSS链接已过期"))

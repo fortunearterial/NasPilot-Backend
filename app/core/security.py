@@ -3,18 +3,21 @@ import hashlib
 import hmac
 import json
 import os
+import traceback
 from datetime import datetime, timedelta
-from typing import Any, Union, Optional
+from typing import Any, Union, Optional, Annotated
 import jwt
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status, Depends, Header
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 
 from app import schemas
 from app.core.config import settings
 from cryptography.fernet import Fernet
+
+from app.log import logger
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
@@ -26,7 +29,8 @@ reusable_oauth2 = OAuth2PasswordBearer(
 
 
 def create_access_token(
-        subject: Union[str, Any], expires_delta: timedelta = None
+        userid: Union[str, Any], username: str, super_user: bool = False,
+        expires_delta: timedelta = None
 ) -> str:
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -34,7 +38,12 @@ def create_access_token(
         expire = datetime.utcnow() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {"exp": expire, "sub": str(subject)}
+    to_encode = {
+        "exp": expire,
+        "sub": str(userid),
+        "username": username,
+        "super_user": super_user
+    }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -59,11 +68,11 @@ def get_token(token: str = None) -> str:
     return token
 
 
-def get_apikey(apikey: str = None) -> str:
+def get_apikey(apikey: str = None, x_api_key: Annotated[str | None, Header()] = None) -> str:
     """
     从请求URL中获取apikey
     """
-    return apikey
+    return apikey or x_api_key
 
 
 def verify_uri_token(token: str = Depends(get_token)) -> str:
@@ -106,7 +115,7 @@ def decrypt(data: bytes, key: bytes) -> Optional[bytes]:
     try:
         return fernet.decrypt(data)
     except Exception as e:
-        print(str(e))
+        logger.error(f"解密失败：{str(e)} - {traceback.format_exc()}")
         return None
 
 

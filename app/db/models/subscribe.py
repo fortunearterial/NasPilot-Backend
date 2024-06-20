@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Sequence, Text, func
+import time
+
+from sqlalchemy import Column, Integer, String, Sequence, Text, func, Float
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -23,14 +25,15 @@ class Subscribe(Base):
     doubanid = Column(String(255), index=True)
     steamid = Column(Integer, index=True)
     javdbid = Column(String(10), index=True)
+    bangumiid = Column(Integer, index=True)
     # 季号
     season = Column(Integer)
     # 海报
     poster = Column(String(255))
     # 背景图
     backdrop = Column(String(255))
-    # 评分
-    vote = Column(Integer)
+    # 评分，float
+    vote = Column(Float)
     # 简介
     description = Column(Text)
     # 过滤规则
@@ -69,6 +72,10 @@ class Subscribe(Base):
     current_priority = Column(Integer)
     # 保存路径
     save_path = Column(String(4096))
+    # 是否使用 imdbid 搜索
+    search_imdbid = Column(Integer, default=0)
+    # 是否手动修改过总集数 0否 1是
+    manual_total_episode = Column(Integer, default=0)
 
     @staticmethod
     @db_query
@@ -118,6 +125,11 @@ class Subscribe(Base):
 
     @staticmethod
     @db_query
+    def get_by_bangumiid(db: Session, bangumiid: int):
+        return db.query(Subscribe).filter(Subscribe.bangumiid == bangumiid).first()
+
+    @staticmethod
+    @db_query
     def get_by_steamid(db: Session, steamid: str):
         return db.query(Subscribe).filter(Subscribe.steamid == steamid).first()
 
@@ -140,6 +152,35 @@ class Subscribe(Base):
         if subscribe:
             subscribe.delete(db, subscribe.id)
         return True
+
+    @staticmethod
+    @db_query
+    def list_by_username(db: Session, username: str, state: str = None, mtype: str = None):
+        if mtype:
+            if state:
+                result = db.query(Subscribe).filter(Subscribe.state == state,
+                                                    Subscribe.username == username,
+                                                    Subscribe.type == mtype).all()
+            else:
+                result = db.query(Subscribe).filter(Subscribe.username == username,
+                                                    Subscribe.type == mtype).all()
+        else:
+            if state:
+                result = db.query(Subscribe).filter(Subscribe.state == state,
+                                                    Subscribe.username == username).all()
+            else:
+                result = db.query(Subscribe).filter(Subscribe.username == username).all()
+        return list(result)
+
+    @staticmethod
+    @db_query
+    def list_by_type(db: Session, mtype: str, days: int):
+        result = db.query(Subscribe) \
+            .filter(Subscribe.type == mtype,
+                    Subscribe.date >= time.strftime("%Y-%m-%d %H:%M:%S",
+                                                    time.localtime(time.time() - 86400 * int(days)))
+                    ).all()
+        return list(result)
 
     @db_update
     def delete_by_steamid(self, db: Session, steamid: str):

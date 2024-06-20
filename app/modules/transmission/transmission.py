@@ -1,16 +1,15 @@
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, Tuple, List, Dict
 
 import transmission_rpc
 from transmission_rpc import Client, Torrent, File
-from transmission_rpc.session import SessionStats
+from transmission_rpc.session import SessionStats, Session
 
 from app.core.config import settings
 from app.log import logger
-from app.utils.singleton import Singleton
 from app.utils.string import StringUtils
 
 
-class Transmission(metaclass=Singleton):
+class Transmission:
     _host: str = None
     _port: int = None
     _username: str = None
@@ -19,7 +18,8 @@ class Transmission(metaclass=Singleton):
     trc: Optional[Client] = None
 
     # 参考transmission web，仅查询需要的参数，加速种子搜索
-    _trarg = ["id", "name", "status", "labels", "hashString", "totalSize", "percentDone", "addedDate", "trackerStats",
+    _trarg = ["id", "name", "status", "labels", "hashString", "totalSize", "percentDone", "addedDate", "trackerList",
+              "trackerStats",
               "leftUntilDone", "rateDownload", "rateUpload", "recheckProgress", "rateDownload", "rateUpload",
               "peersGettingFromUs", "peersSendingToUs", "uploadRatio", "uploadedEver", "downloadedEver", "downloadDir",
               "error", "errorString", "doneDate", "queuePosition", "activityDate", "trackers"]
@@ -130,20 +130,37 @@ class Transmission(metaclass=Singleton):
             logger.error(f"获取正在下载的种子列表出错：{str(err)}")
             return None
 
-    def set_torrent_tag(self, ids: str, tags: list) -> bool:
+    def set_torrent_tag(self, ids: str, tags: list, org_tags: list = None) -> bool:
         """
-        设置种子标签
+        设置种子标签，注意TR默认会覆盖原有标签，如需追加需传入原有标签
         """
         if not self.trc:
             return False
         if not ids or not tags:
             return False
         try:
-            self.trc.change_torrent(labels=tags, ids=ids)
+            self.trc.change_torrent(labels=list(set((org_tags or []) + tags)), ids=ids)
             return True
         except Exception as err:
             logger.error(f"设置种子标签出错：{str(err)}")
             return False
+
+    def get_torrent_tags(self, ids: str) -> List[str]:
+        """
+        获取所有种子标签
+        """
+        if not self.trc:
+            return []
+        try:
+            torrent = self.trc.get_torrents(ids=ids, arguments=self._trarg)
+            if torrent:
+                labels = [str(tag).strip()
+                          for tag in torrent.labels] if hasattr(torrent, "labels") else []
+                return labels
+        except Exception as err:
+            logger.error(f"获取种子标签出错：{str(err)}")
+            return []
+        return []
 
     def add_torrent(self, content: Union[str, bytes],
                     is_paused: bool = False,
@@ -243,6 +260,19 @@ class Transmission(metaclass=Singleton):
             logger.error(f"设置下载文件状态出错：{str(err)}")
             return False
 
+    def set_unwanted_files(self, tid: str, file_ids: list) -> bool:
+        """
+        设置下载文件的状态
+        """
+        if not self.trc:
+            return False
+        try:
+            self.trc.change_torrent(ids=tid, files_unwanted=file_ids)
+            return True
+        except Exception as err:
+            logger.error(f"设置下载文件状态出错：{str(err)}")
+            return False
+
     def transfer_info(self) -> Optional[SessionStats]:
         """
         获取传输信息
@@ -276,6 +306,29 @@ class Transmission(metaclass=Singleton):
         except Exception as err:
             logger.error(f"设置速度限制出错：{str(err)}")
             return False
+
+    def get_speed_limit(self) -> Optional[Tuple[float, float]]:
+        """
+        获取TR速度
+        :return: download_limit 下载速度 默认是0
+                 upload_limit 上传速度   默认是0
+        """
+        if not self.trc:
+            return None
+
+        download_limit = 0
+        upload_limit = 0
+        try:
+            download_limit = self.trc.get_session().get('speed_limit_down')
+            upload_limit = self.trc.get_session().get('speed_limit_up')
+
+        except Exception as err:
+            logger.error(f"获取速度限制出错：{str(err)}")
+
+        return (
+            download_limit,
+            upload_limit
+        )
 
     def recheck_torrents(self, ids: Union[str, list]) -> bool:
         """
@@ -360,3 +413,16 @@ class Transmission(metaclass=Singleton):
         except Exception as err:
             logger.error(f"修改tracker出错：{str(err)}")
             return False
+
+    def get_session(self) -> Optional[Session]:
+        """
+        获取Transmission当前的会话信息和配置设置
+        :return dict
+        """
+        if not self.trc:
+            return None
+        try:
+            return self.trc.get_session()
+        except Exception as err:
+            logger.error(f"获取session出错：{str(err)}")
+            return None

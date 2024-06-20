@@ -4,6 +4,7 @@ import cn2an
 import regex as re
 
 from app.db.systemconfig_oper import SystemConfigOper
+from app.log import logger
 from app.schemas.types import SystemConfigKey
 from app.utils.singleton import Singleton
 
@@ -24,7 +25,7 @@ class WordsMatcher(metaclass=Singleton):
         # 读取自定义识别词
         words: List[str] = self.systemconfig.get(SystemConfigKey.CustomIdentifiers) or []
         for word in words:
-            if not word:
+            if not word or word.startswith("#"):
                 continue
             try:
                 if word.count(" => ") and word.count(" && ") and word.count(" >> ") and word.count(" <> "):
@@ -52,17 +53,18 @@ class WordsMatcher(metaclass=Singleton):
                     strings = word.split(" <> ")
                     offsets = strings[1].split(" >> ")
                     strings[1] = offsets[0]
-                    title, message, state = self.__episode_offset(title, strings[0], strings[1],
-                                                                  offsets[1])
+                    title, message, state = self.__episode_offset(title, strings[0], strings[1], offsets[1])
                 else:
                     # 屏蔽词
+                    if not word.strip():
+                        continue
                     title, message, state = self.__replace_regex(title, word, "")
 
                 if state:
                     appley_words.append(word)
 
             except Exception as err:
-                print(str(err))
+                logger.warn(f"自定义识别词 {word} 预处理标题失败：{str(err)} - 标题：{title}")
 
         return title, appley_words
 
@@ -77,7 +79,7 @@ class WordsMatcher(metaclass=Singleton):
             else:
                 return re.sub(r'%s' % replaced, r'%s' % replace, title), "", True
         except Exception as err:
-            print(str(err))
+            logger.warn(f"自定义识别词正则替换失败：{str(err)} - 标题：{title}，被替换词：{replaced}，替换词：{replace}")
             return title, str(err), False
 
     @staticmethod
@@ -129,5 +131,5 @@ class WordsMatcher(metaclass=Singleton):
                 title = re.sub(episode_offset_re, r'%s' % episode_num[1], title)
             return title, "", True
         except Exception as err:
-            print(str(err))
+            logger.warn(f"自定义识别词集数偏移失败：{str(err)} - 标题：{title}，前定位词：{front}，后定位词：{back}，偏移量：{offset}")
             return title, str(err), False

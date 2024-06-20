@@ -15,6 +15,7 @@ class Subscribe(BaseModel):
     keyword: Optional[str] = None
     tmdbid: Optional[int] = None
     doubanid: Optional[str] = None
+    bangumiid: Optional[int] = None
     steamid: Optional[str] = None
     javdbid: Optional[str] = None
     # 季号
@@ -54,13 +55,17 @@ class Subscribe(BaseModel):
     # 订阅用户
     username: Optional[str] = None
     # 订阅站点
-    sites: Optional[List[int]] = None
+    sites: Optional[List[int]] = []
     # 是否洗版
     best_version: Optional[int] = 0
     # 当前优先级
     current_priority: Optional[int] = None
     # 保存路径
     save_path: Optional[str] = None
+    # 是否使用 imdbid 搜索
+    search_imdbid: Optional[int] = 0
+    # 时间
+    date: Optional[str] = None
 
     class Config:
         orm_mode = True

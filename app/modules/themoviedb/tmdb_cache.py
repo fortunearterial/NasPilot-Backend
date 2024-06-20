@@ -1,12 +1,14 @@
 import pickle
 import random
 import time
+import traceback
 from pathlib import Path
 from threading import RLock
 from typing import Optional
 
 from app.core.config import settings
 from app.core.meta import MetaBase
+from app.log import logger
 from app.utils.singleton import Singleton
 from app.schemas.types import MediaType
 
@@ -48,7 +50,7 @@ class TmdbCache(metaclass=Singleton):
         """
         获取缓存KEY
         """
-        return f"[{meta.type.value if meta.type else '未知'}]{meta.name}-{meta.year}-{meta.begin_season}"
+        return f"[{meta.type.value if meta.type else '未知'}]{meta.name or meta.tmdbid}-{meta.year}-{meta.begin_season}"
 
     def get(self, meta: MetaBase):
         """
@@ -118,7 +120,7 @@ class TmdbCache(metaclass=Singleton):
                 return data
             return {}
         except Exception as e:
-            print(str(e))
+            logger.error(f'加载缓存失败：{str(e)} - {traceback.format_exc()}')
             return {}
 
     def update(self, meta: MetaBase, info: dict) -> None:

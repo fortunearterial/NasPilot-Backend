@@ -15,9 +15,11 @@ from app.core.context import MediaInfo, TorrentInfo
 from app.core.event import EventManager
 from app.core.meta import MetaBase
 from app.core.module import ModuleManager
+from app.db.message_oper import MessageOper
+from app.helper.message import MessageHelper
 from app.log import logger
 from app.schemas import TransferInfo, TransferTorrent, ExistMediaInfo, DownloadingTorrent, CommingMessage, Notification, \
-    WebhookEventInfo, TmdbEpisode
+    WebhookEventInfo, TmdbEpisode, MediaPerson
 from app.schemas.types import TorrentStatus, MediaType, MediaImageType, EventType
 from app.utils.object import ObjectUtils
 
@@ -33,6 +35,8 @@ class ChainBase(metaclass=ABCMeta):
         """
         self.modulemanager = ModuleManager()
         self.eventmanager = EventManager()
+        self.messageoper = MessageOper()
+        self.messagehelper = MessageHelper()
 
     @staticmethod
     def load_cache(filename: str) -> Any:
@@ -88,8 +92,14 @@ class ChainBase(metaclass=ABCMeta):
 
         logger.debug(f"请求模块执行：{method} ...")
         result = None
-        modules = self.modulemanager.get_modules(method)
+        modules = self.modulemanager.get_running_modules(method)
         for module in modules:
+            module_id = module.__class__.__name__
+            try:
+                module_name = module.get_name()
+            except Exception as err:
+                logger.error(f"获取模块名称出错：{str(err)}")
+                module_name = module_id
             try:
                 func = getattr(module, method)
                 if is_result_empty(result):
@@ -108,7 +118,21 @@ class ChainBase(metaclass=ABCMeta):
                     break
             except Exception as err:
                 logger.error(
-                    f"运行模块 {method} 出错：{module.__class__.__name__} - {str(err)}\n{traceback.print_exc()}")
+                    f"运行模块 {module_id}.{method} 出错：{str(err)}\n{traceback.format_exc()}")
+                self.messagehelper.put(title=f"{module_name}发生了错误",
+                                       message=str(err),
+                                       role="system")
+                self.eventmanager.send_event(
+                    EventType.SystemError,
+                    {
+                        "type": "module",
+                        "module_id": module_id,
+                        "module_name": module_name,
+                        "module_method": method,
+                        "error": str(err),
+                        "traceback": traceback.format_exc()
+                    }
+                )
         return result
 
     def recognize_media(self, meta: MetaBase = None,
@@ -116,14 +140,19 @@ class ChainBase(metaclass=ABCMeta):
                         tmdbid: int = None,
                         doubanid: str = None,
                         steamid: int = None,
-                        javdbid: str = None) -> Optional[MediaInfo]:
+                        javdbid: str = None,
+                        bangumiid: int = None,
+                        cache: bool = True) -> Optional[MediaInfo]:
         """
         识别媒体信息
         :param meta:     识别的元数据
         :param mtype:    识别的媒体类型，与tmdbid配套
         :param tmdbid:   tmdbid
         :param doubanid: 豆瓣ID
+        :param bangumiid: BangumiID
+        :param cache:    是否使用缓存
         :param steamid: STEAM ID
+        :param javdbid: JAVDB ID
         :return: 识别的媒体信息，包括剧集信息
         """
         # 识别用名中含指定信息情形
@@ -133,12 +162,16 @@ class ChainBase(metaclass=ABCMeta):
             tmdbid = meta.tmdbid
         if not doubanid and hasattr(meta, "doubanid"):
             doubanid = meta.doubanid
+        # 有tmdbid时不使用其它ID
+        if tmdbid:
+            doubanid = None
+            bangumiid = None
         if not steamid and hasattr(meta, "steamid"):
             steamid = meta.steamid
         if not javdbid and hasattr(meta, "javdbid"):
             javdbid = meta.javdbid
         return self.run_module("recognize_media", meta=meta, mtype=mtype,
-                               tmdbid=tmdbid, doubanid=doubanid, steamid=steamid, javdbid=javdbid)
+                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, cache=cache, steamid=steamid, javdbid=javdbid)
 
     def match_doubaninfo(self, name: str, imdbid: str = None,
                          mtype: MediaType = None, year: str = None, season: int = None) -> Optional[dict]:
@@ -215,6 +248,14 @@ class ChainBase(metaclass=ABCMeta):
         """
         return self.run_module("tmdb_info", tmdbid=tmdbid, mtype=mtype)
 
+    def bangumi_info(self, bangumiid: int) -> Optional[dict]:
+        """
+        获取Bangumi信息
+        :param bangumiid: int
+        :return: Bangumi信息
+        """
+        return self.run_module("bangumi_info", bangumiid=bangumiid)
+
     def message_parser(self, body: Any, form: Any,
                        args: Any) -> Optional[CommingMessage]:
         """
@@ -246,6 +287,13 @@ class ChainBase(metaclass=ABCMeta):
         :reutrn: 媒体信息列表
         """
         return self.run_module("search_medias", meta=meta)
+
+    def search_persons(self, name: str) -> Optional[List[MediaPerson]]:
+        """
+        搜索人物信息
+        :param name:  人物名称
+        """
+        return self.run_module("search_persons", name=name)
 
     def search_torrents(self, site: CommentedMap,
                         keywords: List[str],
@@ -287,7 +335,8 @@ class ChainBase(metaclass=ABCMeta):
                                mediainfo=mediainfo)
 
     def download(self, content: Union[Path, str], download_dir: Path, cookie: str,
-                 episodes: Set[int] = None, category: str = None
+                 episodes: Set[int] = None, category: str = None,
+                 downloader: str = settings.DEFAULT_DOWNLOADER
                  ) -> Optional[Tuple[Optional[str], str]]:
         """
         根据种子文件，选择并添加下载任务
@@ -296,10 +345,12 @@ class ChainBase(metaclass=ABCMeta):
         :param cookie:  cookie
         :param episodes:  需要下载的集数
         :param category:  种子分类
+        :param downloader:  下载器
         :return: 种子Hash，错误信息
         """
         return self.run_module("download", content=content, download_dir=download_dir,
-                               cookie=cookie, episodes=episodes, category=category)
+                               cookie=cookie, episodes=episodes, category=category,
+                               downloader=downloader)
 
     def download_added(self, context: Context, download_dir: Path, torrent_path: Path = None) -> None:
         """
@@ -313,18 +364,22 @@ class ChainBase(metaclass=ABCMeta):
                                download_dir=download_dir)
 
     def list_torrents(self, status: TorrentStatus = None,
-                      hashs: Union[list, str] = None) -> Optional[List[Union[TransferTorrent, DownloadingTorrent]]]:
+                      hashs: Union[list, str] = None,
+                      downloader: str = settings.DEFAULT_DOWNLOADER
+                      ) -> Optional[List[Union[TransferTorrent, DownloadingTorrent]]]:
         """
         获取下载器种子列表
         :param status:  种子状态
         :param hashs:  种子Hash
+        :param downloader:  下载器
         :return: 下载器中符合状态的种子列表
         """
-        return self.run_module("list_torrents", status=status, hashs=hashs)
+        return self.run_module("list_torrents", status=status, hashs=hashs, downloader=downloader)
 
     def transfer(self, path: Path, meta: MetaBase, mediainfo: MediaInfo,
                  transfer_type: str, target: Path = None,
-                 episodes_info: List[TmdbEpisode] = None) -> Optional[TransferInfo]:
+                 episodes_info: List[TmdbEpisode] = None,
+                 scrape: bool = None) -> Optional[TransferInfo]:
         """
         文件转移
         :param path:  文件路径
@@ -333,51 +388,61 @@ class ChainBase(metaclass=ABCMeta):
         :param transfer_type:  转移模式
         :param target:  转移目标路径
         :param episodes_info: 当前季的全部集信息
+        :param scrape: 是否刮削元数据
         :return: {path, target_path, message}
         """
         return self.run_module("transfer", path=path, meta=meta, mediainfo=mediainfo,
-                               transfer_type=transfer_type, target=target,
-                               episodes_info=episodes_info)
+                               transfer_type=transfer_type, target=target, episodes_info=episodes_info,
+                               scrape=scrape)
 
-    def transfer_completed(self, hashs: Union[str, list], path: Path = None) -> None:
+    def transfer_completed(self, hashs: str, path: Path = None,
+                           downloader: str = settings.DEFAULT_DOWNLOADER) -> None:
         """
         转移完成后的处理
         :param hashs:  种子Hash
         :param path:  源目录
+        :param downloader:  下载器
         """
-        return self.run_module("transfer_completed", hashs=hashs, path=path)
+        return self.run_module("transfer_completed", hashs=hashs, path=path, downloader=downloader)
 
-    def remove_torrents(self, hashs: Union[str, list]) -> bool:
+    def remove_torrents(self, hashs: Union[str, list], delete_file: bool = True,
+                        downloader: str = settings.DEFAULT_DOWNLOADER) -> bool:
         """
         删除下载器种子
         :param hashs:  种子Hash
+        :param delete_file: 是否删除文件
+        :param downloader:  下载器
         :return: bool
         """
-        return self.run_module("remove_torrents", hashs=hashs)
+        return self.run_module("remove_torrents", hashs=hashs, delete_file=delete_file, downloader=downloader)
 
-    def start_torrents(self, hashs: Union[list, str]) -> bool:
+    def start_torrents(self, hashs: Union[list, str], downloader: str = settings.DEFAULT_DOWNLOADER) -> bool:
         """
         开始下载
         :param hashs:  种子Hash
+        :param downloader:  下载器
         :return: bool
         """
-        return self.run_module("start_torrents", hashs=hashs)
+        return self.run_module("start_torrents", hashs=hashs, downloader=downloader)
 
-    def stop_torrents(self, hashs: Union[list, str]) -> bool:
+    def stop_torrents(self, hashs: Union[list, str], downloader: str = settings.DEFAULT_DOWNLOADER) -> bool:
         """
         停止下载
         :param hashs:  种子Hash
+        :param downloader:  下载器
         :return: bool
         """
-        return self.run_module("stop_torrents", hashs=hashs)
+        return self.run_module("stop_torrents", hashs=hashs, downloader=downloader)
 
-    def torrent_files(self, tid: str) -> Optional[Union[TorrentFilesList, List[File]]]:
+    def torrent_files(self, tid: str,
+                      downloader: str = settings.DEFAULT_DOWNLOADER) -> Optional[Union[TorrentFilesList, List[File]]]:
         """
         获取种子文件
         :param tid:  种子Hash
+        :param downloader:  下载器
         :return: 种子文件
         """
-        return self.run_module("torrent_files", tid=tid)
+        return self.run_module("torrent_files", tid=tid, downloader=downloader)
 
     def media_exists(self, mediainfo: MediaInfo, itemid: str = None) -> Optional[ExistMediaInfo]:
         """
@@ -394,6 +459,10 @@ class ChainBase(metaclass=ABCMeta):
         :param message:  消息体
         :return: 成功或失败
         """
+        logger.info(f"发送消息：channel={message.channel}，"
+                    f"title={message.title}, "
+                    f"text={message.text}，"
+                    f"userid={message.userid}")
         # 发送事件
         self.eventmanager.send_event(etype=EventType.NoticeMessage,
                                      data={
@@ -404,10 +473,13 @@ class ChainBase(metaclass=ABCMeta):
                                          "image": message.image,
                                          "userid": message.userid,
                                      })
-        logger.info(f"发送消息：channel={message.channel}，"
-                    f"title={message.title}, "
-                    f"text={message.text}，"
-                    f"userid={message.userid}")
+        # 保存消息
+        self.messagehelper.put(message, role="user")
+        self.messageoper.add(channel=message.channel, mtype=message.mtype,
+                             title=message.title, text=message.text,
+                             image=message.image, link=message.link,
+                             userid=message.userid, action=1)
+        # 发送
         self.run_module("post_message", message=message)
 
     def post_medias_message(self, message: Notification, medias: List[MediaInfo]) -> Optional[bool]:
@@ -417,6 +489,13 @@ class ChainBase(metaclass=ABCMeta):
         :param medias:  媒体列表
         :return: 成功或失败
         """
+        note_list = [media.to_dict() for media in medias]
+        self.messagehelper.put(message, role="user", note=note_list)
+        self.messageoper.add(channel=message.channel, mtype=message.mtype,
+                             title=message.title, text=message.text,
+                             image=message.image, link=message.link,
+                             userid=message.userid, action=1,
+                             note=note_list)
         return self.run_module("post_medias_message", message=message, medias=medias)
 
     def post_torrents_message(self, message: Notification, torrents: List[Context]) -> Optional[bool]:
@@ -426,21 +505,36 @@ class ChainBase(metaclass=ABCMeta):
         :param torrents:  种子列表
         :return: 成功或失败
         """
+        note_list = [torrent.torrent_info.to_dict() for torrent in torrents]
+        self.messagehelper.put(message, role="user", note=note_list)
+        self.messageoper.add(channel=message.channel, mtype=message.mtype,
+                             title=message.title, text=message.text,
+                             image=message.image, link=message.link,
+                             userid=message.userid, action=1,
+                             note=note_list)
         return self.run_module("post_torrents_message", message=message, torrents=torrents)
 
     def scrape_metadata(self, path: Path, mediainfo: MediaInfo, transfer_type: str,
-                        force_nfo: bool = False, force_img: bool = False) -> None:
+                        metainfo: MetaBase = None, force_nfo: bool = False, force_img: bool = False) -> None:
         """
         刮削元数据
         :param path: 媒体文件路径
         :param mediainfo:  识别的媒体信息
+        :param metainfo: 源文件的识别元数据
         :param transfer_type:  转移模式
         :param force_nfo:  强制刮削nfo
         :param force_img:  强制刮削图片
         :return: 成功或失败
         """
-        self.run_module("scrape_metadata", path=path, mediainfo=mediainfo,
+        self.run_module("scrape_metadata", path=path, mediainfo=mediainfo, metainfo=metainfo,
                         transfer_type=transfer_type, force_nfo=force_nfo, force_img=force_img)
+
+    def media_category(self) -> Optional[Dict[str, list]]:
+        """
+        获取媒体分类
+        :return: 获取二级分类配置字典项，需包括电影、电视剧
+        """
+        return self.run_module("media_category")
 
     def register_commands(self, commands: Dict[str, dict]) -> None:
         """

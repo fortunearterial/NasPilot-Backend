@@ -9,13 +9,12 @@ from app.core.context import MediaInfo, Context
 from app.core.metainfo import MetaInfo
 from app.log import logger
 from app.utils.http import RequestUtils
-from app.utils.singleton import Singleton
 from app.utils.string import StringUtils
 
 lock = Lock()
 
 
-class SynologyChat(metaclass=Singleton):
+class SynologyChat:
     def __init__(self):
         self._req = RequestUtils(content_type="application/x-www-form-urlencoded")
         self._webhook_url = settings.SYNOLOGYCHAT_WEBHOOK
@@ -25,6 +24,17 @@ class SynologyChat(metaclass=Singleton):
 
     def check_token(self, token: str) -> bool:
         return True if token == self._token else False
+
+    def get_state(self) -> bool:
+        """
+        获取状态
+        """
+        if not self._webhook_url or not self._token:
+            return False
+        ret = self.__get_bot_users()
+        if ret:
+            return True
+        return False
 
     def send_msg(self, title: str, text: str = "", image: str = "", userid: str = "") -> Optional[bool]:
         """
@@ -173,7 +183,7 @@ class SynologyChat(metaclass=Singleton):
         ret = self._req.get_res(url=req_url)
         if ret and ret.status_code == 200:
             users = ret.json().get("data", {}).get("users", []) or []
-            return [user.get("user_id") for user in users]
+            return [user.get("user_id") for user in users if user.get("deleted", True) is False]
         else:
             return []
 

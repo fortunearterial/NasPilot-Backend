@@ -14,7 +14,6 @@ class Person(TMDb):
         "translations": "/person/%s/translations",
         "latest": "/person/latest",
         "popular": "/person/popular",
-        "search_people": "/search/person",
     }
 
     def details(self, person_id, append_to_response="videos,images"):

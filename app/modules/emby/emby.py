@@ -1,5 +1,6 @@
 import json
 import re
+import traceback
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Generator, Tuple
 
@@ -10,10 +11,9 @@ from app.core.config import settings
 from app.log import logger
 from app.schemas.types import MediaType
 from app.utils.http import RequestUtils
-from app.utils.singleton import Singleton
 
 
-class Emby(metaclass=Singleton):
+class Emby:
 
     def __init__(self):
         self._host = settings.EMBY_HOST
@@ -22,9 +22,16 @@ class Emby(metaclass=Singleton):
                 self._host += "/"
             if not self._host.startswith("http"):
                 self._host = "http://" + self._host
+        self._playhost = settings.EMBY_PLAY_HOST
+        if self._playhost:
+            if not self._playhost.endswith("/"):
+                self._playhost += "/"
+            if not self._playhost.startswith("http"):
+                self._playhost = "http://" + self._playhost
         self._apikey = settings.EMBY_API_KEY
         self.user = self.get_user(settings.SUPERUSER)
         self.folders = self.get_emby_folders()
+        self.serverid = self.get_server_id()
 
     def is_inactive(self) -> bool:
         """
@@ -59,13 +66,52 @@ class Emby(metaclass=Singleton):
             logger.error(f"连接Library/SelectableMediaFolders 出错：" + str(e))
             return []
 
-    def __get_emby_librarys(self) -> List[dict]:
+    def get_emby_virtual_folders(self) -> List[dict]:
+        """
+        获取Emby媒体库所有路径列表（包含共享路径）
+        """
+        if not self._host or not self._apikey:
+            return []
+        req_url = "%semby/Library/VirtualFolders/Query?api_key=%s" % (self._host, self._apikey)
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res:
+                library_items = res.json().get("Items")
+                librarys = []
+                for library_item in library_items:
+                    library_name = library_item.get('Name')
+                    pathInfos = library_item.get('LibraryOptions', {}).get('PathInfos')
+                    library_paths = []
+                    for path in pathInfos:
+                        if path.get('NetworkPath'):
+                            library_paths.append(path.get('NetworkPath'))
+                        else:
+                            library_paths.append(path.get('Path'))
+
+                    if library_name and library_paths:
+                        librarys.append({
+                            'Name': library_name,
+                            'Path': library_paths
+                        })
+                return librarys
+            else:
+                logger.error(f"Library/VirtualFolders/Query 未获取到返回数据")
+                return []
+        except Exception as e:
+            logger.error(f"连接Library/VirtualFolders/Query 出错：" + str(e))
+            return []
+
+    def __get_emby_librarys(self, username: str = None) -> List[dict]:
         """
         获取Emby媒体库列表
         """
         if not self._host or not self._apikey:
             return []
-        req_url = f"{self._host}emby/Users/{self.user}/Views?api_key={self._apikey}"
+        if username:
+            user = self.get_user(username)
+        else:
+            user = self.user
+        req_url = f"{self._host}emby/Users/{user}/Views?api_key={self._apikey}"
         try:
             res = RequestUtils().get_res(req_url)
             if res:
@@ -77,14 +123,17 @@ class Emby(metaclass=Singleton):
             logger.error(f"连接User/Views 出错：" + str(e))
             return []
 
-    def get_librarys(self) -> List[schemas.MediaServerLibrary]:
+    def get_librarys(self, username: str = None) -> List[schemas.MediaServerLibrary]:
         """
         获取媒体服务器所有媒体库列表
         """
         if not self._host or not self._apikey:
             return []
         libraries = []
-        for library in self.__get_emby_librarys() or []:
+        black_list = (settings.MEDIASERVER_SYNC_BLACKLIST or '').split(",")
+        for library in self.__get_emby_librarys(username) or []:
+            if library.get("Name") in black_list:
+                continue
             match library.get("CollectionType"):
                 case "movies":
                     library_type = MediaType.MOVIE.value
@@ -92,13 +141,17 @@ class Emby(metaclass=Singleton):
                     library_type = MediaType.TV.value
                 case _:
                     continue
+            image = self.__get_local_image_by_id(library.get("Id"))
             libraries.append(
                 schemas.MediaServerLibrary(
                     server="emby",
                     id=library.get("Id"),
                     name=library.get("Name"),
                     path=library.get("Path"),
-                    type=library_type
+                    type=library_type,
+                    image=image,
+                    link=f'{self._playhost or self._host}web/index.html'
+                         f'#!/videos?serverId={self.serverid}&parentId={library.get("Id")}'
                 )
             )
         return libraries
@@ -383,19 +436,43 @@ class Emby(metaclass=Singleton):
             return None
         req_url = "%semby/Items/%s/RemoteImages?api_key=%s" % (self._host, item_id, self._apikey)
         try:
-            res = RequestUtils().get_res(req_url)
+            res = RequestUtils(timeout=10).get_res(req_url)
             if res:
                 images = res.json().get("Images")
-                for image in images:
-                    if image.get("ProviderName") == "TheMovieDb" and image.get("Type") == image_type:
-                        return image.get("Url")
-            else:
-                logger.error(f"Items/RemoteImages 未获取到返回数据")
-                return None
+                if images:
+                    for image in images:
+                        if image.get("ProviderName") == "TheMovieDb" and image.get("Type") == image_type:
+                            return image.get("Url")
+            # 数据为空
+            logger.info(f"Items/RemoteImages 未获取到返回数据，采用本地图片")
+            return self.generate_external_image_link(item_id, image_type)
         except Exception as e:
             logger.error(f"连接Items/Id/RemoteImages出错：" + str(e))
-            return None
         return None
+
+    def generate_external_image_link(self, item_id: str, image_type: str) -> Optional[str]:
+        """
+        根据ItemId和imageType查询本地对应图片
+        :param item_id: 在Emby中的ID
+        :param image_type: 图片类型，如Backdrop、Primary
+        :return: 图片对应在外网播放器中的URL
+        """
+        if not self._playhost:
+            logger.error("Emby外网播放地址未能获取或为空")
+            return None
+
+        req_url = "%sItems/%s/Images/%s" % (self._playhost, item_id, image_type)
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res and res.status_code != 404:
+                logger.info(f"影片图片链接:{res.url}")
+                return res.url
+            else:
+                logger.error("Items/Id/Images 未获取到返回数据或无该影片{}图片".format(image_type))
+                return None
+        except Exception as e:
+            logger.error(f"连接Items/Id/Images出错：" + str(e))
+            return None
 
     def __refresh_emby_library_by_id(self, item_id: str) -> bool:
         """
@@ -482,7 +559,7 @@ class Emby(metaclass=Singleton):
                     if item_path.is_relative_to(subfolder_path):
                         return folder.get("Id")
                 except Exception as err:
-                    print(str(err))
+                    logger.debug(f"匹配子目录出错：{err} - {traceback.format_exc()}")
         # 如果找不到，只要路径中有分类目录名就命中
         for folder in self.folders:
             for subfolder in folder.get("SubFolders"):
@@ -879,9 +956,9 @@ class Emby(metaclass=Singleton):
         """
         if not self._host or not self._apikey:
             return None
-        url = url.replace("[HOST]", self._host) \
-            .replace("[APIKEY]", self._apikey) \
-            .replace("[USER]", self.user)
+        url = url.replace("[HOST]", self._host or '') \
+            .replace("[APIKEY]", self._apikey or '') \
+            .replace("[USER]", self.user or '')
         try:
             return RequestUtils(content_type="application/json").get_res(url=url)
         except Exception as e:
@@ -897,9 +974,9 @@ class Emby(metaclass=Singleton):
         """
         if not self._host or not self._apikey:
             return None
-        url = url.replace("[HOST]", self._host) \
-            .replace("[APIKEY]", self._apikey) \
-            .replace("[USER]", self.user)
+        url = url.replace("[HOST]", self._host or '') \
+            .replace("[APIKEY]", self._apikey or '') \
+            .replace("[USER]", self.user or '')
         try:
             return RequestUtils(
                 headers=headers,
@@ -907,3 +984,160 @@ class Emby(metaclass=Singleton):
         except Exception as e:
             logger.error(f"连接Emby出错：" + str(e))
             return None
+
+    def get_play_url(self, item_id: str) -> str:
+        """
+        拼装媒体播放链接
+        :param item_id: 媒体的的ID
+        """
+        return f"{self._playhost or self._host}web/index.html#!" \
+               f"/item?id={item_id}&context=home&serverId={self.serverid}"
+
+    def __get_backdrop_url(self, item_id: str, image_tag: str) -> str:
+        """
+        获取Emby的Backdrop图片地址
+        :param: item_id: 在Emby中的ID
+        :param: image_tag: 图片的tag
+        :param: remote 是否远程使用，TG微信等客户端调用应为True
+        :param: inner 是否NT内部调用，为True是会使用NT中转
+        """
+        if not self._host or not self._apikey:
+            return ""
+        if not image_tag or not item_id:
+            return ""
+        return f"{self._host}Items/{item_id}/" \
+               f"Images/Backdrop?tag={image_tag}&fillWidth=666&api_key={self._apikey}"
+
+    def __get_local_image_by_id(self, item_id: str) -> str:
+        """
+        根据ItemId从媒体服务器查询本地图片地址
+        :param: item_id: 在Emby中的ID
+        :param: remote 是否远程使用，TG微信等客户端调用应为True
+        :param: inner 是否NT内部调用，为True是会使用NT中转
+        """
+        if not self._host or not self._apikey:
+            return ""
+        return "%sItems/%s/Images/Primary" % (self._host, item_id)
+
+    def get_resume(self, num: int = 12, username: str = None) -> Optional[List[schemas.MediaServerPlayItem]]:
+        """
+        获得继续观看
+        """
+        if not self._host or not self._apikey:
+            return None
+        if username:
+            user = self.get_user(username)
+        else:
+            user = self.user
+        req_url = (f"{self._host}Users/{user}/Items/Resume?"
+                   f"Limit=100&MediaTypes=Video&api_key={self._apikey}&Fields=ProductionYear,Path")
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res:
+                result = res.json().get("Items") or []
+                ret_resume = []
+                # 用户媒体库文件夹列表（排除黑名单）
+                library_folders = self.get_user_library_folders()
+                for item in result:
+                    if len(ret_resume) == num:
+                        break
+                    if item.get("Type") not in ["Movie", "Episode"]:
+                        continue
+                    item_path = item.get("Path")
+                    if item_path and library_folders and not any(
+                            str(item_path).startswith(folder) for folder in library_folders):
+                        continue
+                    item_type = MediaType.MOVIE.value if item.get("Type") == "Movie" else MediaType.TV.value
+                    link = self.get_play_url(item.get("Id"))
+                    if item_type == MediaType.MOVIE.value:
+                        title = item.get("Name")
+                        subtitle = item.get("ProductionYear")
+                    else:
+                        title = f'{item.get("SeriesName")}'
+                        subtitle = f'S{item.get("ParentIndexNumber")}:{item.get("IndexNumber")} - {item.get("Name")}'
+                    if item_type == MediaType.MOVIE.value:
+                        if item.get("BackdropImageTags"):
+                            image = self.__get_backdrop_url(item_id=item.get("Id"),
+                                                            image_tag=item.get("BackdropImageTags")[0])
+                        else:
+                            image = self.__get_local_image_by_id(item.get("Id"))
+                    else:
+                        image = self.__get_backdrop_url(item_id=item.get("SeriesId"),
+                                                        image_tag=item.get("SeriesPrimaryImageTag"))
+                        if not image:
+                            image = self.__get_local_image_by_id(item.get("SeriesId"))
+                    ret_resume.append(schemas.MediaServerPlayItem(
+                        id=item.get("Id"),
+                        title=title,
+                        subtitle=subtitle,
+                        type=item_type,
+                        image=image,
+                        link=link,
+                        percent=item.get("UserData", {}).get("PlayedPercentage")
+                    ))
+                return ret_resume
+            else:
+                logger.error(f"Users/Items/Resume 未获取到返回数据")
+        except Exception as e:
+            logger.error(f"连接Users/Items/Resume出错：" + str(e))
+        return []
+
+    def get_latest(self, num: int = 20, username: str = None) -> Optional[List[schemas.MediaServerPlayItem]]:
+        """
+        获得最近更新
+        """
+        if not self._host or not self._apikey:
+            return None
+        if username:
+            user = self.get_user(username)
+        else:
+            user = self.user
+        req_url = (f"{self._host}Users/{user}/Items/Latest?"
+                   f"Limit=100&MediaTypes=Video&api_key={self._apikey}&Fields=ProductionYear,Path")
+        try:
+            res = RequestUtils().get_res(req_url)
+            if res:
+                result = res.json() or []
+                ret_latest = []
+                # 用户媒体库文件夹列表（排除黑名单）
+                library_folders = self.get_user_library_folders()
+                for item in result:
+                    if len(ret_latest) == num:
+                        break
+                    if item.get("Type") not in ["Movie", "Series"]:
+                        continue
+                    item_path = item.get("Path")
+                    if item_path and library_folders and not any(
+                            str(item_path).startswith(folder) for folder in library_folders):
+                        continue
+                    item_type = MediaType.MOVIE.value if item.get("Type") == "Movie" else MediaType.TV.value
+                    link = self.get_play_url(item.get("Id"))
+                    image = self.__get_local_image_by_id(item_id=item.get("Id"))
+                    ret_latest.append(schemas.MediaServerPlayItem(
+                        id=item.get("Id"),
+                        title=item.get("Name"),
+                        subtitle=item.get("ProductionYear"),
+                        type=item_type,
+                        image=image,
+                        link=link
+                    ))
+                return ret_latest
+            else:
+                logger.error(f"Users/Items/Latest 未获取到返回数据")
+        except Exception as e:
+            logger.error(f"连接Users/Items/Latest出错：" + str(e))
+        return []
+
+    def get_user_library_folders(self):
+        """
+        获取Emby媒体库文件夹列表（排除黑名单）
+        """
+        if not self._host or not self._apikey:
+            return []
+        library_folders = []
+        black_list = (settings.MEDIASERVER_SYNC_BLACKLIST or '').split(",")
+        for library in self.get_emby_virtual_folders() or []:
+            if library.get("Name") in black_list:
+                continue
+            library_folders += [folder for folder in library.get("Path")]
+        return library_folders

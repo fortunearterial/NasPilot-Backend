@@ -15,13 +15,17 @@ class ResourceHelper(metaclass=Singleton):
     检测和更新资源包
     """
     # 资源包的git仓库地址
-    _repo = "https://raw.githubusercontent.com/fortunearterial/NasPilot-Backend-Resources/main/package.json"
+    _repo = f"{settings.GITHUB_PROXY}https://raw.githubusercontent.com/fortunearterial/NasPilot-Backend-Resources/main/package.json"
     _files_api = f"https://api.github.com/repos/fortunearterial/NasPilot-Backend-Resources/contents/resources"
     _base_dir: Path = settings.ROOT_PATH
 
     def __init__(self):
         self.siteshelper = SitesHelper()
         self.check()
+
+    @property
+    def proxies(self):
+        return None if settings.GITHUB_PROXY else settings.PROXY
 
     def check(self):
         """
@@ -32,9 +36,13 @@ class ResourceHelper(metaclass=Singleton):
         if SystemUtils.is_frozen():
             return
         logger.info("开始检测资源包版本...")
-        res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS, timeout=10).get_res(self._repo)
+        res = RequestUtils(proxies=self.proxies, headers=settings.GITHUB_HEADERS, timeout=10).get_res(self._repo)
         if res:
-            resource_info = json.loads(res.text)
+            try:
+                resource_info = json.loads(res.text)
+            except json.JSONDecodeError:
+                logger.error("资源包仓库数据解析失败！")
+                return
         else:
             logger.warn("无法连接资源包仓库！")
             return
@@ -51,11 +59,7 @@ class ResourceHelper(metaclass=Singleton):
             target = resource.get("target")
             version = resource.get("version")
             # 判断平台
-            if platform and platform != SystemUtils.platform:
-                continue
-            # 判断本地是否存在
-            local_path = self._base_dir / target / rname
-            if not local_path.exists():
+            if platform and platform != SystemUtils.platform():
                 continue
             # 判断版本号
             if rtype == "auth":
@@ -76,17 +80,21 @@ class ResourceHelper(metaclass=Singleton):
             # 下载文件信息列表
             r = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS,
                              timeout=30).get_res(self._files_api)
-            if not r or r.status_code != 200:
+            if r and not r.ok:
                 return None, f"连接仓库失败：{r.status_code} - {r.reason}"
+            elif not r:
+                return None, "连接仓库失败"
             files_info = r.json()
             for item in files_info:
                 save_path = need_updates.get(item.get("name"))
                 if not save_path:
                     continue
                 if item.get("download_url"):
+                    logger.info(f"开始更新资源文件：{item.get('name')} ...")
+                    download_url = f"{settings.GITHUB_PROXY}{item.get('download_url')}"
                     # 下载资源文件
-                    res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS,
-                                       timeout=180).get_res(item["download_url"])
+                    res = RequestUtils(proxies=self.proxies, headers=settings.GITHUB_HEADERS,
+                                       timeout=180).get_res(download_url)
                     if not res:
                         logger.error(f"文件 {item.get('name')} 下载失败！")
                     elif res.status_code != 200:
