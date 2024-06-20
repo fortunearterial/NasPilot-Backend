@@ -1,1 +1,1 @@
-APP_VERSION = 'vLY1.1.0'
+APP_VERSION = 'v1.9.7'

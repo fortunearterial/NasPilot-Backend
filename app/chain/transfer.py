@@ -18,7 +18,6 @@ from app.db.systemconfig_oper import SystemConfigOper
 from app.db.transferhistory_oper import TransferHistoryOper
 from app.helper.directory import DirectoryHelper
 from app.helper.format import FormatParser
-from app.helper.message import MessageHelper
 from app.helper.progress import ProgressHelper
 from app.log import logger
 from app.schemas import TransferInfo, TransferTorrent, Notification, EpisodeFormat
@@ -44,7 +43,15 @@ class TransferChain(ChainBase):
         self.tmdbchain = TmdbChain()
         self.systemconfig = SystemConfigOper()
         self.directoryhelper = DirectoryHelper()
-        self.messagehelper = MessageHelper()
+
+    def recommend_name(self, meta: MetaBase, mediainfo: MediaInfo) -> Optional[str]:
+        """
+        获取重命名后的名称
+        :param meta: 元数据
+        :param mediainfo: 媒体信息
+        :return: 重命名后的名称（含目录）
+        """
+        return self.run_module("recommend_name", meta=meta, mediainfo=mediainfo)
 
     def process(self) -> bool:
         """
@@ -283,7 +290,8 @@ class TransferChain(ChainBase):
                     self.post_message(Notification(
                         mtype=NotificationType.Manual,
                         title=f"{file_path.name} 未识别到媒体信息，无法入库！",
-                        text=f"回复：```\n/redo {his.id} [tmdbid]|[类型]\n``` 手动识别转移。"
+                        text=f"回复：```\n/redo {his.id} [tmdbid]|[类型]\n``` 手动识别转移。",
+                        link=settings.MP_DOMAIN('#/history')
                     ))
                     # 计数
                     processed_num += 1
@@ -346,7 +354,8 @@ class TransferChain(ChainBase):
                         mtype=NotificationType.Manual,
                         title=f"{file_mediainfo.title_year} {file_meta.season_episode} 入库失败！",
                         text=f"原因：{transferinfo.message or '未知'}",
-                        image=file_mediainfo.get_message_image()
+                        image=file_mediainfo.get_message_image(),
+                        link=settings.MP_DOMAIN('#/history')
                     ))
                     # 计数
                     processed_num += 1
@@ -371,22 +380,10 @@ class TransferChain(ChainBase):
                     transfers[mkey].file_list_new.extend(transferinfo.file_list_new)
                     transfers[mkey].fail_list.extend(transferinfo.fail_list)
 
-                # 硬链接检查
-                temp_transfer_type = transfer_type
-                if transfer_type == "link":
-                    if not SystemUtils.is_hardlink(file_path, transferinfo.target_path):
-                        logger.warn(
-                            f"{file_path} 与 {transferinfo.target_path} 不是同一硬链接文件路径，请检查存储空间占用和整理耗时，确认是否为复制")
-                        self.messagehelper.put(
-                            f"{file_path} 与 {transferinfo.target_path} 不是同一硬链接文件路径，疑似硬链接失败，请检查是否为复制",
-                            title="硬链接失败",
-                            role="system")
-                        temp_transfer_type = "copy"
-
                 # 新增转移成功历史记录
                 self.transferhis.add_success(
                     src_path=file_path,
-                    mode=temp_transfer_type,
+                    mode=transfer_type,
                     download_hash=download_hash,
                     meta=file_meta,
                     mediainfo=file_mediainfo,
@@ -396,7 +393,7 @@ class TransferChain(ChainBase):
                 if transferinfo.need_scrape:
                     self.scrape_metadata(path=transferinfo.target_path,
                                          mediainfo=file_mediainfo,
-                                         transfer_type=temp_transfer_type,
+                                         transfer_type=transfer_type,
                                          metainfo=file_meta)
                 # 更新进度
                 processed_num += 1
@@ -520,7 +517,7 @@ class TransferChain(ChainBase):
                                          mediaid=media_id)
         if not state:
             self.post_message(Notification(channel=channel, title="手动整理失败",
-                                           text=errmsg, userid=userid))
+                                           text=errmsg, userid=userid, link=settings.MP_DOMAIN('#/history')))
             return
 
     def re_transfer(self, logid: int, mtype: MediaType = None,
@@ -658,7 +655,8 @@ class TransferChain(ChainBase):
         # 发送
         self.post_message(Notification(
             mtype=NotificationType.Organize,
-            title=msg_title, text=msg_str, image=mediainfo.get_message_image()))
+            title=msg_title, text=msg_str, image=mediainfo.get_message_image(),
+            link=settings.MP_DOMAIN('#/history')))
 
     def delete_files(self, path: Path) -> Tuple[bool, str]:
         """

@@ -100,7 +100,8 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
             return []
         logger.info(f'开始获取站点 {site.name} RSS ...')
         indexer = self.siteshelper.get_indexer(site=site)
-        rss_items = self.rsshelper.parse(indexer.get("rss"), True if indexer.get("proxy") else False, timeout=int(site.get("timeout") or 30))
+        rss_items = self.rsshelper.parse(indexer.get("rss"), True if indexer.get("proxy") else False,
+                                         timeout=int(site.get("timeout") or 30))
         if rss_items is None:
             # rss过期，尝试保留原配置生成新的rss
             self.__renew_rss_url(domain=site.domain, site=indexer)
@@ -267,10 +268,14 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                 else:
                     # 发送消息
                     self.post_message(
-                        Notification(mtype=NotificationType.SiteMessage, title=f"站点 {domain} RSS链接已过期"))
+                        Notification(mtype=NotificationType.SiteMessage, title=f"站点 {domain} RSS链接已过期",
+                                     link=settings.MP_DOMAIN('#/site'))
+                    )
             else:
                 self.post_message(
-                    Notification(mtype=NotificationType.SiteMessage, title=f"站点 {domain} RSS链接已过期"))
+                    Notification(mtype=NotificationType.SiteMessage, title=f"站点 {domain} RSS链接已过期",
+                                 link=settings.MP_DOMAIN('#/site')))
         except Exception as e:
             logger.error(f"站点 {domain} RSS链接自动获取失败：{str(e)} - {traceback.format_exc()}")
-            self.post_message(Notification(mtype=NotificationType.SiteMessage, title=f"站点 {domain} RSS链接已过期"))
+            self.post_message(Notification(mtype=NotificationType.SiteMessage, title=f"站点 {domain} RSS链接已过期",
+                                           link=settings.MP_DOMAIN('#/site')))

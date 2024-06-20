@@ -157,7 +157,8 @@ def check_auth():
             Notification(
                 mtype=NotificationType.Manual,
                 title="MoviePilot用户认证",
-                text=err_msg
+                text=err_msg,
+                link=settings.MP_DOMAIN('#/site')
             )
         )
 
@@ -166,6 +167,7 @@ def singal_handle():
     """
     监听停止信号
     """
+
     def stop_event(signum: int, _: FrameType):
         """
         SIGTERM信号处理

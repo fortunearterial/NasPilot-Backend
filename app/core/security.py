@@ -30,7 +30,7 @@ reusable_oauth2 = OAuth2PasswordBearer(
 
 def create_access_token(
         userid: Union[str, Any], username: str, super_user: bool = False,
-        expires_delta: timedelta = None
+        expires_delta: timedelta = None, level: int = 1
 ) -> str:
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -42,7 +42,8 @@ def create_access_token(
         "exp": expire,
         "sub": str(userid),
         "username": username,
-        "super_user": super_user
+        "super_user": super_user,
+        "level": level
     }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -61,21 +62,21 @@ def verify_token(token: str = Depends(reusable_oauth2)) -> schemas.TokenPayload:
         )
 
 
-def get_token(token: str = None) -> str:
+def __get_token(token: str = None) -> str:
     """
     从请求URL中获取token
     """
     return token
 
 
-def get_apikey(apikey: str = None, x_api_key: Annotated[str | None, Header()] = None) -> str:
+def __get_apikey(apikey: str = None, x_api_key: Annotated[str | None, Header()] = None) -> str:
     """
     从请求URL中获取apikey
     """
     return apikey or x_api_key
 
 
-def verify_uri_token(token: str = Depends(get_token)) -> str:
+def verify_apitoken(token: str = Depends(__get_token)) -> str:
     """
     通过依赖项使用token进行身份认证
     """
@@ -87,7 +88,7 @@ def verify_uri_token(token: str = Depends(get_token)) -> str:
     return token
 
 
-def verify_uri_apikey(apikey: str = Depends(get_apikey)) -> str:
+def verify_apikey(apikey: str = Depends(__get_apikey)) -> str:
     """
     通过依赖项使用apikey进行身份认证
     """
@@ -97,6 +98,18 @@ def verify_uri_apikey(apikey: str = Depends(get_apikey)) -> str:
             detail="apikey校验不通过"
         )
     return apikey
+
+
+def verify_uri_token(token: str = Depends(__get_token)) -> str:
+    """
+    通过依赖项使用token进行身份认证
+    """
+    if not verify_token(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token校验不通过"
+        )
+    return token
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

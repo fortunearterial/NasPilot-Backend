@@ -90,7 +90,8 @@ class Scheduler(metaclass=Singleton):
                     Notification(
                         mtype=NotificationType.Manual,
                         title="MoviePilot用户认证成功",
-                        text=f"使用站点：{msg}"
+                        text=f"使用站点：{msg}",
+                        link=settings.MP_DOMAIN('#/site')
                     )
                 )
             else:
@@ -159,7 +160,7 @@ class Scheduler(metaclass=Singleton):
             },
             "random_wallpager": {
                 "name": "壁纸缓存",
-                "func": TmdbChain().get_random_wallpager,
+                "func": TmdbChain().get_trending_wallpapers,
                 "running": False,
             }
         }

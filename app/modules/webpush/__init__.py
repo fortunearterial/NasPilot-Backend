@@ -15,7 +15,7 @@ class WebPushModule(_ModuleBase):
 
     @staticmethod
     def get_name() -> str:
-        return "VoceChat"
+        return "WebPush"
 
     def stop(self):
         pass
@@ -46,21 +46,23 @@ class WebPushModule(_ModuleBase):
             else:
                 caption = message.text
                 content = ""
-            try:
-                for sub in global_vars.get_subscriptions():
+            for sub in global_vars.get_subscriptions():
+                logger.debug(f"给 {sub} 发送WebPush：{caption} {content}")
+                try:
                     webpush(
                         subscription_info=sub,
                         data=json.dumps({
                             "title": caption,
-                            "body": content
+                            "body": content,
+                            "url": message.link or "/?shotcut=message"
                         }),
                         vapid_private_key=settings.VAPID.get("privateKey"),
                         vapid_claims={
                             "sub": settings.VAPID.get("subject")
                         },
                     )
-            except WebPushException as err:
-                print("WebPush Error:", str(err))
+                except WebPushException as err:
+                    logger.error(f"WebPush发送失败: {str(err)}")
 
         except Exception as msg_e:
             logger.error(f"发送消息失败：{msg_e}")

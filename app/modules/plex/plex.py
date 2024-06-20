@@ -1,35 +1,31 @@
 import json
-from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Dict, Tuple, Generator, Any
 from urllib.parse import quote_plus
 
+from cachetools import TTLCache, cached
 from plexapi import media
 from plexapi.server import PlexServer
+from requests import Response, Session
 
 from app import schemas
 from app.core.config import settings
 from app.log import logger
 from app.schemas import MediaType
+from app.utils.http import RequestUtils
 
 
 class Plex:
-
     _plex = None
+    _session = None
 
     def __init__(self):
         self._host = settings.PLEX_HOST
         if self._host:
-            if not self._host.endswith("/"):
-                self._host += "/"
-            if not self._host.startswith("http"):
-                self._host = "http://" + self._host
+            self._host = RequestUtils.standardize_base_url(self._host)
         self._playhost = settings.PLEX_PLAY_HOST
         if self._playhost:
-            if not self._playhost.endswith("/"):
-                self._playhost += "/"
-            if not self._playhost.startswith("http"):
-                self._playhost = "http://" + self._playhost
+            self._playhost = RequestUtils.standardize_base_url(self._playhost)
         self._token = settings.PLEX_TOKEN
         if self._host and self._token:
             try:
@@ -38,6 +34,7 @@ class Plex:
             except Exception as e:
                 self._plex = None
                 logger.error(f"Plex服务器连接失败：{str(e)}")
+            self._session = self.__adapt_plex_session()
 
     def is_inactive(self) -> bool:
         """
@@ -58,7 +55,7 @@ class Plex:
             self._plex = None
             logger.error(f"Plex服务器连接失败：{str(e)}")
 
-    @lru_cache(maxsize=10)
+    @cached(cache=TTLCache(maxsize=100, ttl=86400))
     def __get_library_images(self, library_key: str, mtype: int) -> Optional[List[str]]:
         """
         获取媒体服务器最近添加的媒体的图片列表
@@ -76,10 +73,11 @@ class Plex:
         # 如果总数不足,接续获取下一页
         while len(poster_urls) < total_size:
             items = self._plex.fetchItems(f"/hubs/home/recentlyAdded?type={mtype}&sectionID={library_key}",
-                                          container_size=total_size,
-                                          container_start=container_start)
+                                          container_start=container_start,
+                                          container_size=8,
+                                          maxresults=8)
             for item in items:
-                if item.type == 'episode':
+                if item.type == "episode":
                     # 如果是剧集的单集,则去找上级的图片
                     if item.parentThumb is not None:
                         poster_urls[item.parentThumb] = None
@@ -631,8 +629,12 @@ class Plex:
             return []
         # 媒体库白名单
         allow_library = ",".join([lib.id for lib in self.get_librarys()])
-        params = {'contentDirectoryID': allow_library}
-        items = self._plex.fetchItems("/hubs/continueWatching/items", container_start=0, container_size=num, params=params)
+        params = {"contentDirectoryID": allow_library}
+        items = self._plex.fetchItems("/hubs/continueWatching/items",
+                                      container_start=0,
+                                      container_size=num,
+                                      maxresults=num,
+                                      params=params)
         ret_resume = []
         for item in items:
             item_type = MediaType.MOVIE.value if item.TYPE == "movie" else MediaType.TV.value
@@ -723,3 +725,71 @@ class Plex:
                 ))
             offset += num
         return ret_resume[:num]
+
+    def get_data(self, endpoint: str, **kwargs) -> Optional[Response]:
+        """
+        自定义从媒体服务器获取数据
+        :param endpoint: 端点
+        :param kwargs: 其他请求参数，如headers, cookies, proxies等
+        """
+        return self.__request(method="get", endpoint=endpoint, **kwargs)
+
+    def post_data(self, endpoint: str, **kwargs) -> Optional[Response]:
+        """
+        自定义从媒体服务器获取数据
+        :param endpoint: 端点
+        :param kwargs: 其他请求参数，如headers, cookies, proxies等
+        """
+        return self.__request(method="post", endpoint=endpoint, **kwargs)
+
+    def put_data(self, endpoint: str, **kwargs) -> Optional[Response]:
+        """
+        自定义从媒体服务器获取数据
+        :param endpoint: 端点
+        :param kwargs: 其他请求参数，如headers, cookies, proxies等
+        """
+        return self.__request(method="put", endpoint=endpoint, **kwargs)
+
+    def __request(self, method: str, endpoint: str, **kwargs) -> Optional[Response]:
+        """
+        自定义从媒体服务器获取数据
+        :param method: HTTP方法，如 get, post, put 等
+        :param endpoint: 端点
+        :param kwargs: 其他请求参数，如headers, cookies, proxies等
+        """
+        if not self._session:
+            return
+        try:
+            url = RequestUtils.adapt_request_url(host=self._host, endpoint=endpoint)
+            kwargs.setdefault("headers", self.__get_request_headers())
+            kwargs.setdefault("raise_exception", True)
+            request_method = getattr(RequestUtils(session=self._session), f"{method}_res", None)
+            if request_method:
+                return request_method(url=url, **kwargs)
+            else:
+                logger.error(f"方法 {method} 不存在")
+                return None
+        except Exception as e:
+            logger.error(f"连接Plex出错：" + str(e))
+            return None
+
+    @staticmethod
+    def __get_request_headers() -> dict:
+        """获取请求头"""
+        return {
+            "X-Plex-Token": settings.PLEX_TOKEN,
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+
+    @staticmethod
+    def __adapt_plex_session() -> Session:
+        """
+        创建并配置一个针对Plex服务的requests.Session实例
+        这个会话包括特定的头部信息，用于处理所有的Plex请求
+        """
+        # 设置请求头部，通常包括验证令牌和接受/内容类型头部
+        headers = Plex.__get_request_headers()
+        session = Session()
+        session.headers = headers
+        return session

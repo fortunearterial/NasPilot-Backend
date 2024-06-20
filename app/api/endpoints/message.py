@@ -1,7 +1,7 @@
 import json
 from typing import Union, Any, List
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi import Request
 from pywebpush import WebPushException, webpush
 from sqlalchemy.orm import Session
@@ -164,7 +164,10 @@ def subscribe(subscription: schemas.Subscription, _: schemas.TokenPayload = Depe
     """
     客户端webpush通知订阅
     """
-    global_vars.push_subscription(subscription.dict())
+    subinfo = subscription.dict()
+    if subinfo not in global_vars.get_subscriptions():
+        global_vars.push_subscription(subinfo)
+    logger.debug(f"通知订阅成功: {subinfo}")
     return schemas.Response(success=True)
 
 
@@ -173,8 +176,8 @@ def send_notification(payload: schemas.SubscriptionMessage, _: schemas.TokenPayl
     """
     发送webpush通知
     """
-    try:
-        for sub in global_vars.get_subscriptions():
+    for sub in global_vars.get_subscriptions():
+        try:
             webpush(
                 subscription_info=sub,
                 data=json.dumps(payload.dict()),
@@ -183,7 +186,7 @@ def send_notification(payload: schemas.SubscriptionMessage, _: schemas.TokenPayl
                     "sub": settings.VAPID.get("subject")
                 },
             )
-        return schemas.Response(success=True)
-    except WebPushException as ex:
-        print("WebPush Error:", repr(ex))
-        raise HTTPException(status_code=500, detail=str(ex))
+        except WebPushException as err:
+            logger.error(f"WebPush发送失败: {str(err)}")
+            continue
+    return schemas.Response(success=True)

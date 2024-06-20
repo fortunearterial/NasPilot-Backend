@@ -107,13 +107,14 @@ class SiteChain(ChainBase):
         判断站点是否已经登陆：m-team
         """
         user_agent = site.ua or settings.USER_AGENT
-        url = f"{site.url}api/member/profile"
+        domain = StringUtils.get_url_domain(site.url)
+        url = f"https://api.{domain}/api/member/profile"
         headers = {
-                "Content-Type": "application/json",
-                "User-Agent": user_agent,
-                "Accept": "application/json, text/plain, */*",
-                "Authorization": site.token
-            }
+            "Content-Type": "application/json",
+            "User-Agent": user_agent,
+            "Accept": "application/json, text/plain, */*",
+            "Authorization": site.token
+        }
         res = RequestUtils(
             headers=headers,
             proxies=settings.PROXY if site.proxy else None,
@@ -127,7 +128,7 @@ class SiteChain(ChainBase):
                                    timeout=site.timeout or 15,
                                    proxies=settings.PROXY if site.proxy else None,
                                    referer=f"{site.url}index"
-                                   ).post_res(url=urljoin(url, "api/member/updateLastBrowse"))
+                                   ).post_res(url=f"https://api.{domain}/api/member/updateLastBrowse")
                 if res:
                     return True, "连接成功"
                 else:
@@ -226,7 +227,7 @@ class SiteChain(ChainBase):
             indexer = self.siteshelper.get_indexer(domain)
             # 数据库的站点信息
             site_info = self.siteoper.get_by_domain(domain)
-            if site_info:
+            if site_info and site_info.is_active == 1:
                 # 站点已存在，检查站点连通性
                 status, msg = self.test(domain)
                 # 更新站点Cookie
@@ -252,6 +253,11 @@ class SiteChain(ChainBase):
                 self.siteoper.update_cookie(domain=domain, cookies=cookie)
                 _update_count += 1
             elif indexer:
+                if settings.COOKIECLOUD_BLACKLIST and any(
+                        StringUtils.get_url_domain(domain) == StringUtils.get_url_domain(black_domain) for black_domain
+                        in str(settings.COOKIECLOUD_BLACKLIST).split(",")):
+                    logger.warn(f"站点 {domain} 已在黑名单中，不添加站点")
+                    continue
                 # 新增站点
                 domain_url = __indexer_domain(inx=indexer, sub_domain=domain)
                 res = RequestUtils(cookies=cookie,
@@ -457,7 +463,8 @@ class SiteChain(ChainBase):
             self.post_message(Notification(
                 channel=channel,
                 title="没有维护任何站点信息！",
-                userid=userid))
+                userid=userid,
+                link=settings.MP_DOMAIN('#/site')))
         title = f"共有 {len(site_list)} 个站点，回复对应指令操作：" \
                 f"\n- 禁用站点：/site_disable [id]" \
                 f"\n- 启用站点：/site_enable [id]" \
@@ -475,7 +482,8 @@ class SiteChain(ChainBase):
         # 发送列表
         self.post_message(Notification(
             channel=channel,
-            title=title, text="\n".join(messages), userid=userid))
+            title=title, text="\n".join(messages), userid=userid,
+            link=settings.MP_DOMAIN('#/site')))
 
     def remote_disable(self, arg_str, channel: MessageChannel, userid: Union[str, int] = None):
         """

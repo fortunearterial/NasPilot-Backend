@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Any
+from typing import Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Form
 from fastapi.security import OAuth2PasswordRequestForm
@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db import get_db
 from app.db.models.user import User
+from app.helper.sites import SitesHelper
 from app.log import logger
 from app.utils.web import WebUtils
 
@@ -21,9 +22,9 @@ router = APIRouter()
 
 @router.post("/access-token", summary="获取token", response_model=schemas.Token)
 async def login_access_token(
-    db: Session = Depends(get_db),
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    otp_password: str = Form(None)
+        db: Session = Depends(get_db),
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        otp_password: str = Form(None)
 ) -> Any:
     """
     获取认证Token
@@ -58,17 +59,20 @@ async def login_access_token(
     elif user and not user.is_active:
         raise HTTPException(status_code=403, detail="用户未启用")
     logger.info(f"用户 {user.name} 登录成功！")
+    level = SitesHelper().auth_level
     return schemas.Token(
         access_token=security.create_access_token(
             userid=user.id,
             username=user.name,
             super_user=user.is_superuser,
-            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+            level=level
         ),
         token_type="bearer",
         super_user=user.is_superuser,
         user_name=user.name,
-        avatar=user.avatar
+        avatar=user.avatar,
+        level=level
     )
 
 
@@ -78,18 +82,9 @@ def wallpaper() -> Any:
     获取登录页面电影海报
     """
     if settings.WALLPAPER == "tmdb":
-        return tmdb_wallpaper()
-    elif settings.WALLPAPER == "bing":
-        return bing_wallpaper()
-    return schemas.Response(success=False)
-
-
-@router.get("/bing", summary="Bing每日壁纸", response_model=schemas.Response)
-def bing_wallpaper() -> Any:
-    """
-    获取Bing每日壁纸
-    """
-    url = WebUtils.get_bing_wallpaper()
+        url = TmdbChain().get_random_wallpager()
+    else:
+        url = WebUtils.get_bing_wallpaper()
     if url:
         return schemas.Response(
             success=True,
@@ -98,15 +93,12 @@ def bing_wallpaper() -> Any:
     return schemas.Response(success=False)
 
 
-@router.get("/tmdb", summary="TMDB电影海报", response_model=schemas.Response)
-def tmdb_wallpaper() -> Any:
+@router.get("/wallpapers", summary="登录页面电影海报列表", response_model=List[str])
+def wallpapers() -> Any:
     """
-    获取TMDB电影海报
+    获取登录页面电影海报
     """
-    wallpager = TmdbChain().get_random_wallpager()
-    if wallpager:
-        return schemas.Response(
-            success=True,
-            message=wallpager
-        )
-    return schemas.Response(success=False)
+    if settings.WALLPAPER == "tmdb":
+        return TmdbChain().get_trending_wallpapers()
+    else:
+        return WebUtils.get_bing_wallpapers()
