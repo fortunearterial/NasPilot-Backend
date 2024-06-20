@@ -81,7 +81,7 @@ RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf \
     && curl -sL "https://github.com/fortunearterial/NasPilot-Frontend/releases/download/${FRONTEND_VERSION}/dist.zip" | busybox unzip -d / - \
     && mv /dist /public \
     && curl -sL "https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
-    && mv -f /tmp/MoviePilot-Plugins-main/plugins/* /app/app/plugins/ \
+    && mv -f /tmp/NASPilot-Plugins-main/plugins/* /app/app/plugins/ \
     && rm -rf /tmp/*
 EXPOSE 3000
 VOLUME [ "/config" ]

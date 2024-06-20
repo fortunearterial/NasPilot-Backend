@@ -4,7 +4,7 @@
 
 # 仅用于学习交流使用，请勿在任何国内平台宣传该项目！
 
-发布频道：https://t.me/moviepilot_channel
+发布频道：https://t.me/NASPilot_channel
 
 ## 主要特性
 
@@ -18,6 +18,6 @@
 
 ## 贡献者
 
-<a href="https://github.com/jxxghp/MoviePilot/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=jxxghp/MoviePilot" />
+<a href="https://github.com/jxxghp/NASPilot/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=jxxghp/NASPilot" />
 </a>

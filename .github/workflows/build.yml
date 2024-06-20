@@ -1,4 +1,4 @@
-name: NasPilot Builder
+name: NASPilot Builder
 on:
   workflow_dispatch:
   push:
@@ -94,8 +94,8 @@ jobs:
           Remove-Item -Path "nginx.zip"
           Remove-Item -Path "nginx-1.25.2" -Recurse -Force
           # 下载前端
-          $FRONTEND_VERSION = (Invoke-WebRequest -Uri "https://api.github.com/repos/fortunearterial/NasPilot-Frontend/releases/latest" | ConvertFrom-Json).tag_name
-          Invoke-WebRequest -Uri "https://github.com/fortunearterial/NasPilot-Frontend/releases/download/$FRONTEND_VERSION/dist.zip" -OutFile "dist.zip"
+          $FRONTEND_VERSION = (Invoke-WebRequest -Uri "https://api.github.com/repos/fortunearterial/NASPilot-Frontend/releases/latest" | ConvertFrom-Json).tag_name
+          Invoke-WebRequest -Uri "https://github.com/fortunearterial/NASPilot-Frontend/releases/download/$FRONTEND_VERSION/dist.zip" -OutFile "dist.zip"
           Expand-Archive -Path "dist.zip" -DestinationPath "dist"
           Move-Item -Path "dist/dist/*" -Destination "nginx/html" -Force
           Remove-Item -Path "dist.zip"
@@ -106,35 +106,35 @@ jobs:
           New-Item -Path "nginx/logs" -ItemType Directory -Force
           New-Item -Path "nginx/logs/__keep__.txt" -ItemType File -Force
           # 下载插件 jxxghp
-          Invoke-WebRequest -Uri "https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
-          Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
-          Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
-          Remove-Item -Path "MoviePilot-Plugins-main.zip"
-          Remove-Item -Path "MoviePilot-Plugins-main" -Recurse -Force
+          Invoke-WebRequest -Uri "https://github.com/fortunearterial/NASPilot-Backend-Plugins/archive/refs/heads/main.zip" -OutFile "NASPilot-Plugins-main.zip"
+          Expand-Archive -Path "NASPilot-Plugins-main.zip" -DestinationPath "NASPilot-Plugins-main"
+          Move-Item -Path "NASPilot-Plugins-main/NASPilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "NASPilot-Plugins-main.zip"
+          Remove-Item -Path "NASPilot-Plugins-main" -Recurse -Force
           # 下载插件 thsrite
-          Invoke-WebRequest -Uri "https://github.com/thsrite/MoviePilot-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
-          Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
-          Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
-          Remove-Item -Path "MoviePilot-Plugins-main.zip"
-          Remove-Item -Path "MoviePilot-Plugins-main" -Recurse -Force
+          Invoke-WebRequest -Uri "https://github.com/thsrite/NASPilot-Plugins/archive/refs/heads/main.zip" -OutFile "NASPilot-Plugins-main.zip"
+          Expand-Archive -Path "NASPilot-Plugins-main.zip" -DestinationPath "NASPilot-Plugins-main"
+          Move-Item -Path "NASPilot-Plugins-main/NASPilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "NASPilot-Plugins-main.zip"
+          Remove-Item -Path "NASPilot-Plugins-main" -Recurse -Force
           # 下载插件 honue
-          Invoke-WebRequest -Uri "https://github.com/honue/MoviePilot-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
-          Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
-          Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
-          Remove-Item -Path "MoviePilot-Plugins-main.zip"
-          Remove-Item -Path "MoviePilot-Plugins-main" -Recurse -Force
+          Invoke-WebRequest -Uri "https://github.com/honue/NASPilot-Plugins/archive/refs/heads/main.zip" -OutFile "NASPilot-Plugins-main.zip"
+          Expand-Archive -Path "NASPilot-Plugins-main.zip" -DestinationPath "NASPilot-Plugins-main"
+          Move-Item -Path "NASPilot-Plugins-main/NASPilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "NASPilot-Plugins-main.zip"
+          Remove-Item -Path "NASPilot-Plugins-main" -Recurse -Force
           # 下载插件 InfinityPacer
-          Invoke-WebRequest -Uri "https://github.com/InfinityPacer/MoviePilot-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
-          Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
-          Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
-          Remove-Item -Path "MoviePilot-Plugins-main.zip"
-          Remove-Item -Path "MoviePilot-Plugins-main" -Recurse -Force
+          Invoke-WebRequest -Uri "https://github.com/InfinityPacer/NASPilot-Plugins/archive/refs/heads/main.zip" -OutFile "NASPilot-Plugins-main.zip"
+          Expand-Archive -Path "NASPilot-Plugins-main.zip" -DestinationPath "NASPilot-Plugins-main"
+          Move-Item -Path "NASPilot-Plugins-main/NASPilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "NASPilot-Plugins-main.zip"
+          Remove-Item -Path "NASPilot-Plugins-main" -Recurse -Force
           # 下载资源
-          Invoke-WebRequest -Uri "https://github.com/jxxghp/MoviePilot-Resources/archive/refs/heads/main.zip" -OutFile "MoviePilot-Resources-main.zip"
-          Expand-Archive -Path "MoviePilot-Resources-main.zip" -DestinationPath "MoviePilot-Resources-main"
-          Move-Item -Path "MoviePilot-Resources-main/MoviePilot-Resources-main/resources/*" -Destination "app/helper/" -Force
-          Remove-Item -Path "MoviePilot-Resources-main.zip"
-          Remove-Item -Path "MoviePilot-Resources-main" -Recurse -Force
+          Invoke-WebRequest -Uri "https://github.com/jxxghp/NASPilot-Resources/archive/refs/heads/main.zip" -OutFile "NASPilot-Resources-main.zip"
+          Expand-Archive -Path "NASPilot-Resources-main.zip" -DestinationPath "NASPilot-Resources-main"
+          Move-Item -Path "NASPilot-Resources-main/NASPilot-Resources-main/resources/*" -Destination "app/helper/" -Force
+          Remove-Item -Path "NASPilot-Resources-main.zip"
+          Remove-Item -Path "NASPilot-Resources-main" -Recurse -Force
         shell: pwsh
 
       - name: Pyinstaller
@@ -146,7 +146,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: windows
-          path: dist/NasPilot.exe
+          path: dist/NASPilot.exe
 
   Linux-build-amd64:
     runs-on: ubuntu-latest
@@ -170,22 +170,22 @@ jobs:
 
       - name: Prepare Frontend
         run: |
-          wget https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip
+          wget https://github.com/fortunearterial/NASPilot-Backend-Plugins/archive/refs/heads/main.zip
           unzip main.zip
-          mv MoviePilot-Plugins-main/plugins/* app/plugins/
+          mv NASPilot-Plugins-main/plugins/* app/plugins/
           rm main.zip
-          rm -rf MoviePilot-Plugins-main
+          rm -rf NASPilot-Plugins-main
 
       - name: Pyinstaller
         run: |
           pyinstaller frozen.spec
-          mv dist/NasPilot dist/NasPilot_Amd64
+          mv dist/NASPilot dist/NASPilot_Amd64
 
       - name: Upload Linux File
         uses: actions/upload-artifact@v3
         with:
           name: linux-amd64
-          path: dist/NasPilot_Amd64
+          path: dist/NASPilot_Amd64
 
   Create-release:
     permissions: write-all
@@ -207,8 +207,8 @@ jobs:
         shell: bash
         run: |
           mkdir releases
-          mv ./windows/NasPilot.exe ./releases/NasPilot_Win_v${{ env.app_version }}.exe
-          mv ./linux-amd64/NasPilot_Amd64 ./releases/NasPilot_Amd64_v${{ env.app_version }}
+          mv ./windows/NASPilot.exe ./releases/NASPilot_Win_v${{ env.app_version }}.exe
+          mv ./linux-amd64/NASPilot_Amd64 ./releases/NASPilot_Amd64_v${{ env.app_version }}
 
       - name: Create Release
         id: create_release
