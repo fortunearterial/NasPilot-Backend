@@ -452,7 +452,7 @@ class DownloadChain(ChainBase):
                                         userid=userid, username=username):
                     # 下载成功
                     logger.info(f"{context.torrent_info.title} 添加下载成功")
-                    downloaded_list.append(context)ß
+                    downloaded_list.append(context)
 
         # 电视剧整季匹配
         logger.info(f"开始匹配电视剧整季：{no_exists}")

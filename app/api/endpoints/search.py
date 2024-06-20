@@ -33,7 +33,7 @@ def search_by_id(mediaid: str,
     if mtype:
         mtype = MediaType(mtype)
     if season:
-        season = int(season)s
+        season = int(season)
     if mediaid.startswith("tmdb:"):
         tmdbid = int(mediaid.replace("tmdb:", ""))
         if settings.RECOGNIZE_SOURCE.__contains__("douban"):

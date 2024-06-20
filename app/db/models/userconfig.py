@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Sequence, UniqueConstraint, Index, Text
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -10,11 +10,11 @@ class UserConfig(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 用户名
-    username = Column(String, index=True)
+    username = Column(String(255), index=True)
     # 配置键
-    key = Column(String)
+    key = Column(String(255))
     # 值
-    value = Column(String, nullable=True)
+    value = Column(Text, nullable=True)
 
     __table_args__ = (
         # 用户名和配置键联合唯一

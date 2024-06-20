@@ -16,6 +16,10 @@
 
 访问官方Wiki：https://wiki.movie-pilot.org
 
+## 二开部分说明
+
+1111
+
 ## 贡献者
 
 <a href="https://github.com/fortunearterial/NasPilot/graphs/contributors">

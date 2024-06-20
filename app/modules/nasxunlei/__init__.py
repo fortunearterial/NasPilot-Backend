@@ -23,8 +23,18 @@ class NasXunleiModule(_ModuleBase):
     def init_module(self) -> None:
         self.nasxunlei = NasXunlei()
 
+    @staticmethod
+    def get_name() -> str:
+        return "迅雷"
+
     def stop(self):
         pass
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        return True, ""
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "DOWNLOADER", "nasxunlei"

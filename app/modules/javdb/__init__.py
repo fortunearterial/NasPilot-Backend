@@ -26,8 +26,18 @@ class JavDBModule(_ModuleBase):
         self.scraper = JavDBScraper()
         self.cache = JavDBCache()
 
+    @staticmethod
+    def get_name() -> str:
+        return "JavDB"
+
     def stop(self):
         self.cache.save()
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        return True, ""
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         pass

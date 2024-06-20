@@ -243,7 +243,6 @@ class TheMovieDbModule(_ModuleBase):
         """
         # 未启用时返回None
         if not settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
-        if settings.SEARCH_SOURCE and "themoviedb" not in settings.SEARCH_SOURCE:
             return None
         if not meta.name:
             return []

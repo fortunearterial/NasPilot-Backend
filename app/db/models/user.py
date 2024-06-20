@@ -30,7 +30,7 @@ class User(Base):
     # 是否启用otp二次验证
     is_otp = Column(Boolean(), default=False)
     # otp秘钥
-    otp_secret = Column(String, default=None)
+    otp_secret = Column(String(255), default=None)
 
     @staticmethod
     @db_query

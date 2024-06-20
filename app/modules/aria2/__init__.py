@@ -23,8 +23,18 @@ class Aria2Module(_ModuleBase):
     def init_module(self) -> None:
         self.aria2 = Aria2()
 
+    @staticmethod
+    def get_name() -> str:
+        return "Aria2"
+
     def stop(self):
         pass
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        return True, ""
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         return "DOWNLOADER", "aria2"

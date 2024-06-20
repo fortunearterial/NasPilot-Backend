@@ -175,7 +175,8 @@ def subscribe_mediaid(
         bangumiid = mediaid[8:]
         if not bangumiid or not str(bangumiid).isdigit():
             return Subscribe()
-        result = Subscribe.get_by_bangumiid(db, int(bangumiid))    elif mediaid.startswith("steam:"):
+        result = Subscribe.get_by_bangumiid(db, int(bangumiid))    
+    elif mediaid.startswith("steam:"):
         steamid = mediaid[6:]
         if not steamid:
             return Subscribe()

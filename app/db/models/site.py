@@ -34,9 +34,9 @@ class Site(Base):
     # User-Agent
     ua = Column(String(255))
     # ApiKey
-    apikey = Column(String)
+    apikey = Column(String(255))
     # Token
-    token = Column(String)
+    token = Column(String(255))
     # 是否使用代理 0-否，1-是
     proxy = Column(Integer)
     # 过滤规则

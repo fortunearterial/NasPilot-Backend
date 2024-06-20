@@ -26,8 +26,18 @@ class SteamModule(_ModuleBase):
         self.scraper = SteamScraper()
         self.cache = SteamCache()
 
+    @staticmethod
+    def get_name() -> str:
+        return "Steam"
+
     def stop(self):
         self.cache.save()
+
+    def test(self) -> Tuple[bool, str]:
+        """
+        测试模块连接性
+        """
+        return True, ""
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
         pass
