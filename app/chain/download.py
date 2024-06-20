@@ -442,7 +442,7 @@ class DownloadChain(ChainBase):
         # 分组排序
         contexts = TorrentHelper().sort_group_torrents(contexts)
 
-        # 如果是电影、游戏，直接下载
+        # 如果是电影、游戏、JAV，直接下载
         for context in contexts:
             if context.media_info.type == MediaType.MOVIE \
                 or context.media_info.type == MediaType.GAME \
@@ -452,7 +452,7 @@ class DownloadChain(ChainBase):
                                         userid=userid, username=username):
                     # 下载成功
                     logger.info(f"{context.torrent_info.title} 添加下载成功")
-                    downloaded_list.append(context)
+                    downloaded_list.append(context)ß
 
         # 电视剧整季匹配
         logger.info(f"开始匹配电视剧整季：{no_exists}")

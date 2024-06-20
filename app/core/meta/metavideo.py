@@ -14,7 +14,7 @@ from app.utils.tokens import Tokens
 
 class MetaVideo(MetaBase):
     """
-    识别电影、电视剧、游戏
+    识别电影、电视剧
     """
     # 控制标位区
     _stop_name_flag = False

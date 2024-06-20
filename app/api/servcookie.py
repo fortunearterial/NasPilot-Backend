@@ -53,12 +53,12 @@ cookie_router = APIRouter(route_class=GzipRoute,
 
 @cookie_router.get("/", response_class=PlainTextResponse)
 def get_root():
-    return "Hello NASPilot! COOKIECLOUD API ROOT = /cookiecloud"
+    return "Hello NasPilot! COOKIECLOUD API ROOT = /cookiecloud"
 
 
 @cookie_router.post("/", response_class=PlainTextResponse)
 def post_root():
-    return "Hello NASPilot! COOKIECLOUD API ROOT = /cookiecloud"
+    return "Hello NasPilot! COOKIECLOUD API ROOT = /cookiecloud"
 
 
 @cookie_router.post("/update")

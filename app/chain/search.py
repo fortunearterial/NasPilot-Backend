@@ -124,7 +124,7 @@ class SearchChain(ChainBase):
                                         mediainfo=mediainfo) or []
 
         # 豆瓣标题处理
-        if mediainfo.douban_id and not mediainfo.tmdb_id:
+        if not mediainfo.tmdb_id:
             meta = MetaInfo(title=mediainfo.title)
             mediainfo.title = meta.name
             mediainfo.season = meta.begin_season

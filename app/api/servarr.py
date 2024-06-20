@@ -65,7 +65,7 @@ def arr_system_status(_: str = Depends(verify_apikey)) -> Any:
         "runtimeName": "",
         "startTime": "",
         "packageVersion": "",
-        "packageAuthor": "jxxghp",
+        "packageAuthor": "fortunearterial",
         "packageUpdateMechanism": "builtIn",
         "packageUpdateMechanismMessage": ""
     }

@@ -137,7 +137,7 @@ class Settings(BaseSettings):
     VOCECHAT_API_KEY: str = ""
     # VoceChat 频道ID
     VOCECHAT_CHANNEL_ID: str = ""
-    # 下载器 qbittorrent/transmission，启用多个下载器时使用,分隔，只有第一个会被默认使用/aria2/nasxunlei
+    # 下载器 qbittorrent/transmission/aria2/nasxunlei，启用多个下载器时使用,分隔，只有第一个会被默认使用
     DOWNLOADER: str = "qbittorrent"
     # 下载器监控开关
     DOWNLOADER_MONITOR: bool = True
@@ -251,7 +251,7 @@ class Settings(BaseSettings):
     # 大内存模式
     BIG_MEMORY_MODE: bool = False
     # 插件市场仓库地址，多个地址使用,分隔，地址以/结尾
-    PLUGIN_MARKET: str = "https://github.com/fortunearterial/NasPilot-Backend-Plugins"
+    PLUGIN_MARKET: str = "https://github.com/fortunearterial/MoviePilot-Plugins,https://github.com/fortunearterial/NasPilot-Backend-Plugins,https://github.com/thsrite/MoviePilot-Plugins,https://github.com/honue/MoviePilot-Plugins,https://github.com/InfinityPacer/MoviePilot-Plugins"
     # Github token，提高请求api限流阈值 ghp_****
     GITHUB_TOKEN: Optional[str] = None
     # Github代理服务器，格式：https://mirror.ghproxy.com/
@@ -268,7 +268,7 @@ class Settings(BaseSettings):
     SUBSCRIBE_STATISTIC_SHARE: bool = True
     # 插件安装数据共享
     PLUGIN_STATISTIC_SHARE: bool = True
-    # 服务器地址，对应 https://github.com/jxxghp/NASPilot-Server 项目
+    # 服务器地址，对应 https://github.com/fortunearterial/NasPilot-Server 项目
     MP_SERVER_HOST: str = "https://movie-pilot.org"
 
     # 【已弃用】刮削入库的媒体文件

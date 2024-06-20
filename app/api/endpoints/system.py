@@ -168,7 +168,7 @@ def get_message(token: str, role: str = "system"):
 
 
 @router.get("/logging", summary="实时日志")
-def get_logging(token: str, length: int = 50, logfile: str = "NASPilot.log"):
+def get_logging(token: str, length: int = 50, logfile: str = "NasPilot.log"):
     """
     实时获取系统日志
     length = -1 时, 返回text/plain
@@ -215,7 +215,7 @@ def latest_version(_: schemas.TokenPayload = Depends(verify_token)):
     查询Github所有Release版本
     """
     version_res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
-        f"https://api.github.com/repos/jxxghp/NASPilot/releases")
+        f"https://api.github.com/repos/fortunearterial/NasPilot/releases")
     version_res_ly = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
         f"https://api.github.com/repos/fortunearterial/NasPilot-Backend/releases")
 

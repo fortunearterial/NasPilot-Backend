@@ -38,7 +38,7 @@ class LoggerManager:
     # 管理所有的Logger
     _loggers: Dict[str, Any] = {}
     # 默认日志文件
-    _default_log_file = "NASPilot.log"
+    _default_log_file = "NasPilot.log"
 
     @staticmethod
     def __get_caller():

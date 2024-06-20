@@ -115,7 +115,7 @@ class SystemChain(ChainBase, metaclass=Singleton):
         """
         try:
             version_res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
-                "https://api.github.com/repos/jxxghp/NASPilot-Frontend/releases/latest")
+                "https://api.github.com/repos/fortunearterial/NasPilot-Frontend/releases/latest")
             if version_res:
                 ver_json = version_res.json()
                 version = f"{ver_json['tag_name']}"

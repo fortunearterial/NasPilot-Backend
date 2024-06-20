@@ -156,7 +156,7 @@ def check_auth():
         CommandChian().post_message(
             Notification(
                 mtype=NotificationType.Manual,
-                title="NASPilot用户认证",
+                title="NasPilot用户认证",
                 text=err_msg,
                 link=settings.MP_DOMAIN('#/site')
             )
