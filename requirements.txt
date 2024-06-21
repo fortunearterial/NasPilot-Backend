@@ -60,3 +60,5 @@ Pinyin2Hanzi~=0.1.1
 pywebpush~=2.0.0
 py115~=0.0.4
 pymysql~=1.1.0
+js2py~=0.74
+aria2p~=0.12.0

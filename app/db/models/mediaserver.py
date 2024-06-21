@@ -33,7 +33,7 @@ class MediaServerItem(Base):
     # TVDBID
     tvdbid = Column(String(255), index=True)
     # 路径
-    path = Column(String(4096))
+    path = Column(String(2000))
     # 季集
     seasoninfo = Column(String(3000))
     # 备注

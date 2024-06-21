@@ -12,7 +12,7 @@ class DownloadHistory(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 保存路径
-    path = Column(String(4096), nullable=False, index=True)
+    path = Column(String(2000), nullable=False, index=True)
     # 类型 电影/电视剧
     type = Column(String(255), nullable=False)
     # 标题
@@ -165,9 +165,9 @@ class DownloadFiles(Base):
     # 下载器
     downloader = Column(String(255))
     # 完整路径
-    fullpath = Column(String(4096), index=True)
+    fullpath = Column(String(2000), index=True)
     # 保存路径
-    savepath = Column(String(4096), index=True)
+    savepath = Column(String(2000), index=True)
     # 文件相对路径/名称
     filepath = Column(String(255))
     # 种子名称

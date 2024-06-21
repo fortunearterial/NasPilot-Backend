@@ -71,7 +71,7 @@ class Subscribe(Base):
     # 当前优先级
     current_priority = Column(Integer)
     # 保存路径
-    save_path = Column(String(4096))
+    save_path = Column(String(2000))
     # 是否使用 imdbid 搜索
     search_imdbid = Column(Integer, default=0)
     # 是否手动修改过总集数 0否 1是
