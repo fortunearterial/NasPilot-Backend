@@ -85,7 +85,7 @@ class SubscribeChain(ChainBase):
                 mediainfo.title = title
         else:
             # 识别媒体信息
-            if settings.RECOGNIZE_SOURCE.__contains__("themoviedb"):
+            if "themoviedb" in settings.RECOGNIZE_SOURCE:
                 # TMDB识别模式
                 if not tmdbid and doubanid:
                     # 将豆瓣信息转换为TMDB信息

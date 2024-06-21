@@ -69,7 +69,7 @@ class DoubanModule(_ModuleBase):
             return None
 
         if meta and not doubanid \
-                and not settings.RECOGNIZE_SOURCE.__contains__("douban"):
+                and not "douban" in settings.RECOGNIZE_SOURCE:
             return None
 
         if not meta:
@@ -771,7 +771,7 @@ class DoubanModule(_ModuleBase):
         :param mediainfo:  识别的媒体信息
         :return: 更新后的媒体信息
         """
-        if not settings.RECOGNIZE_SOURCE.__contains__("douban"):
+        if not "douban" in settings.RECOGNIZE_SOURCE:
             return None
         if not mediainfo.douban_id:
             return None

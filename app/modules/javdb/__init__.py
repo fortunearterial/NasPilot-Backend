@@ -53,7 +53,7 @@ class JavDBModule(_ModuleBase):
         :param javdbid: JavDB ID
         :return: 识别的媒体信息，包括剧集信息
         """
-        if not settings.RECOGNIZE_SOURCE.__contains__("javdb"):
+        if not "javdb" in settings.RECOGNIZE_SOURCE:
             return None
 
         if not meta:
@@ -148,7 +148,7 @@ class JavDBModule(_ModuleBase):
         :reutrn: 媒体信息
         """
         # 未启用JavDB搜索时返回None
-        if not settings.RECOGNIZE_SOURCE.__contains__("javdb"):
+        if not "javdb" in settings.RECOGNIZE_SOURCE:
             return None
 
         if not meta.org_string:
@@ -235,7 +235,7 @@ class JavDBModule(_ModuleBase):
         :param mediainfo:  识别的媒体信息
         :return: 更新后的媒体信息
         """
-        if not settings.RECOGNIZE_SOURCE.__contains__("javdb"):
+        if not "javdb" in settings.RECOGNIZE_SOURCE:
             return None
         if not mediainfo.javdb_id:
             return None
