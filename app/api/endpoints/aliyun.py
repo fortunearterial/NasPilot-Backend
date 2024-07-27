@@ -12,7 +12,6 @@ from app.core.security import verify_token, verify_uri_token
 from app.helper.aliyun import AliyunHelper
 from app.helper.progress import ProgressHelper
 from app.schemas.types import ProgressKey
-from app.utils.string import StringUtils
 
 router = APIRouter()
 
@@ -47,10 +46,8 @@ def userinfo(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
     查询用户信息
     """
     aliyunhelper = AliyunHelper()
-    # 浏览一次文件确定token正确性
-    aliyunhelper.list_files()
     # 查询用户信息返回
-    info = aliyunhelper.get_user_info()
+    info = aliyunhelper.user_info()
     if info:
         return schemas.Response(success=True, data=info)
     return schemas.Response(success=False)
@@ -76,36 +73,14 @@ def list_aliyun(fileitem: schemas.FileItem,
     if sort == "time":
         sort = "updated_at"
     if fileitem.type == "file":
-        fileinfo = AliyunHelper().get_file_detail(fileitem.fileid)
-        if fileinfo:
-            return [schemas.FileItem(
-                fileid=fileinfo.get("file_id"),
-                parent_fileid=fileinfo.get("parent_file_id"),
-                type="file",
-                path=f"{path}{fileinfo.get('name')}",
-                name=fileinfo.get("name"),
-                size=fileinfo.get("size"),
-                extension=fileinfo.get("file_extension"),
-                modify_time=StringUtils.str_to_timestamp(fileinfo.get("updated_at")),
-                thumbnail=fileinfo.get("thumbnail"),
-                drive_id=fileinfo.get("drive_id"),
-            )]
+        fileitem = AliyunHelper().detail(drive_id=fileitem.drive_id, file_id=fileitem.fileid, path=path)
+        if fileitem:
+            return [fileitem]
         return []
-    items = AliyunHelper().list_files(drive_id=fileitem.drive_id, parent_file_id=fileitem.fileid, order_by=sort)
-    if not items:
-        return []
-    return [schemas.FileItem(
-        fileid=item.get("file_id"),
-        parent_fileid=item.get("parent_file_id"),
-        type="dir" if item.get("type") == "folder" else "file",
-        path=f"{path}{item.get('name')}" + "/" if item.get("type") == "folder" else "",
-        name=item.get("name"),
-        size=item.get("size"),
-        extension=item.get("file_extension"),
-        modify_time=StringUtils.str_to_timestamp(item.get("updated_at")),
-        thumbnail=item.get("thumbnail"),
-        drive_id=item.get("drive_id"),
-    ) for item in items]
+    return AliyunHelper().list(drive_id=fileitem.drive_id,
+                               parent_file_id=fileitem.fileid,
+                               path=path,
+                               order_by=sort)
 
 
 @router.post("/mkdir", summary="创建目录（阿里云盘）", response_model=schemas.Response)
@@ -117,7 +92,8 @@ def mkdir_aliyun(fileitem: schemas.FileItem,
     """
     if not fileitem.fileid or not name:
         return schemas.Response(success=False)
-    result = AliyunHelper().create_folder(parent_file_id=fileitem.fileid, name=name)
+    result = AliyunHelper().create_folder(drive_id=fileitem.drive_id, parent_file_id=fileitem.fileid,
+                                          name=name, path=fileitem.path)
     if result:
         return schemas.Response(success=True)
     return schemas.Response(success=False)
@@ -131,7 +107,7 @@ def delete_aliyun(fileitem: schemas.FileItem,
     """
     if not fileitem.fileid:
         return schemas.Response(success=False)
-    result = AliyunHelper().delete_file(fileitem.fileid)
+    result = AliyunHelper().delete(drive_id=fileitem.drive_id, file_id=fileitem.fileid)
     if result:
         return schemas.Response(success=True)
     return schemas.Response(success=False)
@@ -139,13 +115,14 @@ def delete_aliyun(fileitem: schemas.FileItem,
 
 @router.get("/download", summary="下载文件（阿里云盘）")
 def download_aliyun(fileid: str,
+                    drive_id: str = None,
                     _: schemas.TokenPayload = Depends(verify_uri_token)) -> Any:
     """
     下载文件或目录
     """
     if not fileid:
         return schemas.Response(success=False)
-    url = AliyunHelper().get_download_url(fileid)
+    url = AliyunHelper().download(drive_id=drive_id, file_id=fileid)
     if url:
         # 重定向
         return Response(status_code=302, headers={"Location": url})
@@ -162,7 +139,7 @@ def rename_aliyun(fileitem: schemas.FileItem,
     """
     if not fileitem.fileid or not new_name:
         return schemas.Response(success=False)
-    result = AliyunHelper().rename_file(fileitem.fileid, new_name)
+    result = AliyunHelper().rename(drive_id=fileitem.drive_id, file_id=fileitem.fileid, name=new_name)
     if result:
         if recursive:
             transferchain = TransferChain()
@@ -208,13 +185,13 @@ def rename_aliyun(fileitem: schemas.FileItem,
 
 
 @router.get("/image", summary="读取图片（阿里云盘）", response_model=schemas.Response)
-def image_aliyun(fileid: str, _: schemas.TokenPayload = Depends(verify_uri_token)) -> Any:
+def image_aliyun(fileid: str, drive_id: str = None, _: schemas.TokenPayload = Depends(verify_uri_token)) -> Any:
     """
     读取图片
     """
     if not fileid:
         return schemas.Response(success=False)
-    url = AliyunHelper().get_download_url(fileid)
+    url = AliyunHelper().download(drive_id=drive_id, file_id=fileid)
     if url:
         # 重定向
         return Response(status_code=302, headers={"Location": url})

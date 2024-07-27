@@ -1,6 +1,6 @@
 import traceback
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional, Tuple
 from xml.dom import minidom
 
 from requests import RequestException
@@ -26,6 +26,90 @@ class TmdbScraper:
     def __init__(self, tmdb):
         self.tmdb = tmdb
 
+    def get_metadata_nfo(self, meta: MetaBase, mediainfo: MediaInfo,
+                         season: int = None, episode: int = None) -> Optional[str]:
+        """
+        获取NFO文件内容文本
+        :param meta: 元数据
+        :param mediainfo: 媒体信息
+        :param season: 季号
+        :param episode: 集号
+        """
+        if mediainfo.type == MediaType.MOVIE:
+            # 电影元数据文件
+            doc = self.__gen_movie_nfo_file(mediainfo=mediainfo)
+        else:
+            if season:
+                # 查询季信息
+                seasoninfo = self.tmdb.get_tv_season_detail(mediainfo.tmdb_id, meta.begin_season)
+                if episode:
+                    # 集元数据文件
+                    episodeinfo = self.__get_episode_detail(seasoninfo, meta.begin_episode)
+                    doc = self.__gen_tv_episode_nfo_file(episodeinfo=episodeinfo, tmdbid=mediainfo.tmdb_id,
+                                                         season=season, episode=episode)
+                else:
+                    # 季元数据文件
+                    doc = self.__gen_tv_season_nfo_file(seasoninfo=seasoninfo, season=season)
+            else:
+                # 电视剧元数据文件
+                doc = self.__gen_tv_nfo_file(mediainfo=mediainfo)
+        if doc:
+            return doc.toprettyxml(indent="  ", encoding="utf-8")
+
+        return None
+
+    def get_metadata_img(self, mediainfo: MediaInfo, season: int = None) -> dict:
+        """
+        获取图片名称和url
+        :param mediainfo: 媒体信息
+        :param season: 季号
+        """
+        images = {}
+        if season:
+            # 只需要季的图片
+            seasoninfo = self.tmdb.get_tv_season_detail(mediainfo.tmdb_id, season)
+            if seasoninfo:
+                # TMDB季poster图片
+                poster_name, poster_url = self.get_season_poster(seasoninfo, season)
+                if poster_name and poster_url:
+                    images[poster_name] = poster_url
+            return images
+        # 主媒体图片
+        for attr_name, attr_value in vars(mediainfo).items():
+            if attr_value \
+                    and attr_name.endswith("_path") \
+                    and attr_value \
+                    and isinstance(attr_value, str) \
+                    and attr_value.startswith("http"):
+                image_name = attr_name.replace("_path", "") + Path(attr_value).suffix
+                images[image_name] = attr_value
+        return images
+
+    @staticmethod
+    def get_season_poster(seasoninfo: dict, season: int) -> Tuple[str, str]:
+        """
+        获取季的海报
+        """
+        # TMDB季poster图片
+        sea_seq = str(season).rjust(2, '0')
+        if seasoninfo.get("poster_path"):
+            # 后缀
+            ext = Path(seasoninfo.get('poster_path')).suffix
+            # URL
+            url = f"https://{settings.TMDB_IMAGE_DOMAIN}/t/p/original{seasoninfo.get('poster_path')}"
+            image_name = f"season{sea_seq}-poster{ext}"
+            return image_name, url
+
+    @staticmethod
+    def __get_episode_detail(seasoninfo: dict, episode: int) -> dict:
+        """
+        根据季信息获取集的信息
+        """
+        for _episode_info in seasoninfo.get("episodes") or []:
+            if _episode_info.get("episode_number") == episode:
+                return _episode_info
+        return {}
+
     def gen_scraper_files(self, mediainfo: MediaInfo, file_path: Path, transfer_type: str,
                           metainfo: MetaBase = None, force_nfo: bool = False, force_img: bool = False):
         """
@@ -45,15 +129,6 @@ class TmdbScraper:
         self._force_nfo = force_nfo
         self._force_img = force_img
 
-        def __get_episode_detail(_seasoninfo: dict, _episode: int):
-            """
-            根据季信息获取集的信息
-            """
-            for _episode_info in _seasoninfo.get("episodes") or []:
-                if _episode_info.get("episode_number") == _episode:
-                    return _episode_info
-            return {}
-
         try:
             # 电影，路径为文件名 名称/名称.xxx 或者蓝光原盘目录 名称/名称
             if mediainfo.type == MediaType.MOVIE:
@@ -64,17 +139,11 @@ class TmdbScraper:
                     self.__gen_movie_nfo_file(mediainfo=mediainfo,
                                               file_path=file_path)
                 # 生成电影图片
-                for attr_name, attr_value in vars(mediainfo).items():
-                    if attr_value \
-                            and attr_name.endswith("_path") \
-                            and attr_value \
-                            and isinstance(attr_value, str) \
-                            and attr_value.startswith("http"):
-                        image_name = attr_name.replace("_path", "") + Path(attr_value).suffix
-                        image_path = file_path.with_name(image_name)
-                        if self._force_img or not image_path.exists():
-                            self.__save_image(url=attr_value,
-                                              file_path=image_path)
+                image_dict = self.get_metadata_img(mediainfo=mediainfo)
+                for image_name, image_url in image_dict.items():
+                    image_path = file_path.with_name(image_name)
+                    if self._force_img or not image_path.exists():
+                        self.__save_image(url=image_url, file_path=image_path)
             # 电视剧，路径为每一季的文件名 名称/Season xx/名称 SxxExx.xxx
             else:
                 # 如果有上游传入的元信息则使用，否则使用文件名识别
@@ -87,18 +156,11 @@ class TmdbScraper:
                     self.__gen_tv_nfo_file(mediainfo=mediainfo,
                                            dir_path=file_path.parents[1])
                 # 生成根目录图片
-                for attr_name, attr_value in vars(mediainfo).items():
-                    if attr_name \
-                            and attr_name.endswith("_path") \
-                            and not attr_name.startswith("season") \
-                            and attr_value \
-                            and isinstance(attr_value, str) \
-                            and attr_value.startswith("http"):
-                        image_name = attr_name.replace("_path", "") + Path(attr_value).suffix
-                        image_path = file_path.parent.with_name(image_name)
-                        if self._force_img or not image_path.exists():
-                            self.__save_image(url=attr_value,
-                                              file_path=image_path)
+                image_dict = self.get_metadata_img(mediainfo=mediainfo)
+                for image_name, image_url in image_dict.items():
+                    image_path = file_path.parent.with_name(image_name)
+                    if self._force_img or not image_path.exists():
+                        self.__save_image(url=image_url, file_path=image_path)
                 # 查询季信息
                 seasoninfo = self.tmdb.get_tv_season_detail(mediainfo.tmdb_id, meta.begin_season)
                 if seasoninfo:
@@ -107,31 +169,14 @@ class TmdbScraper:
                         self.__gen_tv_season_nfo_file(seasoninfo=seasoninfo,
                                                       season=meta.begin_season,
                                                       season_path=file_path.parent)
-                    # TMDB季poster图片
-                    sea_seq = str(meta.begin_season).rjust(2, '0')
-                    if seasoninfo.get("poster_path"):
-                        # 后缀
-                        ext = Path(seasoninfo.get('poster_path')).suffix
-                        # URL
-                        url = f"https://{settings.TMDB_IMAGE_DOMAIN}/t/p/original{seasoninfo.get('poster_path')}"
-                        image_path = file_path.parent.with_name(f"season{sea_seq}-poster{ext}")
+                    # TMDB季图片
+                    poster_name, poster_url = self.get_season_poster(seasoninfo, meta.begin_season)
+                    if poster_name and poster_url:
+                        image_path = file_path.parent.with_name(poster_name)
                         if self._force_img or not image_path.exists():
-                            self.__save_image(url=url, file_path=image_path)
-                    # 季的其它图片
-                    for attr_name, attr_value in vars(mediainfo).items():
-                        if attr_value \
-                                and attr_name.startswith("season") \
-                                and not attr_name.endswith("poster_path") \
-                                and attr_value \
-                                and isinstance(attr_value, str) \
-                                and attr_value.startswith("http"):
-                            image_name = attr_name.replace("_path", "") + Path(attr_value).suffix
-                            image_path = file_path.parent.with_name(image_name)
-                            if self._force_img or not image_path.exists():
-                                self.__save_image(url=attr_value,
-                                                  file_path=image_path)
+                            self.__save_image(url=poster_url, file_path=image_path)
                 # 查询集详情
-                episodeinfo = __get_episode_detail(seasoninfo, meta.begin_episode)
+                episodeinfo = self.__get_episode_detail(seasoninfo, meta.begin_episode)
                 if episodeinfo:
                     # 集NFO
                     if self._force_nfo or not file_path.with_suffix(".nfo").exists():
@@ -153,7 +198,7 @@ class TmdbScraper:
             logger.error(f"{file_path} 刮削失败：{str(e)} - {traceback.format_exc()}")
 
     @staticmethod
-    def __gen_common_nfo(mediainfo: MediaInfo, doc, root):
+    def __gen_common_nfo(mediainfo: MediaInfo, doc: minidom.Document, root: minidom.Element):
         """
         生成公共NFO
         """
@@ -207,14 +252,15 @@ class TmdbScraper:
 
     def __gen_movie_nfo_file(self,
                              mediainfo: MediaInfo,
-                             file_path: Path):
+                             file_path: Path = None) -> minidom.Document:
         """
         生成电影的NFO描述文件
         :param mediainfo: 识别后的媒体信息
         :param file_path: 电影文件路径
         """
         # 开始生成XML
-        logger.info(f"正在生成电影NFO文件：{file_path.name}")
+        if file_path:
+            logger.info(f"正在生成电影NFO文件：{file_path.name}")
         doc = minidom.Document()
         root = DomUtils.add_node(doc, doc, "movie")
         # 公共部分
@@ -229,18 +275,21 @@ class TmdbScraper:
         # 年份
         DomUtils.add_node(doc, root, "year", mediainfo.year or "")
         # 保存
-        self.__save_nfo(doc, file_path.with_suffix(".nfo"))
+        if file_path:
+            self.__save_nfo(doc, file_path.with_suffix(".nfo"))
+        return doc
 
     def __gen_tv_nfo_file(self,
                           mediainfo: MediaInfo,
-                          dir_path: Path):
+                          dir_path: Path = None) -> minidom.Document:
         """
         生成电视剧的NFO描述文件
         :param mediainfo: 媒体信息
         :param dir_path: 电视剧根目录
         """
         # 开始生成XML
-        logger.info(f"正在生成电视剧NFO文件：{dir_path.name}")
+        if dir_path:
+            logger.info(f"正在生成电视剧NFO文件：{dir_path.name}")
         doc = minidom.Document()
         root = DomUtils.add_node(doc, doc, "tvshow")
         # 公共部分
@@ -257,16 +306,21 @@ class TmdbScraper:
         DomUtils.add_node(doc, root, "season", "-1")
         DomUtils.add_node(doc, root, "episode", "-1")
         # 保存
-        self.__save_nfo(doc, dir_path.joinpath("tvshow.nfo"))
+        if dir_path:
+            self.__save_nfo(doc, dir_path.joinpath("tvshow.nfo"))
 
-    def __gen_tv_season_nfo_file(self, seasoninfo: dict, season: int, season_path: Path):
+        return doc
+
+    def __gen_tv_season_nfo_file(self, seasoninfo: dict,
+                                 season: int, season_path: Path = None) -> minidom.Document:
         """
         生成电视剧季的NFO描述文件
         :param seasoninfo: TMDB季媒体信息
         :param season: 季号
         :param season_path: 电视剧季的目录
         """
-        logger.info(f"正在生成季NFO文件：{season_path.name}")
+        if season_path:
+            logger.info(f"正在生成季NFO文件：{season_path.name}")
         doc = minidom.Document()
         root = DomUtils.add_node(doc, doc, "season")
         # 简介
@@ -285,14 +339,16 @@ class TmdbScraper:
         # seasonnumber
         DomUtils.add_node(doc, root, "seasonnumber", str(season))
         # 保存
-        self.__save_nfo(doc, season_path.joinpath("season.nfo"))
+        if season_path:
+            self.__save_nfo(doc, season_path.joinpath("season.nfo"))
+        return doc
 
     def __gen_tv_episode_nfo_file(self,
                                   tmdbid: int,
                                   episodeinfo: dict,
                                   season: int,
                                   episode: int,
-                                  file_path: Path):
+                                  file_path: Path = None) -> minidom.Document:
         """
         生成电视剧集的NFO描述文件
         :param tmdbid: TMDBID
@@ -302,7 +358,8 @@ class TmdbScraper:
         :param file_path: 集文件的路径
         """
         # 开始生成集的信息
-        logger.info(f"正在生成剧集NFO文件：{file_path.name}")
+        if file_path:
+            logger.info(f"正在生成剧集NFO文件：{file_path.name}")
         doc = minidom.Document()
         root = DomUtils.add_node(doc, doc, "episodedetails")
         # TMDBID
@@ -348,7 +405,9 @@ class TmdbScraper:
                 DomUtils.add_node(doc, xactor, "profile",
                                   f"https://www.themoviedb.org/person/{actor.get('id')}")
         # 保存文件
-        self.__save_nfo(doc, file_path.with_suffix(".nfo"))
+        if file_path:
+            self.__save_nfo(doc, file_path.with_suffix(".nfo"))
+        return doc
 
     @retry(RequestException, logger=logger)
     def __save_image(self, url: str, file_path: Path):
@@ -371,7 +430,7 @@ class TmdbScraper:
         except Exception as err:
             logger.error(f"{file_path.stem}图片下载失败：{str(err)}")
 
-    def __save_nfo(self, doc, file_path: Path):
+    def __save_nfo(self, doc: minidom.Document, file_path: Path):
         """
         保存NFO
         """

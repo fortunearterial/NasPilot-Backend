@@ -94,6 +94,10 @@ class Scheduler(metaclass=Singleton):
                         link=settings.MP_DOMAIN('#/site')
                     )
                 )
+                PluginManager().init_config()
+                for plugin_id in PluginManager().get_running_plugin_ids():
+                    self.update_plugin_job(plugin_id)
+
             else:
                 self._auth_count += 1
                 logger.error(f"用户认证失败：{msg}，共失败 {self._auth_count} 次")
@@ -420,17 +424,17 @@ class Scheduler(metaclass=Singleton):
                             "plugin_name": plugin_name,
                             "running": False,
                         }
-                    self._scheduler.add_job(
-                        self.start,
-                        service["trigger"],
-                        id=sid,
-                        name=service["name"],
-                        **service["kwargs"],
-                        kwargs={
-                            'job_id': job_id
-                        }
-                    )
-                    logger.info(f"注册插件{plugin_name}服务：{service['name']} - {service['trigger']}")
+                        self._scheduler.add_job(
+                            self.start,
+                            service["trigger"],
+                            id=sid,
+                            name=service["name"],
+                            **service["kwargs"],
+                            kwargs={
+                                'job_id': job_id
+                            }
+                        )
+                        logger.info(f"注册插件{plugin_name}服务：{service['name']} - {service['trigger']}")
                 except Exception as e:
                     logger.error(f"注册插件{plugin_name}服务失败：{str(e)} - {service}")
                     SchedulerChain().messagehelper.put(title=f"插件 {plugin_name} 服务注册失败",

@@ -97,26 +97,31 @@ def search(title: str,
     return result[(page - 1) * count:page * count]
 
 
-@router.get("/scrape", summary="刮削媒体信息", response_model=schemas.Response)
-def scrape(path: str,
+@router.post("/scrape/{storage}", summary="刮削媒体信息", response_model=schemas.Response)
+def scrape(fileitem: schemas.FileItem,
+           storage: str = "local",
            _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     刮削媒体信息
     """
-    if not path:
+    if not fileitem or not fileitem.path:
         return schemas.Response(success=False, message="刮削路径无效")
-    scrape_path = Path(path)
-    if not scrape_path.exists():
-        return schemas.Response(success=False, message="刮削路径不存在")
-    # 识别
     chain = MediaChain()
+    # 识别媒体信息
+    scrape_path = Path(fileitem.path)
     meta = MetaInfoPath(scrape_path)
-    mediainfo = chain.recognize_media(meta)
+    mediainfo = chain.recognize_by_meta(meta)
     if not media_info:
         return schemas.Response(success=False, message="刮削失败，无法识别媒体信息")
-    # 刮削
-    chain.scrape_metadata(path=scrape_path, mediainfo=mediainfo, transfer_type=settings.TRANSFER_TYPE)
-    return schemas.Response(success=True, message="刮削完成")
+    if storage == "local":
+        if not scrape_path.exists():
+            return schemas.Response(success=False, message="刮削路径不存在")
+    else:
+        if not fileitem.fileid:
+            return schemas.Response(success=False, message="刮削文件ID无效")
+    # 手动刮削
+    chain.manual_scrape(storage=storage, fileitem=fileitem, meta=meta, mediainfo=mediainfo)
+    return schemas.Response(success=True, message=f"{fileitem.path} 刮削完成")
 
 
 @router.get("/category", summary="查询自动分类配置", response_model=dict)

@@ -46,7 +46,11 @@ def query_name(path: str, filetype: str,
 
 
 @router.post("/manual", summary="手动转移", response_model=schemas.Response)
-def manual_transfer(path: str = None,
+def manual_transfer(storage: str = "local",
+                    path: str = None,
+                    drive_id: str = None,
+                    fileid: str = None,
+                    filetype: str = None,
                     logid: int = None,
                     target: str = None,
                     tmdbid: int = None,
@@ -64,7 +68,11 @@ def manual_transfer(path: str = None,
                     _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     手动转移，文件或历史记录，支持自定义剧集识别格式
+    :param storage: 存储类型：local/aliyun/u115
     :param path: 转移路径或文件
+    :param drive_id: 云盘ID（网盘等）
+    :param fileid: 文件ID（网盘等）
+    :param filetype: 文件类型，dir/file
     :param logid: 转移历史记录ID
     :param target: 目标路径
     :param type_name: 媒体类型、电影/电视剧
@@ -119,7 +127,11 @@ def manual_transfer(path: str = None,
         )
     # 开始转移
     state, errormsg = transfer.manual_transfer(
+        storage=storage,
         in_path=in_path,
+        drive_id=drive_id,
+        fileid=fileid,
+        filetype=filetype,
         target=target,
         tmdbid=tmdbid,
         doubanid=doubanid,

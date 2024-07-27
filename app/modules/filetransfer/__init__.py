@@ -696,6 +696,10 @@ class FileTransferModule(_ModuleBase):
             "doubanid": mediainfo.douban_id,
             # 季号
             "season": meta.season_seq,
+            # 季年份根据season值获取
+            "season_year": mediainfo.season_years.get(
+                int(meta.season_seq),
+                None) if (mediainfo.season_years and meta.season_seq) else None,
             # 集号
             "episode": meta.episode_seqs,
             # 季集 SxxExx

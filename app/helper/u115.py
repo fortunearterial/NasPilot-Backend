@@ -1,15 +1,17 @@
 import base64
-from typing import Optional, Tuple, Generator
+from pathlib import Path
+from typing import Optional, Tuple, List
 
+import oss2
 import py115
 from py115 import Cloud
-from py115.types import LoginTarget, QrcodeSession, QrcodeStatus, Credential, File, DownloadTicket
+from py115.types import LoginTarget, QrcodeSession, QrcodeStatus, Credential, DownloadTicket
 
+from app import schemas
 from app.db.systemconfig_oper import SystemConfigOper
 from app.log import logger
 from app.schemas.types import SystemConfigKey
 from app.utils.singleton import Singleton
-from app.utils.system import SystemUtils
 
 
 class U115Helper(metaclass=Singleton):
@@ -27,7 +29,7 @@ class U115Helper(metaclass=Singleton):
         """
         初始化Cloud
         """
-        credential = self.credential
+        credential = self.__credential
         if not credential:
             logger.warn("115未登录，请先登录！")
             return False
@@ -36,12 +38,12 @@ class U115Helper(metaclass=Singleton):
                 self.cloud = py115.connect(credential)
         except Exception as err:
             logger.error(f"115连接失败，请重新扫码登录：{str(err)}")
-            self.clear_credential()
+            self.__clear_credential()
             return False
         return True
 
     @property
-    def credential(self) -> Optional[Credential]:
+    def __credential(self) -> Optional[Credential]:
         """
         获取已保存的115认证参数
         """
@@ -50,13 +52,13 @@ class U115Helper(metaclass=Singleton):
             return None
         return Credential.from_dict(cookie_dict)
 
-    def save_credentail(self, credential: Credential):
+    def __save_credentail(self, credential: Credential):
         """
         设置115认证参数
         """
         self.systemconfig.set(SystemConfigKey.User115Params, credential.to_dict())
 
-    def clear_credential(self):
+    def __clear_credential(self):
         """
         清除115认证参数
         """
@@ -92,7 +94,7 @@ class U115Helper(metaclass=Singleton):
             status = self.cloud.qrcode_poll(self._session)
             if status == QrcodeStatus.Done:
                 # 确认完成，保存认证信息
-                self.save_credentail(self.cloud.export_credentail())
+                self.__save_credentail(self.cloud.export_credentail())
                 result = {
                     "status": 1,
                     "tip": "登录成功！"
@@ -124,32 +126,63 @@ class U115Helper(metaclass=Singleton):
         except Exception as e:
             return {}, f"115登录确认失败：{str(e)}"
 
-    def list_files(self, parent_file_id: str = '0') -> Optional[Generator[File, None, None]]:
+    def storage(self) -> Optional[Tuple[int, int]]:
+        """
+        获取存储空间
+        """
+        if not self.__init_cloud():
+            return None
+        try:
+            return self.cloud.storage().space()
+        except Exception as e:
+            logger.error(f"获取115存储空间失败：{str(e)}")
+        return None
+
+    def list(self, parent_file_id: str = '0', path: str = "/") -> Optional[List[schemas.FileItem]]:
         """
         浏览文件
         """
         if not self.__init_cloud():
             return None
         try:
-            return self.cloud.storage().list(dir_id=parent_file_id)
+            items = self.cloud.storage().list(dir_id=parent_file_id)
+            return [schemas.FileItem(
+                fileid=item.file_id,
+                parent_fileid=item.parent_id,
+                type="dir" if item.is_dir else "file",
+                path=f"{path}{item.name}" + ("/" if item.is_dir else ""),
+                name=item.name,
+                size=item.size,
+                extension=Path(item.name).suffix[1:],
+                modify_time=item.modified_time.timestamp() if item.modified_time else 0,
+                pickcode=item.pickcode
+            ) for item in items]
         except Exception as e:
             logger.error(f"浏览115文件失败：{str(e)}")
         return None
 
-    def create_folder(self, parent_file_id: str, name: str) -> bool:
+    def create_folder(self, parent_file_id: str, name: str, path: str = "/") -> Optional[schemas.FileItem]:
         """
         创建目录
         """
         if not self.__init_cloud():
-            return False
+            return None
         try:
-            self.cloud.storage().make_dir(parent_file_id, name)
-            return True
+            result = self.cloud.storage().make_dir(parent_file_id, name)
+            return schemas.FileItem(
+                fileid=result.file_id,
+                parent_fileid=result.parent_id,
+                type="dir",
+                path=f"{path}{name}/",
+                name=name,
+                modify_time=result.modified_time.timestamp() if result.modified_time else 0,
+                pickcode=result.pickcode
+            )
         except Exception as e:
             logger.error(f"创建115目录失败：{str(e)}")
-        return False
+        return None
 
-    def delete_file(self, file_id: str) -> bool:
+    def delete(self, file_id: str) -> bool:
         """
         删除文件
         """
@@ -162,13 +195,7 @@ class U115Helper(metaclass=Singleton):
             logger.error(f"删除115文件失败：{str(e)}")
         return False
 
-    def get_file_detail(self, file_id: str) -> Optional[dict]:
-        """
-        获取文件详情
-        """
-        pass
-
-    def rename_file(self, file_id: str, name: str) -> bool:
+    def rename(self, file_id: str, name: str) -> bool:
         """
         重命名文件
         """
@@ -193,14 +220,62 @@ class U115Helper(metaclass=Singleton):
             logger.error(f"115下载失败：{str(e)}")
         return None
 
-    def get_storage(self) -> Optional[Tuple[int, int]]:
+    def move(self, file_id: str, target_id: str) -> bool:
         """
-        获取存储空间
+        移动文件
+        """
+        if not self.__init_cloud():
+            return False
+        try:
+            self.cloud.storage().move(file_id, target_id)
+            return True
+        except Exception as e:
+            logger.error(f"移动115文件失败：{str(e)}")
+        return False
+
+    def upload(self, parent_file_id: str, file_path: Path) -> Optional[schemas.FileItem]:
+        """
+        上传文件
         """
         if not self.__init_cloud():
             return None
         try:
-            return self.cloud.storage().space()
+            ticket = self.cloud.storage().request_upload(dir_id=parent_file_id, file_path=str(file_path))
+            if ticket is None:
+                logger.warn(f"115请求上传出错")
+                return None
+            elif ticket.is_done:
+                logger.warn(f"115请求上传失败：文件已存在")
+                return {}
+            else:
+                auth = oss2.StsAuth(**ticket.oss_token)
+                bucket = oss2.Bucket(
+                    auth=auth,
+                    endpoint=ticket.oss_endpoint,
+                    bucket_name=ticket.bucket_name,
+                )
+                por = bucket.put_object_from_file(
+                    key=ticket.object_key,
+                    filename=str(file_path),
+                    headers=ticket.headers,
+                )
+                result = por.resp.response.json()
+                if result:
+                    fileitem = result.get('data')
+                    logger.info(f"115上传文件成功：{fileitem}")
+                    return schemas.FileItem(
+                        fileid=fileitem.get('file_id'),
+                        parent_fileid=parent_file_id,
+                        type="file",
+                        name=fileitem.get('file_name'),
+                        path=f"{file_path / fileitem.get('file_name')}",
+                        size=fileitem.get('file_size'),
+                        extension=Path(fileitem.get('file_name')).suffix[1:],
+                        pickcode=fileitem.get('pickcode')
+                    )
+                else:
+                    logger.warn(f"115上传文件失败：{por.resp.response.text}")
+                    return None
         except Exception as e:
-            logger.error(f"获取115存储空间失败：{str(e)}")
+            logger.error(f"上传115文件失败：{str(e)}")
         return None

@@ -2,15 +2,18 @@ import base64
 import json
 import time
 import uuid
+from pathlib import Path
 from typing import Optional, Tuple, List
 
 from requests import Response
 
+from app import schemas
 from app.core.config import settings
 from app.db.systemconfig_oper import SystemConfigOper
 from app.log import logger
 from app.schemas.types import SystemConfigKey
 from app.utils.http import RequestUtils
+from app.utils.string import StringUtils
 from app.utils.system import SystemUtils
 
 
@@ -39,8 +42,8 @@ class AliyunHelper:
     user_info_url = "https://user.aliyundrive.com/v2/user/get"
     # 浏览文件
     list_file_url = "https://api.aliyundrive.com/adrive/v3/file/list"
-    # 创建目录
-    create_folder_url = "https://api.aliyundrive.com/adrive/v2/file/createWithFolders"
+    # 创建目录或文件
+    create_folder_file_url = "https://api.aliyundrive.com/adrive/v2/file/createWithFolders"
     # 文件详情
     file_detail_url = "https://api.aliyundrive.com/v2/file/get"
     # 删除文件
@@ -49,6 +52,10 @@ class AliyunHelper:
     rename_file_url = "https://api.aliyundrive.com/v3/file/update"
     # 获取下载链接
     download_url = "https://api.aliyundrive.com/v2/file/get_download_url"
+    # 移动文件
+    move_file_url = "https://api.aliyundrive.com/v2/file/move"
+    # 上传文件完成
+    upload_file_complete_url = "https://api.aliyundrive.com/v2/file/complete"
 
     def __init__(self):
         self.systemconfig = SystemConfigOper()
@@ -60,7 +67,11 @@ class AliyunHelper:
         if res is None:
             logger.warn("无法连接到阿里云盘！")
             return
-        result = res.json()
+        try:
+            result = res.json()
+        except Exception as err:
+            logger.error(f"解析阿里云盘返回数据失败：{str(err)}")
+            return
         code = result.get("code")
         message = result.get("message")
         display_message = result.get("display_message")
@@ -69,32 +80,32 @@ class AliyunHelper:
             if action:
                 if code == "DeviceSessionSignatureInvalid":
                     logger.warn("设备已失效，正在重新建立会话...")
-                    self.create_session(self.get_headers(self.auth_params))
+                    self.__create_session(self.__get_headers(self.__auth_params))
                 if code == "UserDeviceOffline":
                     logger.warn("设备已离线，尝试重新登录，如仍报错请检查阿里云盘绑定设备数量是否超限！")
-                    self.create_session(self.get_headers(self.auth_params))
+                    self.__create_session(self.__get_headers(self.__auth_params))
                 if code == "AccessTokenInvalid":
                     logger.warn("访问令牌已失效，正在刷新令牌...")
-                    self.__update_accesstoken(self.auth_params, self.auth_params.get("refreshToken"))
+                    self.__update_accesstoken(self.__auth_params, self.__auth_params.get("refreshToken"))
         else:
             logger.info(f"Aliyun {apiname}成功")
 
     @property
-    def auth_params(self):
+    def __auth_params(self):
         """
         获取阿里云盘认证参数并初始化参数格式
         """
         return self.systemconfig.get(SystemConfigKey.UserAliyunParams) or {}
 
-    def update_params(self, params: dict):
+    def __update_params(self, params: dict):
         """
         设置阿里云盘认证参数
         """
-        current_params = self.auth_params
+        current_params = self.__auth_params
         current_params.update(params)
         self.systemconfig.set(SystemConfigKey.UserAliyunParams, current_params)
 
-    def clear_params(self):
+    def __clear_params(self):
         """
         清除阿里云盘认证参数
         """
@@ -171,8 +182,8 @@ class AliyunHelper:
                             "defaultDriveId": pds_login_result.get('defaultDriveId'),
                             "updateTime": time.time(),
                         })
-                        self.update_params(data)
-                        self.get_user_info()
+                        self.__update_params(data)
+                        self.user_info()
                 except Exception as e:
                     return {}, f"bizExt 解码失败：{str(e)}"
             return data, ""
@@ -185,7 +196,7 @@ class AliyunHelper:
         """
         更新阿里云盘访问令牌
         """
-        headers = self.get_headers(params)
+        headers = self.__get_headers(params)
         res = RequestUtils(headers=headers, timeout=10).post_res(
             self.update_accessstoken_url, json={
                 "refresh_token": refresh_token,
@@ -196,9 +207,9 @@ class AliyunHelper:
             code = data.get("code")
             if code in ["RefreshTokenExpired", "InvalidParameter.RefreshToken"]:
                 logger.warn("刷新令牌已过期，请重新登录！")
-                self.clear_params()
+                self.__clear_params()
                 return False
-            self.update_params({
+            self.__update_params({
                 "accessToken": data.get('access_token'),
                 "expiresIn": data.get('expires_in'),
                 "updateTime": time.time()
@@ -209,10 +220,11 @@ class AliyunHelper:
             self.__handle_error(res, "更新令牌", action=False)
         return False
 
-    def create_session(self, headers: dict):
+    def __create_session(self, headers: dict):
         """
         创建会话
         """
+
         def __os_name():
             """
             获取操作系统名称
@@ -231,11 +243,12 @@ class AliyunHelper:
         })
         self.__handle_error(res, "创建会话", action=False)
 
-    def get_access_params(self) -> Optional[dict]:
+    @property
+    def __access_params(self) -> Optional[dict]:
         """
         获取阿里云盘访问参数，如果超时则更新后返回
         """
-        params = self.auth_params
+        params = self.__auth_params
         if not params:
             logger.warn("阿里云盘访问令牌不存在，请先扫码登录！")
             return None
@@ -244,7 +257,7 @@ class AliyunHelper:
         refresh_token = params.get("refreshToken")
         if not expires_in or not update_time or not refresh_token:
             logger.warn("阿里云盘访问令牌参数错误，请重新扫码登录！")
-            self.clear_params()
+            self.__clear_params()
             return None
         # 是否需要更新设备信息
         update_device = False
@@ -260,14 +273,14 @@ class AliyunHelper:
         if not x_device_id:
             x_device_id = uuid.uuid4().hex
             params['x_device_id'] = x_device_id
-            self.update_params({"x_device_id": x_device_id})
+            self.__update_params({"x_device_id": x_device_id})
             update_device = True
         # 更新设备信息重新创建会话
         if update_device:
-            self.create_session(self.get_headers(params))
+            self.__create_session(self.__get_headers(params))
         return params
 
-    def get_headers(self, params: dict):
+    def __get_headers(self, params: dict):
         """
         获取请求头
         """
@@ -284,18 +297,18 @@ class AliyunHelper:
             "x-signature": self._X_SIGNATURE
         }
 
-    def get_user_info(self) -> dict:
+    def user_info(self) -> dict:
         """
         获取用户信息（drive_id等）
         """
-        params = self.get_access_params()
+        params = self.__access_params
         if not params:
             return {}
-        headers = self.get_headers(params)
+        headers = self.__get_headers(params)
         res = RequestUtils(headers=headers, timeout=10).post_res(self.user_info_url)
         if res:
             result = res.json()
-            self.update_params({
+            self.__update_params({
                 "resourceDriveId": result.get("resource_drive_id"),
                 "backDriveId": result.get("backup_drive_id")
             })
@@ -304,8 +317,8 @@ class AliyunHelper:
             self.__handle_error(res, "获取用户信息")
         return {}
 
-    def list_files(self, drive_id: str = None, parent_file_id: str = 'root', list_type: str = None,
-                   limit: int = 100, order_by: str = 'updated_at') -> List[dict]:
+    def list(self, drive_id: str = None, parent_file_id: str = 'root', list_type: str = None,
+             limit: int = 100, order_by: str = 'updated_at', path: str = "/") -> List[schemas.FileItem]:
         """
         浏览文件
         limit 返回文件数量，默认 50，最大 100
@@ -313,29 +326,30 @@ class AliyunHelper:
         parent_file_id 根目录为root
         type 	all | file | folder
         """
-        params = self.get_access_params()
+        params = self.__access_params
         if not params:
             return []
         # 请求头
-        headers = self.get_headers(params)
+        headers = self.__get_headers(params)
         # 根目录处理
         if not drive_id:
             return [
-                {
-                    "file_id": parent_file_id,
-                    "drive_id": params.get("resourceDriveId"),
-                    "parent_file_id": "root",
-                    "type": "folder",
-                    "path": "/资源库/",
-                    "name": "资源库",
-                }, {
-                    "file_id": parent_file_id,
-                    "drive_id": params.get("backDriveId"),
-                    "parent_file_id": "root",
-                    "type": "folder",
-                    "path": "/备份盘/",
-                    "name": "备份盘",
-                }
+                schemas.FileItem(
+                    fileid=parent_file_id,
+                    drive_id=params.get("resourceDriveId"),
+                    parent_fileid="root",
+                    type="dir",
+                    path="/资源库/",
+                    name="资源库"
+                ),
+                schemas.FileItem(
+                    fileid=parent_file_id,
+                    drive_id=params.get("backDriveId"),
+                    parent_fileid="root",
+                    type="dir",
+                    path="/备份盘/",
+                    name="备份盘"
+                )
             ]
         # 返回数据
         ret_items = []
@@ -371,39 +385,69 @@ class AliyunHelper:
             else:
                 self.__handle_error(res, "浏览文件")
                 break
-        return ret_items
+        return [schemas.FileItem(
+            fileid=fileinfo.get("file_id"),
+            parent_fileid=fileinfo.get("parent_file_id"),
+            type="dir" if fileinfo.get("type") == "folder" else "file",
+            path=f"{path}{fileinfo.get('name')}" + ("/" if fileinfo.get("type") == "folder" else ""),
+            name=fileinfo.get("name"),
+            size=fileinfo.get("size"),
+            extension=fileinfo.get("file_extension"),
+            modify_time=StringUtils.str_to_timestamp(fileinfo.get("updated_at")),
+            thumbnail=fileinfo.get("thumbnail"),
+            drive_id=fileinfo.get("drive_id"),
+        ) for fileinfo in ret_items]
 
-    def create_folder(self, parent_file_id: str, name: str) -> bool:
+    def create_folder(self, drive_id: str, parent_file_id: str, name: str, path: str = "/") -> Optional[schemas.FileItem]:
         """
         创建目录
         """
-        params = self.get_access_params()
+        params = self.__access_params
         if not params:
-            return False
-        headers = self.get_headers(params)
-        res = RequestUtils(headers=headers, timeout=10).post_res(self.create_folder_url, json={
-            "drive_id": params.get("resourceDriveId"),
+            return None
+        headers = self.__get_headers(params)
+        res = RequestUtils(headers=headers, timeout=10).post_res(self.create_folder_file_url, json={
+            "drive_id": drive_id,
             "parent_file_id": parent_file_id,
             "name": name,
             "check_name_mode": "refuse",
             "type": "folder"
         })
         if res:
-            return True
+            """
+            {
+                "parent_file_id": "root",
+                "type": "folder",
+                "file_id": "6673f2c8a88344741bd64ad192d7512b92087719",
+                "domain_id": "bj29",
+                "drive_id": "39146740",
+                "file_name": "test",
+                "encrypt_mode": "none"
+            }
+            """
+            result = res.json()
+            return schemas.FileItem(
+                fileid=result.get("file_id"),
+                drive_id=result.get("drive_id"),
+                parent_fileid=result.get("parent_file_id"),
+                type=result.get("type"),
+                name=result.get("file_name"),
+                path=f"{path}{result.get('file_name')}",
+            )
         else:
             self.__handle_error(res, "创建目录")
-        return False
+        return None
 
-    def delete_file(self, file_id: str) -> bool:
+    def delete(self, drive_id: str, file_id: str) -> bool:
         """
         删除文件
         """
-        params = self.get_access_params()
+        params = self.__access_params
         if not params:
             return False
-        headers = self.get_headers(params)
+        headers = self.__get_headers(params)
         res = RequestUtils(headers=headers, timeout=10).post_res(self.delete_file_url, json={
-            "drive_id": params.get("resourceDriveId"),
+            "drive_id": drive_id,
             "file_id": file_id
         })
         if res:
@@ -412,34 +456,46 @@ class AliyunHelper:
             self.__handle_error(res, "删除文件")
         return False
 
-    def get_file_detail(self, file_id: str) -> Optional[dict]:
+    def detail(self, drive_id: str, file_id: str, path: str = "/") -> Optional[schemas.FileItem]:
         """
         获取文件详情
         """
-        params = self.get_access_params()
+        params = self.__access_params
         if not params:
             return None
-        headers = self.get_headers(params)
+        headers = self.__get_headers(params)
         res = RequestUtils(headers=headers, timeout=10).post_res(self.file_detail_url, json={
-            "drive_id": params.get("resourceDriveId"),
+            "drive_id": drive_id,
             "file_id": file_id
         })
         if res:
-            return res.json()
+            result = res.json()
+            return schemas.FileItem(
+                fileid=result.get("file_id"),
+                drive_id=result.get("drive_id"),
+                parent_fileid=result.get("parent_file_id"),
+                type="file",
+                name=result.get("name"),
+                size=result.get("size"),
+                extension=result.get("file_extension"),
+                modify_time=StringUtils.str_to_timestamp(result.get("updated_at")),
+                thumbnail=result.get("thumbnail"),
+                path=f"{path}{result.get('name')}"
+            )
         else:
             self.__handle_error(res, "获取文件详情")
         return None
 
-    def rename_file(self, file_id: str, name: str) -> bool:
+    def rename(self, drive_id: str, file_id: str, name: str) -> bool:
         """
         重命名文件
         """
-        params = self.get_access_params()
+        params = self.__access_params
         if not params:
             return False
-        headers = self.get_headers(params)
+        headers = self.__get_headers(params)
         res = RequestUtils(headers=headers, timeout=10).post_res(self.rename_file_url, json={
-            "drive_id": params.get("resourceDriveId"),
+            "drive_id": drive_id,
             "file_id": file_id,
             "name": name,
             "check_name_mode": "refuse"
@@ -450,20 +506,115 @@ class AliyunHelper:
             self.__handle_error(res, "重命名文件")
         return False
 
-    def get_download_url(self, file_id: str) -> Optional[str]:
+    def download(self, drive_id: str, file_id: str) -> Optional[str]:
         """
         获取下载链接
         """
-        params = self.get_access_params()
+        params = self.__access_params
         if not params:
             return None
-        headers = self.get_headers(params)
+        headers = self.__get_headers(params)
         res = RequestUtils(headers=headers, timeout=10).post_res(self.download_url, json={
-            "drive_id": params.get("resourceDriveId"),
+            "drive_id": drive_id,
             "file_id": file_id
         })
         if res:
             return res.json().get("url")
         else:
             self.__handle_error(res, "获取下载链接")
+        return None
+
+    def move(self, drive_id: str, file_id: str, target_id: str) -> bool:
+        """
+        移动文件
+        """
+        params = self.__access_params
+        if not params:
+            return False
+        headers = self.__get_headers(params)
+        res = RequestUtils(headers=headers, timeout=10).post_res(self.move_file_url, json={
+            "drive_id": drive_id,
+            "file_id": file_id,
+            "to_parent_file_id": target_id,
+            "check_name_mode": "refuse"
+        })
+        if res:
+            return True
+        else:
+            self.__handle_error(res, "移动文件")
+        return False
+
+    def upload(self, drive_id: str, parent_file_id: str, file_path: Path) -> Optional[schemas.FileItem]:
+        """
+        上传文件，并标记完成
+        """
+        params = self.__access_params
+        if not params:
+            return None
+        headers = self.__get_headers(params)
+        res = RequestUtils(headers=headers, timeout=10).post_res(self.create_folder_file_url, json={
+            "drive_id": drive_id,
+            "parent_file_id": parent_file_id,
+            "name": file_path.name,
+            "check_name_mode": "refuse",
+            "create_scene": "file_upload",
+            "type": "file",
+            "part_info_list": [
+                {
+                    "part_number": 1
+                }
+            ],
+            "size": file_path.stat().st_size
+        })
+        if not res:
+            self.__handle_error(res, "创建文件")
+            return None
+        # 获取上传参数
+        result = res.json()
+        if result.get("exist"):
+            logger.info(f"文件{result.get('file_name')}已存在，无需上传")
+            return schemas.FileItem(
+                drive_id=result.get("drive_id"),
+                fileid=result.get("file_id"),
+                parent_fileid=result.get("parent_file_id"),
+                type="file",
+                name=result.get("file_name"),
+                path=f"{file_path.parent}/{result.get('file_name')}"
+            )
+        file_id = result.get("file_id")
+        upload_id = result.get("upload_id")
+        part_info_list = result.get("part_info_list")
+        if part_info_list:
+            # 上传地址
+            upload_url = part_info_list[0].get("upload_url")
+            # 上传文件
+            res = RequestUtils(headers={
+                "Content-Type": "",
+                "User-Agent": settings.USER_AGENT,
+                "Referer": "https://www.alipan.com/",
+                "Accept": "*/*",
+            }).put_res(upload_url, data=file_path.read_bytes())
+            if not res:
+                self.__handle_error(res, "上传文件")
+                return None
+            # 标记文件上传完毕
+            res = RequestUtils(headers=headers, timeout=10).post_res(self.upload_file_complete_url, json={
+                "drive_id": drive_id,
+                "file_id": file_id,
+                "upload_id": upload_id
+            })
+            if not res:
+                self.__handle_error(res, "标记上传状态")
+                return None
+            result = res.json()
+            return schemas.FileItem(
+                fileid=result.get("file_id"),
+                drive_id=result.get("drive_id"),
+                parent_fileid=result.get("parent_file_id"),
+                type="file",
+                name=result.get("name"),
+                path=f"{file_path.parent}/{result.get('name')}",
+            )
+        else:
+            logger.warn("上传文件失败：无法获取上传地址！")
         return None

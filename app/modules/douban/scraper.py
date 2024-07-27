@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 from xml.dom import minidom
 
 from app.core.config import settings
@@ -16,6 +16,44 @@ class DoubanScraper:
     _transfer_type = settings.TRANSFER_TYPE
     _force_nfo = False
     _force_img = False
+
+    def get_metadata_nfo(self, mediainfo: MediaInfo, season: int = None) -> Optional[str]:
+        """
+        获取NFO文件内容文本
+        :param mediainfo: 媒体信息
+        :param season: 季号
+        """
+        if mediainfo.type == MediaType.MOVIE:
+            # 电影元数据文件
+            doc = self.__gen_movie_nfo_file(mediainfo=mediainfo)
+        else:
+            if season:
+                # 季元数据文件
+                doc = self.__gen_tv_season_nfo_file(mediainfo=mediainfo, season=season)
+            else:
+                # 电视剧元数据文件
+                doc = self.__gen_tv_nfo_file(mediainfo=mediainfo)
+        if doc:
+            return doc.toprettyxml(indent="  ", encoding="utf-8")
+
+        return None
+
+    @staticmethod
+    def get_metadata_img(mediainfo: MediaInfo, season: int = None) -> Optional[dict]:
+        """
+        获取图片内容
+        :param mediainfo: 媒体信息
+        :param season: 季号
+        """
+        ret_dict = {}
+        if season:
+            # 豆瓣无季图片
+            return {}
+        if mediainfo.poster_path:
+            ret_dict[f"poster{Path(mediainfo.poster_path).suffix}"] = mediainfo.poster_path
+        if mediainfo.backdrop_path:
+            ret_dict[f"backdrop{Path(mediainfo.backdrop_path).suffix}"] = mediainfo.backdrop_path
+        return ret_dict
 
     def gen_scraper_files(self, meta: MetaBase, mediainfo: MediaInfo,
                           file_path: Path, transfer_type: str,
@@ -47,15 +85,11 @@ class DoubanScraper:
                     self.__gen_movie_nfo_file(mediainfo=mediainfo,
                                               file_path=file_path)
                 # 生成电影图片
-                image_path = file_path.with_name(f"poster{Path(mediainfo.poster_path).suffix}")
-                if self._force_img or not image_path.exists():
-                    self.__save_image(url=mediainfo.poster_path,
-                                      file_path=image_path)
-                # 背景图
-                if mediainfo.backdrop_path:
-                    image_path = file_path.with_name(f"backdrop{Path(mediainfo.backdrop_path).suffix}")
+                image_dict = self.get_metadata_img(mediainfo)
+                for img_name, img_url in image_dict.items():
+                    image_path = file_path.with_name(img_name)
                     if self._force_img or not image_path.exists():
-                        self.__save_image(url=mediainfo.backdrop_path,
+                        self.__save_image(url=img_url,
                                           file_path=image_path)
             # 电视剧
             else:
@@ -65,15 +99,11 @@ class DoubanScraper:
                     self.__gen_tv_nfo_file(mediainfo=mediainfo,
                                            dir_path=file_path.parents[1])
                 # 生成根目录图片
-                image_path = file_path.with_name(f"poster{Path(mediainfo.poster_path).suffix}")
-                if self._force_img or not image_path.exists():
-                    self.__save_image(url=mediainfo.poster_path,
-                                      file_path=image_path)
-                # 背景图
-                if mediainfo.backdrop_path:
-                    image_path = file_path.with_name(f"backdrop{Path(mediainfo.backdrop_path).suffix}")
+                image_dict = self.get_metadata_img(mediainfo)
+                for img_name, img_url in image_dict.items():
+                    image_path = file_path.with_name(img_name)
                     if self._force_img or not image_path.exists():
-                        self.__save_image(url=mediainfo.backdrop_path,
+                        self.__save_image(url=img_url,
                                           file_path=image_path)
                 # 季目录NFO
                 if self._force_nfo or not file_path.with_name("season.nfo").exists():
@@ -84,7 +114,7 @@ class DoubanScraper:
             logger.error(f"{file_path} 刮削失败：{str(e)}")
 
     @staticmethod
-    def __gen_common_nfo(mediainfo: MediaInfo, doc, root):
+    def __gen_common_nfo(mediainfo: MediaInfo, doc: minidom.Document, root: minidom.Node):
         # 简介
         xplot = DomUtils.add_node(doc, root, "plot")
         xplot.appendChild(doc.createCDATASection(mediainfo.overview or ""))
@@ -108,14 +138,15 @@ class DoubanScraper:
 
     def __gen_movie_nfo_file(self,
                              mediainfo: MediaInfo,
-                             file_path: Path):
+                             file_path: Path = None) -> minidom.Document:
         """
         生成电影的NFO描述文件
         :param mediainfo: 豆瓣信息
         :param file_path: 电影文件路径
         """
         # 开始生成XML
-        logger.info(f"正在生成电影NFO文件：{file_path.name}")
+        if file_path:
+            logger.info(f"正在生成电影NFO文件：{file_path.name}")
         doc = minidom.Document()
         root = DomUtils.add_node(doc, doc, "movie")
         # 公共部分
@@ -127,11 +158,14 @@ class DoubanScraper:
         # 年份
         DomUtils.add_node(doc, root, "year", mediainfo.year or "")
         # 保存
-        self.__save_nfo(doc, file_path.with_suffix(".nfo"))
+        if file_path:
+            self.__save_nfo(doc, file_path.with_suffix(".nfo"))
+
+        return doc
 
     def __gen_tv_nfo_file(self,
                           mediainfo: MediaInfo,
-                          dir_path: Path):
+                          dir_path: Path = None) -> minidom.Document:
         """
         生成电视剧的NFO描述文件
         :param mediainfo: 媒体信息
@@ -152,9 +186,13 @@ class DoubanScraper:
         DomUtils.add_node(doc, root, "season", "-1")
         DomUtils.add_node(doc, root, "episode", "-1")
         # 保存
-        self.__save_nfo(doc, dir_path.joinpath("tvshow.nfo"))
+        if dir_path:
+            self.__save_nfo(doc, dir_path.joinpath("tvshow.nfo"))
 
-    def __gen_tv_season_nfo_file(self, mediainfo: MediaInfo, season: int, season_path: Path):
+        return doc
+
+    def __gen_tv_season_nfo_file(self, mediainfo: MediaInfo,
+                                 season: int, season_path: Path = None) -> minidom.Document:
         """
         生成电视剧季的NFO描述文件
         :param mediainfo: 媒体信息
@@ -179,7 +217,9 @@ class DoubanScraper:
         # seasonnumber
         DomUtils.add_node(doc, root, "seasonnumber", str(season))
         # 保存
-        self.__save_nfo(doc, season_path.joinpath("season.nfo"))
+        if season_path:
+            self.__save_nfo(doc, season_path.joinpath("season.nfo"))
+        return doc
 
     def __save_image(self, url: str, file_path: Path):
         """
