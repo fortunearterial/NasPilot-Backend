@@ -1,6 +1,6 @@
 import time
 
-from sqlalchemy import Column, Integer, String, Sequence
+from sqlalchemy import Column, Integer, String, Sequence, Text
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -12,7 +12,7 @@ class DownloadHistory(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 保存路径
-    path = Column(String(2000), nullable=False, index=True)
+    path = Column(Text, nullable=False)
     # 类型 电影/电视剧
     type = Column(String(255), nullable=False)
     # 标题
@@ -165,11 +165,11 @@ class DownloadFiles(Base):
     # 下载器
     downloader = Column(String(255))
     # 完整路径
-    fullpath = Column(String(2000), index=True)
+    fullpath = Column(Text)
     # 保存路径
-    savepath = Column(String(2000), index=True)
+    savepath = Column(Text)
     # 文件相对路径/名称
-    filepath = Column(String(255))
+    filepath = Column(Text)
     # 种子名称
     torrentname = Column(String(255))
     # 状态 0-已删除 1-正常
