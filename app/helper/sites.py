@@ -71,7 +71,7 @@ class SitesHelper(metaclass=Singleton):
         return self._to_indexer(site)
 
     def get_indexers(self):
-        sites = self.siteoper.list_order_by_pri()
+        sites = self.siteoper.list_active()
         return [self._to_indexer(site) for site in sites]
 
     def check(self, url):

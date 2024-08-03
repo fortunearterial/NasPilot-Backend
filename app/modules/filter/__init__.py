@@ -292,6 +292,8 @@ class FilterModule(_ModuleBase):
         excludes = self.rule_set[rule_name].get("exclude") or []
         # FREE规则
         downloadvolumefactor = self.rule_set[rule_name].get("downloadvolumefactor")
+        # FIX：替换特殊的种子命名规则
+        content = content.replace("-", " - ")
         for include in includes:
             if not re.search(r"%s" % include, content, re.IGNORECASE):
                 # 未发现包含项

@@ -30,6 +30,8 @@ class Site(BaseModel):
     pri: Optional[int] = 0
     # 适用类型
     types: Optional[List[str]] = None
+    # 下载器
+    downloader: Optional[str] = None
     # FEED地址
     feed: Optional[Feed] = None
     # SEARCH地址
