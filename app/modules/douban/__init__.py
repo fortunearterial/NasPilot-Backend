@@ -66,11 +66,12 @@ class DoubanModule(_ModuleBase):
         :param cache:    是否使用缓存
         :return: 识别的媒体信息，包括剧集信息
         """
+        if settings.RECOGNIZE_SOURCE and not "douban" in settings.RECOGNIZE_SOURCE:
+            return None
         if not doubanid and not meta:
             return None
 
-        if meta and not doubanid \
-                and not "douban" in settings.RECOGNIZE_SOURCE:
+        if meta and not doubanid:
             return None
 
         if not meta:

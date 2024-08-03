@@ -56,9 +56,13 @@ def read_subscribes(
             if type_in == MediaType.JAV.value:
                 return list(filter(lambda s: s.type == type_in and s.save_path.__contains__(keyword_in), subscribes))
             return list(filter(lambda s: s.type == type_in, subscribes))
+        else:
+            return subscribes
     else:
         if type_in:
             return list(filter(lambda s: s.type == type_in and s.username == current_user.name, subscribes))
+        else:
+            return list(filter(lambda s: s.username == current_user.name, subscribes))
 
     return []
 
@@ -68,7 +72,7 @@ def list_subscribes(_: str = Depends(verify_apitoken)) -> Any:
     """
     查询所有订阅 API_TOKEN认证（?token=xxx）
     """
-    return read_subscribes()
+    return read_subscribe()
 
 
 @router.post("/", summary="新增订阅", response_model=schemas.Response)

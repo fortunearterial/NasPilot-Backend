@@ -120,7 +120,11 @@ class AVSubscriber(_PluginBase):
         }]
 
     def api_get_av_list(self) -> Any:
-        return list(set([avinfo.split("：")[0] for avinfo in self._avs.split("\n")]))
+        return list(set([{
+            "tab": avinfo.split("：")[0],
+            "title": avinfo.split("：")[0],
+            "icon": ""
+        } for avinfo in self._avs.split("\n")]))
 
     def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
         """

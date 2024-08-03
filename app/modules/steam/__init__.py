@@ -53,7 +53,7 @@ class SteamModule(_ModuleBase):
         :param steamid: STEAM ID
         :return: 识别的媒体信息，包括剧集信息
         """
-        if not "steam" in settings.RECOGNIZE_SOURCE:
+        if settings.RECOGNIZE_SOURCE and not "steam" in settings.RECOGNIZE_SOURCE:
             return None
 
         if not meta:
@@ -420,7 +420,7 @@ class SteamModule(_ModuleBase):
         :reutrn: 媒体信息
         """
         # 未启用STEAM搜索时返回None
-        if not "steam" in settings.RECOGNIZE_SOURCE:
+        if settings.SEARCH_SOURCE and "steam" not in settings.SEARCH_SOURCE:
             return None
 
         if not meta.name:

@@ -36,7 +36,7 @@ def search_by_id(mediaid: str,
         season = int(season)
     if mediaid.startswith("tmdb:"):
         tmdbid = int(mediaid.replace("tmdb:", ""))
-        if "douban" in settings.RECOGNIZE_SOURCE:
+        if "douban" in settings.SEARCH_SOURCE:
             # 通过TMDBID识别豆瓣ID
             doubaninfo = MediaChain().get_doubaninfo_by_tmdbid(tmdbid=tmdbid, mtype=mtype)
             if doubaninfo:
@@ -48,7 +48,7 @@ def search_by_id(mediaid: str,
             torrents = SearchChain().search_by_id(tmdbid=tmdbid, mtype=mtype, area=area, season=season)
     elif mediaid.startswith("douban:"):
         doubanid = mediaid.replace("douban:", "")
-        if "themoviedb" in settings.RECOGNIZE_SOURCE:
+        if "themoviedb" in settings.SEARCH_SOURCE:
             # 通过豆瓣ID识别TMDBID
             tmdbinfo = MediaChain().get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
             if tmdbinfo:
@@ -62,7 +62,7 @@ def search_by_id(mediaid: str,
             torrents = SearchChain().search_by_id(doubanid=doubanid, mtype=mtype, area=area, season=season)
     elif mediaid.startswith("bangumi:"):
         bangumiid = int(mediaid.replace("bangumi:", ""))
-        if "themoviedb" in settings.RECOGNIZE_SOURCE:
+        if "themoviedb" in settings.SEARCH_SOURCE:
             # 通过BangumiID识别TMDBID
             tmdbinfo = MediaChain().get_tmdbinfo_by_bangumiid(bangumiid=bangumiid)
             if tmdbinfo:

@@ -75,11 +75,12 @@ class TheMovieDbModule(_ModuleBase):
         :param cache:    是否使用缓存
         :return: 识别的媒体信息，包括剧集信息
         """
+        if settings.RECOGNIZE_SOURCE and not "themoviedb" in settings.RECOGNIZE_SOURCE:
+            return None
         if not tmdbid and not meta:
             return None
 
-        if meta and not tmdbid \
-                and not "themoviedb" in settings.RECOGNIZE_SOURCE:
+        if meta and not tmdbid:
             return None
 
         if not meta:
@@ -246,7 +247,7 @@ class TheMovieDbModule(_ModuleBase):
         :reutrn: 媒体信息列表
         """
         # 未启用时返回None
-        if not "themoviedb" in settings.RECOGNIZE_SOURCE:
+        if settings.SEARCH_SOURCE and "themoviedb" not in settings.SEARCH_SOURCE:
             return None
         if not meta.name:
             return []

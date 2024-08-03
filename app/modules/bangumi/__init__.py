@@ -44,6 +44,8 @@ class BangumiModule(_ModuleBase):
         :param bangumiid: 识别的Bangumi ID
         :return: 识别的媒体信息，包括剧集信息
         """
+        if settings.RECOGNIZE_SOURCE and not "bangumi" in settings.RECOGNIZE_SOURCE:
+            return None
         if not bangumiid:
             return None
 
