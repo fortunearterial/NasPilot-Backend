@@ -99,7 +99,14 @@ class IndexerModule(_ModuleBase):
                 search_word = StringUtils.clear(search_word, replace_word=" ", allow_space=True)
 
             try:
-                if site.get('parser') == "TNodeSpider":
+                if site.get('parser') == "dSpider":
+                    error_flag, result = self.__dspider_search(
+                        search_word=search_word,
+                        indexer=site,
+                        mtype=mtype,
+                        page=page
+                    )
+                elif site.get('parser') == "TNodeSpider":
                     error_flag, result = TNodeSpider(site).search(
                         keyword=search_word,
                         page=page
@@ -118,13 +125,6 @@ class IndexerModule(_ModuleBase):
                 elif site.get('parser') == "Yema":
                     error_flag, result = YemaSpider(site).search(
                         keyword=search_word,
-                        mtype=mtype,
-                        page=page
-                    )
-                elif site.get('parser') == "dSpider":
-                    error_flag, result_array = self.__dspider_search(
-                        search_word=search_word,
-                        indexer=site,
                         mtype=mtype,
                         page=page
                     )

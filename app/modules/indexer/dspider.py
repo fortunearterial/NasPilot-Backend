@@ -7,6 +7,7 @@ from typing import List
 from urllib.parse import quote, urlencode
 
 import chardet
+import json
 from jinja2 import Template
 from pyquery import PyQuery
 from ruamel.yaml import CommentedMap
@@ -57,8 +58,9 @@ class DetailTorrentSpider:
     # 站点种子列表配置
     lists: dict = {}
     # 链接字段配置
-    feed_links: dict = {}
-    search_links: dict = {}
+    feed_links: dict = {} # feed页面进行下钻获取
+    search_links: dict = {} # search页面进行下钻获取
+    list_links: dict = {} # list页面进行下钻获取
     # 站点种子字段配置
     fields: dict = {}
     # 页码
@@ -96,9 +98,10 @@ class DetailTorrentSpider:
         self.batch = self.search.get('batch')
         self.browse = indexer.get('browse')
         self.category = indexer.get('category')
-        self.lists = indexer.get('torrents').get('lists', {})
+        self.lists = indexer.get('torrents').get('lists')
         self.feed_links = indexer.get('torrents').get('feed_links')
         self.search_links = indexer.get('torrents').get('search_links')
+        self.list_links = indexer.get('torrents').get('list_links')
         self.fields = indexer.get('torrents').get('fields')
         self.render = indexer.get('render')
         self.domain = indexer.get('domain')
@@ -414,25 +417,25 @@ class DetailTorrentSpider:
 
     def __get_detail(self, torrent):
         # details
-        self.torrents_info['page_url'] = self.link_path
-        # if 'details' not in self.fields:
-        #     return
-        # selector = self.fields.get('details', {})
-        # details = torrent(selector.get('selector', '')).clone()
-        # self.__remove(details, selector)
-        # items = self.__attribute_or_text(details, selector)
-        # item = self.__index(items, selector)
-        # detail_link = self.__filter_text(item, selector.get('filters'))
-        # if detail_link:
-        #     if not detail_link.startswith("http"):
-        #         if detail_link.startswith("//"):
-        #             self.torrents_info['page_url'] = self.torrents_info['page_url'] + "#" + self.domain.split(":")[0] + ":" + detail_link
-        #         elif detail_link.startswith("/"):
-        #             self.torrents_info['page_url'] = self.torrents_info['page_url'] + "#" + self.domain + detail_link[1:]
-        #         else:
-        #             self.torrents_info['page_url'] = self.torrents_info['page_url'] + "#" + self.domain + detail_link
-        #     else:
-        #         self.torrents_info['page_url'] = self.torrents_info['page_url'] + "#" + detail_link
+        if 'details' not in self.fields:
+            self.torrents_info['page_url'] = self.link_path
+            return
+        selector = self.fields.get('details', {})
+        details = torrent(selector.get('selector', '')).clone()
+        self.__remove(details, selector)
+        items = self.__attribute_or_text(details, selector)
+        item = self.__index(items, selector)
+        detail_link = self.__filter_text(item, selector.get('filters'))
+        if detail_link:
+            if not detail_link.startswith("http"):
+                if detail_link.startswith("//"):
+                    self.torrents_info['page_url'] = self.domain.split(":")[0] + ":" + detail_link
+                elif detail_link.startswith("/"):
+                    self.torrents_info['page_url'] = self.domain + detail_link[1:]
+                else:
+                    self.torrents_info['page_url'] = self.domain + detail_link
+            else:
+                self.torrents_info['page_url'] = detail_link
 
     def __get_download(self, torrent):
         # download link
@@ -678,6 +681,8 @@ class DetailTorrentSpider:
                     text = text.strip()
                 elif method_name == "appendleft":
                     text = f"{args}{text}"
+                elif method_name == "crawl_page":
+                    text = f"{settings.APP_DOMAIN}/crawl/page?url={text}&query={json.dumps(args)}"
             except Exception as err:
                 print(str(err))
         return text.strip()
@@ -721,7 +726,7 @@ class DetailTorrentSpider:
 
     def parselinks(self, html_text: str, links: dict) -> List[dict]:
         """
-        解析整个页面
+        解析整个页面，进行下钻
         """
         if not html_text:
             self.is_error = True
@@ -743,22 +748,27 @@ class DetailTorrentSpider:
 
     def parse(self, html_text: str) -> List[dict]:
         """
-        解析整个页面
+        解析整个页面，进行列表获取
         """
         if not html_text:
             self.is_error = True
             return []
         try:
-            # 解析站点文本对象
-            html_doc = PyQuery(html_text)
-            # 种子筛选器
-            torrents_selector = self.lists.get('selector', '')
-            # 遍历种子html列表
-            for torn in html_doc(torrents_selector):
-                self.torrents_info_array.append(copy.deepcopy(self.get_info(PyQuery(torn))))
-                if len(self.torrents_info_array) >= int(self.result_num):
-                    break
-            return self.torrents_info_array
+            # 种子筛选器-列表型
+            if self.lists:
+                # 解析站点文本对象
+                html_doc = PyQuery(html_text)
+                torrents_selector = self.lists.get('selector', '')
+                # 遍历种子html列表
+                for torn in html_doc(torrents_selector):
+                    self.torrents_info_array.append(copy.deepcopy(self.get_info(PyQuery(torn))))
+                    if len(self.torrents_info_array) >= int(self.result_num):
+                        break
+                return self.torrents_info_array
+            # 种子筛选器-列表下钻型
+            if self.list_links:
+                return self.parselinks(html_text, self.list_links)
+            
         except Exception as err:
             self.is_error = True
             logger.warn(f"错误：{self.indexername} {str(err)}")

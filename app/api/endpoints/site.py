@@ -17,6 +17,7 @@ from app.db.models.sitestatistic import SiteStatistic
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.userauth import get_current_active_superuser
 from app.helper.sites import SitesHelper
+from app.resources.sites import SitesHelper as Sites
 from app.scheduler import Scheduler
 from app.schemas.types import SystemConfigKey, EventType
 from app.utils.string import StringUtils
@@ -33,6 +34,22 @@ def read_sites(db: Session = Depends(get_db),
     return Site.list_order_by_pri(db)
 
 
+@router.post("/pre", summary="预新增站点", response_model=schemas.Response)
+def pre_add_site(
+        *,
+        db: Session = Depends(get_db),
+        site_in: schemas.Site,
+        _: schemas.TokenPayload = Depends(verify_token)
+) -> Any:
+    """
+    预新增站点
+    """
+    if not site_in.url:
+        return schemas.Response(success=False, message="站点地址不能为空")
+    domain = StringUtils.get_url_domain(site_in.url)
+    return Sites().get_indexer(domain)
+
+
 @router.post("/", summary="新增站点", response_model=schemas.Response)
 def add_site(
         *,
@@ -45,23 +62,20 @@ def add_site(
     """
     if not site_in.url:
         return schemas.Response(success=False, message="站点地址不能为空")
-    if SitesHelper().auth_level < 2:
-        return schemas.Response(success=False, message="用户未通过认证，无法使用站点功能！")
+    if Site.get_by_url(db, site_in.url):
+        return schemas.Response(success=False, message=f"{site_in.url} 站点己存在")
+
     domain = StringUtils.get_url_domain(site_in.url)
-    # feat: 删除站点库相关
-    # site_info = SitesHelper().get_indexer(domain)
-    # if not site_info:
-    #     return schemas.Response(success=False, message="该站点不支持，请检查站点域名是否正确")
-    # if Site.get_by_url(db, site_in.url):
-    #     return schemas.Response(success=False, message=f"{site_in.url} 站点己存在")
-    # 保存站点信息
     site_in.domain = domain
-    # 校正地址格式
-    _scheme, _netloc = StringUtils.get_url_netloc(site_in.url)
-    site_in.url = f"{_scheme}://{_netloc}/"
-    site_in.name = site_info.get("name")
-    site_in.id = None
-    site_in.public = 1 if site_info.get("public") else 0
+    site_info = Sites().get_indexer(domain)
+    # 保存站点信息
+    if site_info:
+        # 校正地址格式
+        _scheme, _netloc = StringUtils.get_url_netloc(site_in.url)
+        site_in.url = f"{_scheme}://{_netloc}"
+        site_in.name = site_info.get("name")
+        site_in.id = None
+        site_in.public = 1 if site_info.get("public") else 0
     site = Site(**site_in.dict())
     site.create(db)
     # 通知站点更新
@@ -86,7 +100,7 @@ def update_site(
         return schemas.Response(success=False, message="站点不存在")
     # 校正地址格式
     _scheme, _netloc = StringUtils.get_url_netloc(site_in.url)
-    site_in.url = f"{_scheme}://{_netloc}/"
+    site_in.url = f"{_scheme}://{_netloc}"
     site.update(db, site_in.dict())
     # 通知站点更新
     EventManager().send_event(EventType.SiteUpdated, {
@@ -203,9 +217,10 @@ def site_icon(site_id: int,
     })
 
 
-@router.get("/resource/{site_id}/{resource_type}", summary="站点资源", response_model=List[schemas.TorrentInfo])
+@router.get("/resource/{site_id}", summary="站点资源", response_model=List[schemas.TorrentInfo])
 def site_resource(site_id: int,
-                  resource_type: str,
+                  resource_type: str = 'browse',
+                  keyword: str = '',
                   db: Session = Depends(get_db),
                   _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
@@ -219,11 +234,12 @@ def site_resource(site_id: int,
         )
     torrents = None
     if resource_type == 'browse':
-        torrents = TorrentsChain().browse(site=site)
-    elif resource_type == 'rss':
-        torrents = TorrentsChain().rss(site=site)
+        if site.feed.get('method') == 'RSS':
+            torrents = TorrentsChain().rss(site=site)
+        else:
+            torrents = TorrentsChain().browse(site=site)
     elif resource_type == 'search':
-        torrents = TorrentsChain().search(site=site, keyword = 'ABC')
+        torrents = TorrentsChain().search(site=site, keyword=keyword)
     if not torrents:
         return []
     return [torrent.to_dict() for torrent in torrents]

@@ -101,7 +101,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         logger.info(f'开始获取站点 {site.name} RSS ...')
         indexer = self.siteshelper.get_indexer(site=site)
         rss_items = self.rsshelper.parse(indexer.get("rss"), True if indexer.get("proxy") else False,
-                                         timeout=int(site.get("timeout") or 30))
+                                         timeout=int(site.timeout or 30))
         if rss_items is None:
             # rss过期，尝试保留原配置生成新的rss
             self.__renew_rss_url(domain=site.domain, site=indexer)

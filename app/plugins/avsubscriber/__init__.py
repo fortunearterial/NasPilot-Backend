@@ -77,8 +77,7 @@ class AVSubscriber(_PluginBase):
                 logger.info(f"女优订阅服务启动，周期：{self._cron}")
                 try:
                     self._scheduler.add_job(self.subscribe,
-                                            CronTrigger.；
-                                            (self._cron))
+                                            CronTrigger.from_crontab(self._cron))
                 except Exception as e:
                     logger.error(f"女优订阅服务启动失败：{str(e)}")
                     self.systemmessage.put(f"女优订阅服务启动失败：{str(e)}")
@@ -317,7 +316,7 @@ class AVSubscriber(_PluginBase):
         #     timeout=120
         # )
         ret = RequestUtils(
-                    ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.76",
+                    ua=settings.USER_AGENT,
                     cookies="list_mode=h; theme=auto; locale=zh; cf_clearance=8B.d8O8kLkWi7kv0vYe1PoTnQRZZsZas_rROR39GWMk-1702991486-0-1-25e5af4b.54bc817f.72e4f0ab-0.2.1702991486; over18=1; _ym_uid=1702991513933832321; _ym_d=1702991513; _ym_isad=2; _jdb_session=XijY3N9BFKAKbQt1IfioNMWcudqU8%2BBzyNm%2B4piF5VNvoJxP7s2oclmuODHbotSHTefrRd%2FstN%2BcMEN3v1zcONL3ZmpFYp8KyP9vKo%2FnotItRO5YpNSg6hI%2FbhYUZWrDl8L%2FwK7f3qcpHEnXOZerVOnS1%2FlxgvNEeM4D%2F%2FaU%2Fg5TYIzy%2BbmQriLUTEuaZQ1QNkhhueDFnQP6m0nPnk%2F8VREiYo6q2Emo%2Boz3KgJkssHI46mksGXtQjbm0bQJH6jLueyzj%2Bu9uFXZw9tO4aDrkJ7bHR3TfwRQ9UXoGRvh%2FLi%2FpzuBxEqGhpX6--OhWo6mihE9l9%2BQ7W--HaR9Uz1kQiWFLvDiGAJr%2BA%3D%3D",
                     timeout=30,
                     proxies=settings.PROXY

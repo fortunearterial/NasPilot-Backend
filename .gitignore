@@ -1,6 +1,6 @@
 .idea/
 .vscode/
-*_venv/
+.venv/
 build/
 dist/
 nginx/
@@ -8,6 +8,4 @@ config/cookies/**
 config/
 *.c
 *.pyc
-.vscode
-venv
 .DS_Store

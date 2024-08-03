@@ -1,7 +1,9 @@
 import multiprocessing
 import os
+import signal
 import sys
 import threading
+from types import FrameType
 import json
 
 import uvicorn as uvicorn
@@ -17,17 +19,26 @@ if SystemUtils.is_frozen():
     sys.stdout = open(os.devnull, 'w')
     sys.stderr = open(os.devnull, 'w')
 
-from app.core.config import settings
+from app.core.config import settings, global_vars
 from app.core.module import ModuleManager
+
+# SitesHelper涉及资源包拉取，提前引入并容错提示
+try:
+    from app.helper.sites import SitesHelper
+except ImportError as e:
+    error_message = f"错误: {str(e)}\n站点认证及索引相关资源导入失败，请尝试重建容器或手动拉取资源"
+    print(error_message, file=sys.stderr)
+    sys.exit(1)
+
 from app.core.plugin import PluginManager
-from app.db.init import init_db, update_db
+from app.db.init import init_db, update_db, init_super_user
 from app.helper.thread import ThreadHelper
 from app.helper.display import DisplayHelper
 from app.helper.resource import ResourceHelper
-from app.helper.sites import SitesHelper
+from app.helper.message import MessageHelper
 from app.scheduler import Scheduler
-from app.command import Command
-
+from app.command import Command, CommandChian
+from app.schemas import Notification, NotificationType
 
 # App
 App = FastAPI(title=settings.PROJECT_NAME,
@@ -53,10 +64,16 @@ def init_routers():
     """
     from app.api.apiv1 import api_router
     from app.api.servarr import arr_router
+    from app.api.servcookie import cookie_router
+    from app.api.servcrawl import crawl_router
     # API路由
     App.include_router(api_router, prefix=settings.API_V1_STR)
     # Radarr、Sonarr路由
     App.include_router(arr_router, prefix="/api/v3")
+    # CookieCloud路由
+    App.include_router(cookie_router, prefix="/cookiecloud")
+     # Crawl路由
+    App.include_router(crawl_router, prefix="/crawl")
 
 
 def start_frontend():
@@ -140,6 +157,40 @@ def start_tray():
     threading.Thread(target=TrayIcon.run, daemon=True).start()
 
 
+def check_auth():
+    """
+    检查认证状态
+    """
+    if SitesHelper().auth_level < 2:
+        err_msg = "用户认证失败，站点相关功能将无法使用！"
+        MessageHelper().put(f"注意：{err_msg}", title="用户认证", role="system")
+        CommandChian().post_message(
+            Notification(
+                mtype=NotificationType.Manual,
+                title="NasPilot用户认证",
+                text=err_msg,
+                link=settings.MP_DOMAIN('#/site')
+            )
+        )
+
+
+def singal_handle():
+    """
+    监听停止信号
+    """
+
+    def stop_event(signum: int, _: FrameType):
+        """
+        SIGTERM信号处理
+        """
+        print(f"接收到停止信号：{signum}，正在停止系统...")
+        global_vars.stop_system()
+
+    # 设置信号处理程序
+    signal.signal(signal.SIGTERM, stop_event)
+    signal.signal(signal.SIGINT, stop_event)
+
+
 @App.on_event("shutdown")
 def shutdown_server():
     """
@@ -149,6 +200,7 @@ def shutdown_server():
     ModuleManager().stop()
     # 停止插件
     PluginManager().stop()
+    PluginManager().stop_monitor()
     # 停止事件消费
     Command().stop()
     # 停止虚拟显示
@@ -166,6 +218,8 @@ def start_module():
     """
     启动模块
     """
+    # 初始化超级管理员
+    init_super_user()
     # 虚拟显示
     DisplayHelper()
     # 站点管理
@@ -174,8 +228,10 @@ def start_module():
     ResourceHelper()
     # 加载模块
     ModuleManager()
+    # 安装在线插件
+    PluginManager().install_online_plugin()
     # 加载插件
-    PluginManager()
+    PluginManager().start()
     # 启动定时服务
     Scheduler()
     # 启动事件消费
@@ -184,6 +240,10 @@ def start_module():
     init_routers()
     # 启动前端服务
     start_frontend()
+    # 检查认证状态
+    check_auth()
+    # 监听停止信号
+    singal_handle()
 
 
 if __name__ == '__main__':

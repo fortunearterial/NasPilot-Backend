@@ -65,12 +65,15 @@ def init_routers():
     from app.api.apiv1 import api_router
     from app.api.servarr import arr_router
     from app.api.servcookie import cookie_router
+    from app.api.servcrawl import crawl_router
     # API路由
     App.include_router(api_router, prefix=settings.API_V1_STR)
     # Radarr、Sonarr路由
     App.include_router(arr_router, prefix="/api/v3")
     # CookieCloud路由
     App.include_router(cookie_router, prefix="/cookiecloud")
+     # Crawl路由
+    App.include_router(crawl_router, prefix="/crawl")
 
 
 def start_frontend():

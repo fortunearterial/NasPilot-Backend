@@ -6,12 +6,13 @@ import requests
 from types import SimpleNamespace
 from app.utils.http import RequestUtils
 from app.log import logger
+from app.core.config import settings
 
 class Xunlei:
     host = None
     common_header = {
         "Content-Type": "application/json; charset=UTF-8",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"
+        "User-Agent": settings.USER_AGENT
     }
     __xunlei_get_token = None
 

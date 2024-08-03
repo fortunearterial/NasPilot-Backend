@@ -81,7 +81,7 @@ class SiteStatistic(BaseModel):
     # 最后状态
     lst_state: Optional[int] = 0
     # 最后修改时间
-    lst_mod_date: Optional[str]
+    lst_mod_date: Optional[str] = None
     # 备注
     note: Optional[str] = None
 

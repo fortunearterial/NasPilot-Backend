@@ -5,9 +5,10 @@ from app.db.site_oper import SiteOper
 from app.db.models.site import Site
 from app.utils.singleton import Singleton
 from app.utils.string import StringUtils
+from app.resources.sites import SitesHelper as Sites
 
 class SitesHelper(metaclass=Singleton):
-    _auth_level: int = 1
+    _auth_level: int = 9
     _auth_version: str = '1.0.3'
     _indexer_version: str = '1.0.5'
     _limiters = {}
@@ -62,7 +63,9 @@ class SitesHelper(metaclass=Singleton):
             "torrents": torrents
         }
 
-    def get_indexer(self, site: Site):
+    def get_indexer(self, site: Site = None, domain: str = None):
+        if domain:
+            site = self.siteoper.get_by_domain(domain)
         if not site:
             return None
         return self._to_indexer(site)
