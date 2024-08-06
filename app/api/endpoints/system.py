@@ -79,7 +79,10 @@ def set_env_setting(env: dict,
             if v is None:
                 v = ''
             else:
-                v = str(v)
+                if isinstance(v, list):
+                    v = json.dump(v)
+                else:
+                    v = str(v)
             set_key(settings.CONFIG_PATH / "app.env", k, v)
     return schemas.Response(success=True)
 
@@ -136,7 +139,10 @@ def set_setting(key: str, value: Union[list, dict, bool, int, str] = None,
         if value is None:
             value = ''
         else:
-            value = str(value)
+            if isinstance(v, list):
+                value = json.dump(value)
+            else:
+                value = str(value)
         set_key(settings.CONFIG_PATH / "app.env", key, value)
     else:
         SystemConfigOper().set(key, value)

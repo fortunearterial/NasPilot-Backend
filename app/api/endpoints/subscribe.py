@@ -51,18 +51,24 @@ def read_subscribes(
                 subscribe.sites = []
         else:
             subscribe.sites = []
+
     if current_user.is_superuser:
         if type_in:
-            if type_in == MediaType.JAV.value:
-                return list(filter(lambda s: s.type == type_in and s.save_path.__contains__(keyword_in), subscribes))
-            return list(filter(lambda s: s.type == type_in, subscribes))
+            media_type = MediaType[type_in]
+            if media_type == MediaType.JAV:
+                return list(filter(lambda s: s.type == media_type.value and s.save_path.__contains__(keyword_in), subscribes))
+            else:
+                return list(filter(lambda s: s.type == media_type.value, subscribes))
         else:
-            return subscribes
+            return list(filter(lambda s: s.type == MediaType.MOVIE.value or s.type == MediaType.TV.value, subscribes))
     else:
         if type_in:
-            return list(filter(lambda s: s.type == type_in and s.username == current_user.name, subscribes))
+            media_type = MediaType[type_in]
+            return list(filter(lambda s: s.type == media_type.value and s.username == current_user.name, subscribes))
         else:
-            return list(filter(lambda s: s.username == current_user.name, subscribes))
+            return list(filter(lambda s: s.username == current_user.name and (
+                s.type == MediaType.MOVIE.value or s.type == MediaType.TV.value
+            ), subscribes))
 
     return []
 

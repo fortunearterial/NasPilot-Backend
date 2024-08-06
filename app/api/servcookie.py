@@ -66,7 +66,7 @@ async def update_cookie(req: schemas.CookieData):
     """
     上传Cookie数据
     """
-    file_path = settings.COOKIE_PATH / f"{req.uuid}.json"
+    file_path = settings.COOKIECLOUD_DATA_PATH / f"{req.uuid}.json"
     content = json.dumps({"encrypted": req.encrypted})
     with open(file_path, encoding="utf-8", mode="w") as file:
         file.write(content)
@@ -82,7 +82,7 @@ def load_encrypt_data(uuid: str) -> Dict[str, Any]:
     """
     加载本地加密原始数据
     """
-    file_path = settings.COOKIE_PATH / f"{uuid}.json"
+    file_path = settings.COOKIECLOUD_DATA_PATH / f"{uuid}.json"
 
     # 检查文件是否存在
     if not file_path.exists():

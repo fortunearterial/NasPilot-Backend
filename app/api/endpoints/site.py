@@ -17,7 +17,7 @@ from app.db.models.sitestatistic import SiteStatistic
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.userauth import get_current_active_superuser
 from app.helper.sites import SitesHelper
-from app.resources.sites import SitesHelper as Sites
+from app.resources.sites import SitesHelper as InnerSitesHelper
 from app.scheduler import Scheduler
 from app.schemas.types import SystemConfigKey, EventType
 from app.utils.string import StringUtils
@@ -47,7 +47,7 @@ def pre_add_site(
     if not site_in.url:
         return schemas.Response(success=False, message="站点地址不能为空")
     domain = StringUtils.get_url_domain(site_in.url)
-    return Sites().get_indexer(domain)
+    return InnerSitesHelper().get_indexer(domain)
 
 
 @router.post("/", summary="新增站点", response_model=schemas.Response)
@@ -67,7 +67,7 @@ def add_site(
 
     domain = StringUtils.get_url_domain(site_in.url)
     site_in.domain = domain
-    site_info = Sites().get_indexer(domain)
+    site_info = InnerSitesHelper().get_indexer(domain)
     # 保存站点信息
     if site_info:
         # 校正地址格式

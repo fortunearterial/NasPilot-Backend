@@ -15,10 +15,12 @@ from app.utils.string import StringUtils
 from app.utils.http import RequestUtils
 from app.utils.singleton import Singleton
 from app.modules.javdb.html_cache import HtmlCache
+from app.helper.cookiecloud import CookieCloudHelper
 
 
 class JavDBApi(metaclass=Singleton):
     cache: HtmlCache = None
+    cookiecloud: CookieCloudHelper = None
 
     _urls = {
         # 搜索类
@@ -32,18 +34,21 @@ class JavDBApi(metaclass=Singleton):
         "av_detail": "/%s"
     }
 
-    _base_url = "https://javdb.com"
+    _base_domain = "javdb.com"
+    _base_url = r"https://%s" % _base_domain
     _session = None
-
+    
     def __init__(self):
         self._session = requests.Session()
         self.cache = HtmlCache()
+        self.cookiecloud = CookieCloudHelper()
 
     @lru_cache(maxsize=settings.CACHE_CONF.get('javdb'))
     def __invoke(self, url: str, **kwargs) -> dict:
         """
         GET请求
         """
+        cookies, msg = self.cookiecloud.download()
         req_url = self._base_url + url
 
         params = {}
@@ -59,7 +64,7 @@ class JavDBApi(metaclass=Singleton):
         })
         resp = RequestUtils(
             ua=settings.USER_AGENT,
-            cookies="list_mode=h; theme=auto; over18=1; _ym_uid=1702991513933832321; _ym_d=1702991513; locale=zh; _ym_isad=2; cf_clearance=jAPJ4YVONhXpDy8kBGWzmgFuDF8UJsXKu7o16PwhSSc-1703333277-0-2-25e5af4b.8dc226a.72e4f0ab-0.2.1703333277; _jdb_session=Zgwa%2BwPrhseWOrlggyh%2F0IW8raFY%2BGhrHwzLoj5UDVBg9H6Skzg0zHMAUj7P1et65KTKeg2nMeqfLTGq9GB77dvyEh%2BiUxGzdtlYVlhiFvTIFacqCV%2BonlveAYdlnGZP2bnynMYoivC03vF2GAn9hjMWUs87G6u49fa%2FhZnVU7rsVqKaRmHg%2FESPKSJD%2BYDyGdRX92rJf%2FT1qMergwkEOtNkpYYSUFeM%2BzBdAv%2BRdlbdcJSQbjv%2Fdp8WPURz%2BV7Xox1zyJEWcHYhtDNxBn3fei8fH5qjy764u6iMMI4vMY7JdNjUQ54cD2c3ss7FHyDIrEGEOYEaz2ifgZ%2BEY%2BXcC9hDxqn%2BAsf2wI%2BTcfnoizAXEgWsKRXgX9nALQnQDywclpu%2BcgSIObrVAFWB8%2FL%2BmhuB8fLNdiJ0ktG5HTfLwGKr5HfCW1lNGqlsQE16vQYaQVRMpkufihc8VpVa0Kae6dqw5fpj82ba8LoVg21y%2B2RABg%3D%3D--kjAX%2BBxOgxBRJIbY--HNc4TIZBuxbrVeQExlF2Kw%3D%3D",
+            cookies=cookies.get(self._base_domain),
             session=self._session,
             proxies=settings.PROXY
         ).get_res(url=req_url, params=params)

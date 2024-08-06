@@ -153,7 +153,7 @@ class TransferChain(ChainBase):
         self.progress.start(ProgressKey.FileTransfer)
         # 目录所有文件清单
         transfer_files = SystemUtils.list_files(directory=path,
-                                                extensions=extensions,
+                                                extensions=settings.RMT_MEDIAEXT,
                                                 min_filesize=min_filesize)
         
         if formaterHandler:
@@ -168,20 +168,6 @@ class TransferChain(ChainBase):
         fail_num = 0
         # 跳过数量
         skip_num = 0
-
-        # 获取待转移路径清单
-        trans_paths = self.__get_trans_paths(path)
-        if not trans_paths:
-            logger.warn(f"{path.name} 没有找到可转移的媒体文件")
-            return False, f"{path.name} 没有找到可转移的媒体文件"
-        # 目录所有文件清单
-        transfer_files = SystemUtils.list_files(directory=path,
-                                                extensions=extensions,
-                                                min_filesize=min_filesize)
-        
-        if formaterHandler:
-            # 有集自定义格式，过滤文件
-            transfer_files = [f for f in transfer_files if formaterHandler.match(f.name)]
 
         # 总文件数
         total_num = len(transfer_files)
@@ -201,15 +187,15 @@ class TransferChain(ChainBase):
             transfers: Dict[Tuple, TransferInfo] = {}
 
             # 如果是目录且不是⼀蓝光原盘，获取所有文件并转移
-            if mediainfo.type == MediaType.GAME:
+            if mediainfo and mediainfo.type == MediaType.GAME:
                 file_paths = [trans_path]
-            elif mediainfo.type == MediaType.JAV:
+            elif mediainfo and mediainfo.type == MediaType.JAV:
                 file_paths = [trans_path]
             elif (not trans_path.is_file()
                     and not SystemUtils.is_bluray_dir(trans_path)):
                 # 遍历获取下载目录所有文件
                 file_paths = SystemUtils.list_files(directory=trans_path,
-                                                    extensions=extensions,
+                                                    extensions=settings.RMT_MEDIAEXT,
                                                     min_filesize=min_filesize)
             else:
                 file_paths = [trans_path]

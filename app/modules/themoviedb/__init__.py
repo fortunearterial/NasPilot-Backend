@@ -80,9 +80,6 @@ class TheMovieDbModule(_ModuleBase):
         if not tmdbid and not meta:
             return None
 
-        if meta and not tmdbid:
-            return None
-
         if not meta:
             # 未提供元数据时，直接使用tmdbid查询，不使用缓存
             cache_info = {}

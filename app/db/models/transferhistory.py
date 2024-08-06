@@ -1,6 +1,6 @@
 import time
 
-from sqlalchemy import Column, Integer, String, Sequence, Boolean, func, or_
+from sqlalchemy import Column, Integer, String, Sequence, Boolean, JSON, func, or_
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -44,7 +44,7 @@ class TransferHistory(Base):
     # 时间
     date = Column(String(255), index=True)
     # 文件清单，以JSON存储
-    files = Column(String(255))
+    files = Column(JSON)
 
     @staticmethod
     @db_query

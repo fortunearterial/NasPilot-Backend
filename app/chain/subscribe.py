@@ -444,7 +444,7 @@ class SubscribeChain(ChainBase):
         no_lefts = not lefts or not lefts.get(mediakey)
         # 是否完成订阅
         if not subscribe.best_version:
-            # 非洗板
+            # 非洗版
             if ((no_lefts and meta.type == MediaType.TV)
                     or (downloads and meta.type == MediaType.MOVIE)
                     or force):
@@ -464,7 +464,7 @@ class SubscribeChain(ChainBase):
                     self.__update_lack_episodes(lefts=lefts, subscribe=subscribe,
                                                 mediainfo=mediainfo, update_date=False)
         elif downloads:
-            # 洗板，下载到了内容，更新资源优先级
+            # 洗版，下载到了内容，更新资源优先级
             self.update_subscribe_priority(subscribe=subscribe, meta=meta,
                                            mediainfo=mediainfo, downloads=downloads)
         else:
@@ -1164,8 +1164,12 @@ class SubscribeChain(ChainBase):
         default_subscribe_key = None
         if mtype == MediaType.TV:
             default_subscribe_key = "DefaultTvSubscribeConfig"
-        if mtype == MediaType.MOVIE:
+        elif mtype == MediaType.MOVIE:
             default_subscribe_key = "DefaultMovieSubscribeConfig"
+        elif mtype == MediaType.GAME:
+            default_subscribe_key = "DefaultGameSubscribeConfig"
+        elif mtype == MediaType.JAV:
+            default_subscribe_key = "DefaultJavSubscribeConfig"
 
         # 默认订阅规则
         if hasattr(settings, default_subscribe_key):

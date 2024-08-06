@@ -220,13 +220,15 @@ class Settings(BaseSettings):
     # CookieCloud服务器地址
     COOKIECLOUD_HOST: str = "https://movie-pilot.org/cookiecloud"
     # CookieCloud用户KEY
-    COOKIECLOUD_KEY: Optional[str] = None
+    COOKIECLOUD_KEY: Optional[list] = None
     # CookieCloud端对端加密密码
-    COOKIECLOUD_PASSWORD: Optional[str] = None
+    COOKIECLOUD_PASSWORD: Optional[list] = None
     # CookieCloud同步间隔（分钟）
     COOKIECLOUD_INTERVAL: Optional[int] = 60 * 24
     # CookieCloud同步黑名单，多个域名,分割
-    COOKIECLOUD_BLACKLIST: Optional[str] = None
+    COOKIECLOUD_BLACKLIST: Optional[list] = None
+    # CookieCloud浏览器UA
+    COOKIECLOUD_USER_AGENT: Optional[list] = None
     # OCR服务器地址
     OCR_HOST: str = "https://movie-pilot.org"
     # CookieCloud对应的浏览器UA
@@ -344,7 +346,7 @@ class Settings(BaseSettings):
         return self.CONFIG_PATH / "logs"
 
     @property
-    def COOKIE_PATH(self):
+    def COOKIECLOUD_DATA_PATH(self):
         return self.CONFIG_PATH / "cookies"
 
     @property
@@ -479,7 +481,7 @@ class Settings(BaseSettings):
         with self.LOG_PATH as p:
             if not p.exists():
                 p.mkdir(parents=True, exist_ok=True)
-        with self.COOKIE_PATH as p:
+        with self.COOKIECLOUD_DATA_PATH as p:
             if not p.exists():
                 p.mkdir(parents=True, exist_ok=True)
 
