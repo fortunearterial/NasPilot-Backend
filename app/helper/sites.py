@@ -55,7 +55,9 @@ class SitesHelper(metaclass=Singleton):
             "rss": url + feed_path if site.feed.get("method") == 'RSS' else None,
             "search": {
                 "paths": [{ "path": search_path, "method": site.search.get("method").lower() }],
-                "params": { "search": site.search.get("body"), "search_area": 4 },
+                "params": { 
+                    "search": site.search.get("body"),
+                } if site.search.get("method").upper() == 'HTTP POST' else {},
                 "batch": { "delimiter": " ", "space_replace": "_" }
             } if search_path else None,
             "browse": { "path": feed_path, "start": 1 } if site.feed.get("method") == 'GET' else None,

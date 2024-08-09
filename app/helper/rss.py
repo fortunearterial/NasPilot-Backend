@@ -13,6 +13,7 @@ from app.log import logger
 from app.utils.dom import DomUtils
 from app.utils.http import RequestUtils
 from app.utils.string import StringUtils
+from app.helper.rsscategory import RssCategoryHelper
 
 
 class RssHelper:
@@ -237,6 +238,8 @@ class RssHelper:
         ret_array: list = []
         if not url:
             return []
+        # 获取站点域名
+        domain = StringUtils.get_url_domain(url)
         try:
             ret = RequestUtils(proxies=settings.PROXY if proxy else None, timeout=timeout).get_res(url)
             if not ret:
@@ -299,13 +302,18 @@ class RssHelper:
                         if pubdate:
                             # 转换为时间
                             pubdate = StringUtils.get_time(pubdate)
+                        # FIX：补全属性
+                        author = DomUtils.tag_value(item, "author", default="")
+                        category = DomUtils.tag_value(item, "category", default="")
                         # 返回对象
                         tmp_dict = {'title': title,
                                     'enclosure': enclosure,
                                     'size': size,
                                     'description': description,
                                     'link': link,
-                                    'pubdate': pubdate}
+                                    'pubdate': pubdate,
+                                    'author': author,
+                                    'category': RssCategoryHelper().get_media_type(domain, category)}
                         ret_array.append(tmp_dict)
                     except Exception as e1:
                         logger.debug(f"解析RSS失败：{str(e1)} - {traceback.format_exc()}")

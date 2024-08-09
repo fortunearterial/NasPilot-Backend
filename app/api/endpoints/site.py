@@ -234,12 +234,13 @@ def site_resource(site_id: int,
         )
     torrents = None
     if resource_type == 'browse':
-        if site.feed.get('method') == 'RSS':
+        if site.feed and site.feed.get('method') == 'RSS':
             torrents = TorrentsChain().rss(site=site)
-        else:
+        elif site.feed and site.feed.get('method') == 'HTTP GET':
             torrents = TorrentsChain().browse(site=site)
     elif resource_type == 'search':
-        torrents = TorrentsChain().search(site=site, keyword=keyword)
+        if site.search and site.search.get('method') != '':
+            torrents = TorrentsChain().search(site=site, keyword=keyword)
     if not torrents:
         return []
     return [torrent.to_dict() for torrent in torrents]

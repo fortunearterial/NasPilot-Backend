@@ -80,7 +80,7 @@ def set_env_setting(env: dict,
                 v = ''
             else:
                 if isinstance(v, list):
-                    v = json.dump(v)
+                    v = json.dumps(v)
                 else:
                     v = str(v)
             set_key(settings.CONFIG_PATH / "app.env", k, v)
@@ -140,7 +140,7 @@ def set_setting(key: str, value: Union[list, dict, bool, int, str] = None,
             value = ''
         else:
             if isinstance(v, list):
-                value = json.dump(value)
+                value = json.dumps(value)
             else:
                 value = str(value)
         set_key(settings.CONFIG_PATH / "app.env", key, value)

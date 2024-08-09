@@ -232,7 +232,8 @@ class DownloadChain(ChainBase):
         # TODO: 区分链接类型：magnet:/.torrent/ftp:/ed2k:/普通文件
         content = _torrent.enclosure
         _folder_name = ""
-        _file_list = [_torrent.enclosure[_torrent.enclosure.rindex("/") + 1:]]
+        # _file_list = [_torrent.enclosure[_torrent.enclosure.rindex("/") + 1:]]
+        _file_list = [""]
 
         # if not torrent_file:
         #     # 下载种子文件，得到的可能是文件也可能是磁力链

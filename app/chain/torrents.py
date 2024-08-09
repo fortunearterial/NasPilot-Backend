@@ -82,6 +82,9 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         if not site:
             logger.error(f'站点 {site.name} 不存在！')
             return []
+        if not site.feed or site.feed.get("method") != 'HTTP GET':
+            logger.error(f'站点 {site.name} 不支持爬虫浏览！')
+            return []
         logger.info(f'开始获取站点 {site.name} 最新种子 ...')
         indexer = self.siteshelper.get_indexer(site=site)
         return self.refresh_torrents(site=indexer)
@@ -127,6 +130,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                 page_url=item.get("link"),
                 size=item.get("size"),
                 pubdate=item["pubdate"].strftime("%Y-%m-%d %H:%M:%S") if item.get("pubdate") else None,
+                category=item.get("category").value
             )
             ret_torrents.append(torrentinfo)
 
@@ -139,6 +143,9 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         """
         if not site:
             logger.error(f'站点 {site.name} 不存在！')
+            return []
+        if not site.search or site.search.get("method") == '':
+            logger.error(f'站点 {site.name} 不支持搜索！')
             return []
         logger.info(f'开始搜索站点 {site.name} 关键字 {keyword} 最新种子 ...')
         indexer = self.siteshelper.get_indexer(site=site)
@@ -180,9 +187,14 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
             if stype == "spider":
                 # 刷新首页种子
                 torrents: List[TorrentInfo] = self.browse(site=site)
-            else:
+            elif stype == "rss":
                 # 刷新RSS种子
                 torrents: List[TorrentInfo] = self.rss(site=site)
+            else:
+                if site.feed and site.feed.get('method') == 'RSS':
+                    torrents = self.rss(site=site)
+                elif site.feed and site.feed.get('method') == 'HTTP GET':
+                    torrents = self.browse(site=site)
             # 按pubdate降序排列
             torrents.sort(key=lambda x: x.pubdate or '', reverse=True)
             # 取前N条
@@ -200,14 +212,10 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                     continue
                 for torrent in torrents:
                     logger.info(f'处理资源：{torrent.title} ...')
-                    # 识别
-                    meta = MetaInfo(title=torrent.title, subtitle=torrent.description)
+                    # 识别，并使用站点种子分类校正类型识别
+                    meta = MetaInfo(title=torrent.title, subtitle=torrent.description, type=torrent.category)
                     if torrent.title != meta.org_string:
                         logger.info(f'种子名称应用识别词后发生改变：{torrent.title} => {meta.org_string}')
-                    # 使用站点种子分类，校正类型识别
-                    if meta.type != MediaType.TV \
-                            and torrent.category == MediaType.TV.value:
-                        meta.type = MediaType.TV
                     # 识别媒体信息
                     mediainfo: MediaInfo = self.mediachain.recognize_by_meta(meta)
                     if not mediainfo:
