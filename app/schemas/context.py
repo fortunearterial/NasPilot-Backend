@@ -34,9 +34,9 @@ class MetaInfo(BaseModel):
     # 总集数
     total_episode: Optional[int] = 0
     # 识别的开始集
-    begin_episode: Optional[int] = None
+    begin_episode: Optional[float] = None
     # 识别的结束集
-    end_episode: Optional[int] = None
+    end_episode: Optional[float] = None
     # SxxExx
     season_episode: Optional[str] = None
     # Partx Cd Dvd Disk Disc

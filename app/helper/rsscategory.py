@@ -50,9 +50,9 @@ class RssCategoryHelper(metaclass=Singleton):
     @staticmethod
     def get_category(categorys: dict, category: dict) -> MediaType:
         if not category:
-            return ""
+            return MediaType.UNKNOWN
         if not categorys:
-            return ""
+            return MediaType.UNKNOWN
 
         _movie_categorys = categorys.get('movie') or []
         _tv_categorys = categorys.get('tv') or []
@@ -67,8 +67,7 @@ class RssCategoryHelper(metaclass=Singleton):
         if category in _tv_categorys:
             return MediaType.TV
         if category in _anime_categorys:
-            # TODO: MediaType.ANIME
-            return MediaType.TV
+            return MediaType.ANIME
         if category in _game_categorys:
             return MediaType.GAME
         if category in _music_categorys:

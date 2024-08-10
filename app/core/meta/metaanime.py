@@ -129,7 +129,7 @@ class MetaAnime(MetaBase):
                     end_episode = None
                 if begin_episode:
                     try:
-                        self.begin_episode = int(begin_episode)
+                        self.begin_episode = float(begin_episode)
                         if end_episode and int(end_episode) != self.begin_episode:
                             self.end_episode = int(end_episode)
                             self.total_episode = (self.end_episode - self.begin_episode) + 1

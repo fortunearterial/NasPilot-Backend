@@ -130,7 +130,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                 page_url=item.get("link"),
                 size=item.get("size"),
                 pubdate=item["pubdate"].strftime("%Y-%m-%d %H:%M:%S") if item.get("pubdate") else None,
-                category=item.get("category").value
+                category=item.get("category").name
             )
             ret_torrents.append(torrentinfo)
 
@@ -195,6 +195,8 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                     torrents = self.rss(site=site)
                 elif site.feed and site.feed.get('method') == 'HTTP GET':
                     torrents = self.browse(site=site)
+                else:
+                    torrents = []
             # 按pubdate降序排列
             torrents.sort(key=lambda x: x.pubdate or '', reverse=True)
             # 取前N条

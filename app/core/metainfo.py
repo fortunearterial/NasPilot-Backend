@@ -8,9 +8,10 @@ from app.core.meta import MetaAnime, MetaVideo, MetaBase
 from app.core.meta.words import WordsMatcher
 from app.log import logger
 from app.schemas.types import MediaType
+from app.utils.string import StringUtils
 
 
-def MetaInfo(title: str, subtitle: str = None) -> MetaBase:
+def MetaInfo(title: str, subtitle: str = None, type: str = None) -> MetaBase:
     """
     根据标题和副标题识别元数据
     :param title: 标题、种子名、文件名
@@ -30,8 +31,16 @@ def MetaInfo(title: str, subtitle: str = None) -> MetaBase:
         title = Path(title).stem
     else:
         isfile = False
-    # 识别
-    meta = MetaAnime(title, subtitle, isfile) if is_anime(title) else MetaVideo(title, subtitle, isfile)
+
+    meta = None
+    if type:
+        if type == MediaType.TV.name or type == MediaType.MOVIE.name:
+            meta = MetaVideo(title, subtitle, isfile)
+        elif type == MediaType.ANIME.name:
+            meta = MetaAnime(title, subtitle, isfile)
+    if not meta:
+        # 识别
+        meta = MetaAnime(title, subtitle, isfile) if is_anime(title) else MetaVideo(title, subtitle, isfile)
     # 记录原标题
     meta.title = org_title
     #  记录使用的识别词
@@ -44,7 +53,9 @@ def MetaInfo(title: str, subtitle: str = None) -> MetaBase:
             logger.warn("tmdbid 必须是数字")
     if metainfo.get('doubanid'):
         meta.doubanid = metainfo['doubanid']
-    if metainfo.get('type'):
+    if type:
+        meta.type = MediaType[type]
+    elif metainfo.get('type'):
         meta.type = metainfo['type']
     if metainfo.get('begin_season'):
         meta.begin_season = metainfo['begin_season']
@@ -142,17 +153,17 @@ def find_metainfo(title: str) -> Tuple[str, dict]:
         # 查找季信息
         begin_season = re.findall(r'(?<=s=)\d+', result)
         if begin_season and begin_season[0].isdigit():
-            metainfo['begin_season'] = int(begin_season[0])
+            metainfo['begin_season'] = StringUtils.str_float(begin_season[0])
         end_season = re.findall(r'(?<=s=\d+-)\d+', result)
         if end_season and end_season[0].isdigit():
-            metainfo['end_season'] = int(end_season[0])
+            metainfo['end_season'] = StringUtils.str_float(end_season[0])
         # 查找集信息
         begin_episode = re.findall(r'(?<=e=)\d+', result)
-        if begin_episode and begin_episode[0].isdigit():
-            metainfo['begin_episode'] = int(begin_episode[0])
+        if begin_episode and StringUtils.is_number(begin_episode[0]):
+            metainfo['begin_episode'] = StringUtils.str_float(begin_episode[0])
         end_episode = re.findall(r'(?<=e=\d+-)\d+', result)
-        if end_episode and end_episode[0].isdigit():
-            metainfo['end_episode'] = int(end_episode[0])
+        if end_episode and StringUtils.str_float(end_episode[0]):
+            metainfo['end_episode'] = StringUtils.str_float(end_episode[0])
         # 去除title中该部分
         if tmdbid or mtype or begin_season or end_season or begin_episode or end_episode:
             title = title.replace(f"{{[{result}]}}", '')
