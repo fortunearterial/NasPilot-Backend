@@ -152,11 +152,11 @@ class Scheduler(metaclass=Singleton):
                 "func": clear_cache,
                 "running": False,
             },
-            "user_auth": {
-                "name": "用户认证检查",
-                "func": user_auth,
-                "running": False,
-            },
+            # "user_auth": {
+            #     "name": "用户认证检查",
+            #     "func": user_auth,
+            #     "running": False,
+            # },
             "scheduler_job": {
                 "name": "公共定时服务",
                 "func": SchedulerChain().scheduler_job,

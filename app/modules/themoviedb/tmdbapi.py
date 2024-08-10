@@ -54,7 +54,7 @@ class TmdbApi:
         if not title:
             return []
         ret_infos = []
-        multis = self.search.multi(term=title) or []
+        multis = self.search.multi(term=title, adult=settings.TMDB_API_ADULT) or []
         for multi in multis:
             if multi.get("media_type") in ["movie", "tv"]:
                 multi['media_type'] = MediaType.MOVIE if multi.get("media_type") == "movie" else MediaType.TV
@@ -69,9 +69,9 @@ class TmdbApi:
             return []
         ret_infos = []
         if year:
-            movies = self.search.movies(term=title, year=year) or []
+            movies = self.search.movies(term=title, year=year, adult=settings.TMDB_API_ADULT) or []
         else:
-            movies = self.search.movies(term=title) or []
+            movies = self.search.movies(term=title, adult=settings.TMDB_API_ADULT) or []
         for movie in movies:
             if title in movie.get("title"):
                 movie['media_type'] = MediaType.MOVIE
@@ -86,9 +86,9 @@ class TmdbApi:
             return []
         ret_infos = []
         if year:
-            tvs = self.search.tv_shows(term=title, release_year=year) or []
+            tvs = self.search.tv_shows(term=title, release_year=year, adult=settings.TMDB_API_ADULT) or []
         else:
-            tvs = self.search.tv_shows(term=title) or []
+            tvs = self.search.tv_shows(term=title, adult=settings.TMDB_API_ADULT) or []
         for tv in tvs:
             if title in tv.get("name"):
                 tv['media_type'] = MediaType.TV
@@ -101,7 +101,7 @@ class TmdbApi:
         """
         if not name:
             return []
-        return self.search.people(term=name) or []
+        return self.search.people(term=name, adult=settings.TMDB_API_ADULT) or []
 
     @staticmethod
     def __compare_names(file_name: str, tmdb_names: list) -> bool:
@@ -221,9 +221,9 @@ class TmdbApi:
         """
         try:
             if year:
-                movies = self.search.movies(term=name, year=year)
+                movies = self.search.movies(term=name, year=year, adult=settings.TMDB_API_ADULT)
             else:
-                movies = self.search.movies(term=name)
+                movies = self.search.movies(term=name, adult=settings.TMDB_API_ADULT)
         except TMDbException as err:
             logger.error(f"连接TMDB出错：{str(err)}")
             return None
@@ -268,9 +268,9 @@ class TmdbApi:
         """
         try:
             if year:
-                tvs = self.search.tv_shows(term=name, release_year=year)
+                tvs = self.search.tv_shows(term=name, release_year=year, adult=settings.TMDB_API_ADULT)
             else:
-                tvs = self.search.tv_shows(term=name)
+                tvs = self.search.tv_shows(term=name, adult=settings.TMDB_API_ADULT)
         except TMDbException as err:
             logger.error(f"连接TMDB出错：{str(err)}")
             return None
@@ -331,7 +331,7 @@ class TmdbApi:
             return False
 
         try:
-            tvs = self.search.tv_shows(term=name)
+            tvs = self.search.tv_shows(term=name, adult=settings.TMDB_API_ADULT)
         except TMDbException as err:
             logger.error(f"连接TMDB出错：{str(err)}")
             return None
@@ -411,7 +411,7 @@ class TmdbApi:
         :return: 匹配的媒体信息
         """
         try:
-            multis = self.search.multi(term=name) or []
+            multis = self.search.multi(term=name, adult=settings.TMDB_API_ADULT) or []
         except TMDbException as err:
             logger.error(f"连接TMDB出错：{str(err)}")
             return None

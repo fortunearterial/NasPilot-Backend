@@ -2,6 +2,7 @@ import os
 import re
 import random
 import time
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Event
@@ -24,6 +25,10 @@ from app.utils.string import StringUtils
 from app.utils.http import RequestUtils
 from app.helper.cookiecloud import CookieCloudHelper
 from app.db.site_oper import SiteOper
+from app.db.models.subscribe import Subscribe
+from app.db import get_db
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 
 class AVSubscriber(_PluginBase):
@@ -226,10 +231,12 @@ class AVSubscriber(_PluginBase):
             "description": "获取女优列表",
         }]
 
-    def api_get_av_list(self) -> Any:
+    def api_get_av_list(self,  db: Session = Depends(get_db)) -> Any:
+        subscribes = Subscribe.list(db)
+
         return [dict({
             "tab": avinfo.split("：")[0],
-            "title": avinfo.split("：")[0],
+            "title": f"%s (%s)" % (avinfo.split("：")[0], len(list(filter(lambda s: s.type == MediaType.JAV.value and s.save_path.__contains__(avinfo.split("：")[0]), subscribes)))),
             "icon": ""
         }) for avinfo in self._avs.split("\n")]
 
@@ -553,6 +560,7 @@ class AVSubscriber(_PluginBase):
             "best_version": self._best_version,
             "avs": self._avs,
         })
+        logger.info("完成订阅女优任务 ...")
 
     def __subscribe(self, page_source, av_name):
         html = etree.HTML(page_source)
@@ -568,13 +576,18 @@ class AVSubscriber(_PluginBase):
                                         title=f"{javid} {title}",
                                         javdbid=javdbid,
                                         year=release_date[:4],
-                                        username=self.plugin_author,
-                                        save_path=f"{settings.DOWNLOAD_JAV_PATH}/{av_name}/{javid}",
+                                        username=self._username,
+                                        save_path=f"{self._save_path or settings.DOWNLOAD_JAV_PATH}/{av_name}/{javid}",
                                         keyword=javid, # 关键字
-                                        best_version=1, # 洗版
+                                        best_version=self._best_version,
+                                        note='{"av": "%s"}' % av_name,
+                                        quality=self._quality,
+                                        resolution=self._resolution,
+                                        effect=self._effect,
+                                        sites=self._sites,
                                         exist_ok=True)
                 # 随机休眠30-60秒
-                sleep_time = random.randint(30, 60)
+                sleep_time = random.randint(60, 180)
                 logger.info(f'订阅搜索随机休眠 {sleep_time} 秒 ...')
                 time.sleep(sleep_time)
 

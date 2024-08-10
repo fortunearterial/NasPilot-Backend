@@ -55,6 +55,13 @@ class JavDBModule(_ModuleBase):
         """
         if settings.RECOGNIZE_SOURCE and not "javdb" in settings.RECOGNIZE_SOURCE:
             return None
+        # 若type不为jav则跳过
+        if meta:
+            if meta.type != MediaType.JAV and mtype != MediaType.JAV and not javdbid:
+                return None
+        else:
+            if mtype != MediaType.JAV and not javdbid:
+                return None
 
         if not meta:
             cache_info = {}

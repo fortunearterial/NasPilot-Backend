@@ -4,6 +4,7 @@ from typing import List, Any
 import cn2an
 from fastapi import APIRouter, Request, BackgroundTasks, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app import schemas
 from app.chain.subscribe import SubscribeChain
@@ -34,8 +35,8 @@ def start_subscribe_add(title: str, year: str,
 
 @router.get("/", summary="查询所有订阅", response_model=List[schemas.Subscribe])
 def read_subscribes(
-        type_in: str = None,
-        keyword_in: str = None,
+        stype: str = None,
+        keyword: str = None,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_active_user),
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
@@ -53,17 +54,17 @@ def read_subscribes(
             subscribe.sites = []
 
     if current_user.is_superuser:
-        if type_in:
-            media_type = MediaType(type_in)
+        if stype:
+            media_type = MediaType[stype]
             if media_type == MediaType.JAV:
-                return list(filter(lambda s: s.type == media_type.value and s.save_path.__contains__(keyword_in), subscribes))
+                return list(filter(lambda s: s.type == media_type.value and s.save_path.__contains__(keyword), subscribes))
             else:
                 return list(filter(lambda s: s.type == media_type.value, subscribes))
         else:
             return list(filter(lambda s: s.type == MediaType.MOVIE.value or s.type == MediaType.TV.value, subscribes))
     else:
-        if type_in:
-            media_type = MediaType(type_in)
+        if stype:
+            media_type = MediaType[stype]
             return list(filter(lambda s: s.type == media_type.value and s.username == current_user.name, subscribes))
         else:
             return list(filter(lambda s: s.username == current_user.name and (
@@ -453,6 +454,34 @@ def popular_subscribes(
             media.popularity = count
             ret_medias.append(media)
         return [media.to_dict() for media in ret_medias]
+    return []
+
+@router.get("/newest", summary="最新订阅（基于订阅插件）", response_model=List[schemas.Subscribe])
+def newest_subscribes(
+        stype: str,
+        page: int = 1,
+        count: int = 30,
+        min_sub: int = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_active_user),
+        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+    """
+    查询最新订阅
+    """
+    today = datetime.today().strftime('%Y-%m-%d 00:00:00')
+    subscribes = Subscribe.list(db)
+
+    if current_user.is_superuser:
+        if stype:
+            media_type = MediaType[stype]
+            if media_type == MediaType.JAV:
+                return list(filter(lambda s: s.type == media_type.value and s.date > today, subscribes))
+    else:
+        if stype:
+            media_type = MediaType[stype]
+            if media_type == MediaType.JAV:
+                return list(filter(lambda s: s.username == current_user and s.type == media_type.value and s.date > today, subscribes))
+                
     return []
 
 
