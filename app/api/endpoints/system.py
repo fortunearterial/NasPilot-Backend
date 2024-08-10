@@ -139,7 +139,7 @@ def set_setting(key: str, value: Union[list, dict, bool, int, str] = None,
         if value is None:
             value = ''
         else:
-            if isinstance(v, list):
+            if isinstance(value, list):
                 value = json.dumps(value)
             else:
                 value = str(value)
