@@ -173,7 +173,7 @@ class ChainBase(metaclass=ABCMeta):
         if not javdbid and hasattr(meta, "javdbid"):
             javdbid = meta.javdbid
         return self.run_module("recognize_media", meta=meta, mtype=mtype,
-                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, cache=cache, steamid=steamid, javdbid=javdbid)
+                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, steamid=steamid, javdbid=javdbid, cache=cache)
 
     def match_doubaninfo(self, name: str, imdbid: str = None,
                          mtype: MediaType = None, year: str = None, season: int = None,

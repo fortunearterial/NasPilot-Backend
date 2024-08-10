@@ -80,7 +80,7 @@ RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf \
     && FRONTEND_VERSION=$(curl -sL "https://api.github.com/repos/fortunearterial/NasPilot-Frontend/releases/latest" | jq -r .tag_name) \
     && curl -sL "https://github.com/fortunearterial/NasPilot-Frontend/releases/download/${FRONTEND_VERSION}/dist.zip" | busybox unzip -d / - \
     && mv /dist /public \
-    && curl -sL "https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
+    && curl -sL "https://github.com/jxxghp/MoviePilot-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
     && mv -f /tmp/NasPilot-Plugins-main/plugins/* /app/app/plugins/ \
     && rm -rf /tmp/*
 EXPOSE 3000

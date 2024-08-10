@@ -537,12 +537,12 @@ class AVSubscriber(_PluginBase):
                     page_source = self.__get_html(page_url)
                     if "暫無內容" in page_source:
                         break
-                    self.__subscribe(page_source, name)
+                    self.__subscribe(page_source=page_source, av_name=name, init=True)
                 # 完成初始化后，仅订阅最新
                 _avs_new.append(f"{name}：{url.replace('__init__', '1')}")
             else:
                 page_source = self.__get_html(url)
-                self.__subscribe(page_source, name)
+                self.__subscribe(page_source=page_source, av_name=name)
                 _avs_new.append(f"{name}：{url}")
         
         self._avs = "\n".join(_avs_new)
@@ -562,7 +562,7 @@ class AVSubscriber(_PluginBase):
         })
         logger.info("完成订阅女优任务 ...")
 
-    def __subscribe(self, page_source, av_name):
+    def __subscribe(self, page_source: str = None, av_name: str = None, init: bool = False):
         html = etree.HTML(page_source)
         if html is not None:
             videos = html.xpath("//div[contains(@class, 'movie-list')]/div[@class='item']/a")
@@ -572,6 +572,7 @@ class AVSubscriber(_PluginBase):
                 javid = video.xpath("./div[@class='video-title']/strong/text()")[0].strip()
                 release_date = video.xpath("./div[@class='meta']/text()")[0].strip()
 
+                # 订阅
                 sid, message = SubscribeChain().add(mtype=MediaType.JAV,
                                         title=f"{javid} {title}",
                                         javdbid=javdbid,
@@ -585,7 +586,8 @@ class AVSubscriber(_PluginBase):
                                         resolution=self._resolution,
                                         effect=self._effect,
                                         sites=self._sites,
-                                        exist_ok=True)
+                                        exist_ok=init)
+                
                 # 随机休眠30-60秒
                 sleep_time = random.randint(60, 180)
                 logger.info(f'订阅搜索随机休眠 {sleep_time} 秒 ...')
@@ -593,15 +595,6 @@ class AVSubscriber(_PluginBase):
 
     def __get_html(self, url, params = None) -> str:
         logger.info(f"开始请求：{url}")
-        # # 浏览器仿真
-        # return PlaywrightHelper().get_page_source(
-        #     url=url,
-        #     cookies="list_mode=h; theme=auto; locale=zh; cf_clearance=8B.d8O8kLkWi7kv0vYe1PoTnQRZZsZas_rROR39GWMk-1702991486-0-1-25e5af4b.54bc817f.72e4f0ab-0.2.1702991486; over18=1; _ym_uid=1702991513933832321; _ym_d=1702991513; _ym_isad=2; _jdb_session=XijY3N9BFKAKbQt1IfioNMWcudqU8%2BBzyNm%2B4piF5VNvoJxP7s2oclmuODHbotSHTefrRd%2FstN%2BcMEN3v1zcONL3ZmpFYp8KyP9vKo%2FnotItRO5YpNSg6hI%2FbhYUZWrDl8L%2FwK7f3qcpHEnXOZerVOnS1%2FlxgvNEeM4D%2F%2FaU%2Fg5TYIzy%2BbmQriLUTEuaZQ1QNkhhueDFnQP6m0nPnk%2F8VREiYo6q2Emo%2Boz3KgJkssHI46mksGXtQjbm0bQJH6jLueyzj%2Bu9uFXZw9tO4aDrkJ7bHR3TfwRQ9UXoGRvh%2FLi%2FpzuBxEqGhpX6--OhWo6mihE9l9%2BQ7W--HaR9Uz1kQiWFLvDiGAJr%2BA%3D%3D",
-        #     ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.2088.76",
-        #     proxies=settings.PROXY_SERVER,
-        #     headless=True,
-        #     timeout=120
-        # )
         ret = RequestUtils(
                     ua=settings.USER_AGENT,
                     cookies=self.__cookies.get('javdb.com'),

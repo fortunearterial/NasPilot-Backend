@@ -60,17 +60,6 @@ install_backend_and_download_resources() {
                         # 清理临时目录
                         rm -rf /tmp/*
                         echo "插件更新成功"
-                        echo "开始更新资源包..."
-                        if download_and_unzip "${GITHUB_PROXY}https://github.com/fortunearterial/NasPilot-Resources/archive/refs/heads/main.zip" "Resources"; then
-                            echo "资源包下载成功"
-                            # 资源包
-                            cp -a /tmp/Resources/resources/* /app/app/helper/
-                            # 清理临时目录
-                            rm -rf /tmp/*
-                            echo "资源包更新成功"
-                        else
-                            echo "资源包下载失败，继续使用旧的资源包来启动..."
-                        fi
                     else
                         echo "插件下载失败，继续使用旧的插件来启动..."
                     fi

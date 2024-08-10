@@ -26,6 +26,7 @@ from app.helper.torrent import TorrentHelper
 from app.log import logger
 from app.schemas import NotExistMediaInfo, Notification
 from app.schemas.types import MediaType, SystemConfigKey, MessageChannel, NotificationType, EventType
+from app.helper.debugger import DebuggerHelper
 
 
 class SubscribeChain(ChainBase):
@@ -120,6 +121,8 @@ class SubscribeChain(ChainBase):
                                                      tmdbid=mediainfo.tmdb_id,
                                                      doubanid=mediainfo.douban_id,
                                                      bangumiid=mediainfo.bangumi_id,
+                                                     steamid=mediainfo.steam_id,
+                                                     javdbid=mediainfo.javdb_id,
                                                      cache=False)
                     if not mediainfo:
                         logger.error(f"媒体信息识别失败！")
@@ -475,6 +478,7 @@ class SubscribeChain(ChainBase):
         """
         订阅刷新
         """
+        DebuggerHelper().get('job.subscribe_refresh').next(f"refresh")
         # 触发刷新站点资源，从缓存中匹配订阅
         sites = self.get_subscribed_sites()
         if sites is None:

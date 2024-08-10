@@ -105,36 +105,30 @@ jobs:
           New-Item -Path "nginx/temp/__keep__.txt" -ItemType File -Force
           New-Item -Path "nginx/logs" -ItemType Directory -Force
           New-Item -Path "nginx/logs/__keep__.txt" -ItemType File -Force
-          # 下载插件 fortunearterial
-          Invoke-WebRequest -Uri "https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip" -OutFile "NasPilot-Plugins-main.zip"
-          Expand-Archive -Path "NasPilot-Plugins-main.zip" -DestinationPath "NasPilot-Plugins-main"
-          Move-Item -Path "NasPilot-Plugins-main/NasPilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
-          Remove-Item -Path "NasPilot-Plugins-main.zip"
-          Remove-Item -Path "NasPilot-Plugins-main" -Recurse -Force
+          # 下载插件 jxxghp
+          Invoke-WebRequest -Uri "https://github.com/jxxghp/MoviePilot-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
+          Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
+          Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "MoviePilot-Plugins-main.zip"
+          Remove-Item -Path "MoviePilot-Plugins-main" -Recurse -Force
           # 下载插件 thsrite
-          Invoke-WebRequest -Uri "https://github.com/thsrite/NasPilot-Plugins/archive/refs/heads/main.zip" -OutFile "NasPilot-Plugins-main.zip"
-          Expand-Archive -Path "NasPilot-Plugins-main.zip" -DestinationPath "NasPilot-Plugins-main"
-          Move-Item -Path "NasPilot-Plugins-main/NasPilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
-          Remove-Item -Path "NasPilot-Plugins-main.zip"
-          Remove-Item -Path "NasPilot-Plugins-main" -Recurse -Force
+          Invoke-WebRequest -Uri "https://github.com/thsrite/MoviePilot-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
+          Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
+          Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "MoviePilot-Plugins-main.zip"
+          Remove-Item -Path "MoviePilot-Plugins-main" -Recurse -Force
           # 下载插件 honue
-          Invoke-WebRequest -Uri "https://github.com/honue/NasPilot-Plugins/archive/refs/heads/main.zip" -OutFile "NasPilot-Plugins-main.zip"
-          Expand-Archive -Path "NasPilot-Plugins-main.zip" -DestinationPath "NasPilot-Plugins-main"
-          Move-Item -Path "NasPilot-Plugins-main/NasPilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
-          Remove-Item -Path "NasPilot-Plugins-main.zip"
-          Remove-Item -Path "NasPilot-Plugins-main" -Recurse -Force
+          Invoke-WebRequest -Uri "https://github.com/honue/MoviePilot-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
+          Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
+          Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "MoviePilot-Plugins-main.zip"
+          Remove-Item -Path "MoviePilot-Plugins-main" -Recurse -Force
           # 下载插件 InfinityPacer
-          Invoke-WebRequest -Uri "https://github.com/InfinityPacer/NasPilot-Plugins/archive/refs/heads/main.zip" -OutFile "NasPilot-Plugins-main.zip"
-          Expand-Archive -Path "NasPilot-Plugins-main.zip" -DestinationPath "NasPilot-Plugins-main"
-          Move-Item -Path "NasPilot-Plugins-main/NasPilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
-          Remove-Item -Path "NasPilot-Plugins-main.zip"
-          Remove-Item -Path "NasPilot-Plugins-main" -Recurse -Force
-          # 下载资源
-          Invoke-WebRequest -Uri "https://github.com/fortunearterial/NasPilot-Resources/archive/refs/heads/main.zip" -OutFile "NasPilot-Resources-main.zip"
-          Expand-Archive -Path "NasPilot-Resources-main.zip" -DestinationPath "NasPilot-Resources-main"
-          Move-Item -Path "NasPilot-Resources-main/NasPilot-Resources-main/resources/*" -Destination "app/helper/" -Force
-          Remove-Item -Path "NasPilot-Resources-main.zip"
-          Remove-Item -Path "NasPilot-Resources-main" -Recurse -Force
+          Invoke-WebRequest -Uri "https://github.com/InfinityPacer/MoviePilot-Plugins/archive/refs/heads/main.zip" -OutFile "MoviePilot-Plugins-main.zip"
+          Expand-Archive -Path "MoviePilot-Plugins-main.zip" -DestinationPath "MoviePilot-Plugins-main"
+          Move-Item -Path "MoviePilot-Plugins-main/MoviePilot-Plugins-main/plugins/*" -Destination "app/plugins/" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "MoviePilot-Plugins-main.zip"
+          Remove-Item -Path "MoviePilot-Plugins-main" -Recurse -Force
         shell: pwsh
 
       - name: Pyinstaller
@@ -170,11 +164,11 @@ jobs:
 
       - name: Prepare Frontend
         run: |
-          wget https://github.com/fortunearterial/NasPilot-Backend-Plugins/archive/refs/heads/main.zip
+          wget https://github.com/jxxghp/MoviePilot-Plugins/archive/refs/heads/main.zip
           unzip main.zip
-          mv NasPilot-Plugins-main/plugins/* app/plugins/
+          mv MoviePilot-Plugins-main/plugins/* app/plugins/
           rm main.zip
-          rm -rf NasPilot-Plugins-main
+          rm -rf MoviePilot-Plugins-main
 
       - name: Pyinstaller
         run: |

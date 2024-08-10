@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     # TMDB API Key
     TMDB_API_KEY: str = "db55323b8d3e4154498498a75642b381"
     # TMDB API 是否包含成人数据
-    TMDB_API_ADULT: bool = false
+    TMDB_API_ADULT: bool = False
     # TVDB API Key
     TVDB_API_KEY: str = "6b481081-10aa-440c-99f2-21d17717ee02"
     # Fanart开关
@@ -255,7 +255,7 @@ class Settings(BaseSettings):
     # 大内存模式
     BIG_MEMORY_MODE: bool = False
     # 插件市场仓库地址，多个地址使用,分隔，地址以/结尾
-    PLUGIN_MARKET: str = "https://github.com/fortunearterial/MoviePilot-Plugins,https://github.com/fortunearterial/NasPilot-Backend-Plugins,https://github.com/thsrite/MoviePilot-Plugins,https://github.com/honue/MoviePilot-Plugins,https://github.com/InfinityPacer/MoviePilot-Plugins"
+    PLUGIN_MARKET: str = "https://github.com/fortunearterial/NasPilot-Backend-Plugins,https://github.com/jxxghp/MoviePilot-Plugins,https://github.com/thsrite/MoviePilot-Plugins,https://github.com/honue/MoviePilot-Plugins,https://github.com/InfinityPacer/MoviePilot-Plugins"
     # Github token，提高请求api限流阈值 ghp_****
     GITHUB_TOKEN: Optional[str] = None
     # 指定的仓库Github token，多个仓库使用,分隔，格式：{user1}/{repo1}:ghp_****,{user2}/{repo2}:github_pat_****
@@ -356,8 +356,8 @@ class Settings(BaseSettings):
         if self.BIG_MEMORY_MODE:
             return {
                 "tmdb": 1024,
-                "refresh": 50,
-                "torrents": 100,
+                "refresh": 1000,
+                "torrents": 1000,
                 "douban": 512,
                 "fanart": 512,
                 "steam": 1024,
@@ -366,7 +366,7 @@ class Settings(BaseSettings):
             }
         return {
             "tmdb": 256,
-            "refresh": 30,
+            "refresh": 50,
             "torrents": 50,
             "douban": 256,
             "fanart": 128,

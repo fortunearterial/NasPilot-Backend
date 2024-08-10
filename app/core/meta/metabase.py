@@ -345,7 +345,7 @@ class MetaBase(object):
         if self.begin_episode is None:
             return []
         elif self.end_episode is not None:
-            return [episode for episode in range(self.begin_episode, self.end_episode + 1)]
+            return [episode for episode in range(self.begin_episode.__int__(), self.end_episode.__int__() + 1)]
         else:
             return [self.begin_episode]
 

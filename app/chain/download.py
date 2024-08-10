@@ -220,8 +220,8 @@ class DownloadChain(ChainBase):
 
         # 补充完整的media数据
         if not _media.genre_ids:
-            new_media = self.recognize_media(mtype=_media.type, tmdbid=_media.tmdb_id,
-                                             doubanid=_media.douban_id, bangumiid=_media.bangumi_id)
+            new_media = self.recognize_media(mtype=_media.type, 
+                                             tmdbid=_media.tmdb_id, doubanid=_media.douban_id, bangumiid=_media.bangumi_id, steamid=_media.steam_id, javdbid=_media.javdb_id)
             if new_media:
                 _media = new_media
 
