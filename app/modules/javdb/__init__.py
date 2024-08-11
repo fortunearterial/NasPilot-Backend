@@ -78,8 +78,8 @@ class JavDBModule(_ModuleBase):
                 logger.info(f"正在识别 {meta.name} ...")
                 # 匹配JavDB信息
                 match_info = self.match(name=meta.name,
-                                                   mtype=mtype or meta.type,
-                                                   year=meta.year)
+                                        mtype=mtype or meta.type,
+                                        year=meta.year)
                 if match_info:
                     # 匹配到JavDB信息
                     info = self.javdb_info(

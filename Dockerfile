@@ -11,9 +11,7 @@ ENV LANG="C.UTF-8" \
     PORT=3001 \
     NGINX_PORT=3000 \
     PROXY_HOST="" \
-    NASPILOT_AUTO_UPDATE=release \
-    AUTH_SITE="iyuu" \
-    IYUU_SIGN=""
+    NASPILOT_AUTO_UPDATE=release
 WORKDIR "/app"
 RUN apt-get update -y \
     && apt-get upgrade -y \
@@ -65,15 +63,17 @@ RUN apt-get update -y \
         /var/lib/apt/lists/* \
         /var/tmp/*
 COPY . .
-RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf 
-RUN cp -f /app/update /usr/local/bin/mp_update 
-RUN cp -f /app/entrypoint /entrypoint 
-RUN chmod +x /entrypoint /usr/local/bin/mp_update 
-RUN mkdir -p ${HOME} /var/lib/haproxy/server-state 
-RUN groupadd -r naspilot -g 911 
-RUN useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 911 
-RUN python_ver=$(python3 -V | awk '{print $2}') 
-RUN echo "/app/" > /usr/local/lib/python${python_ver%.*}/site-packages/app.pth 
+RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf \
+    && cp -f /app/update /usr/local/bin/mp_update \
+    && cp -f /app/entrypoint /entrypoint \
+    && chmod +x /entrypoint /usr/local/bin/mp_update \
+    && mkdir -p ${HOME} /var/lib/haproxy/server-state \
+    && groupadd -r naspilot -g 911 \
+    && useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 911 \
+RUN python_ver=$(python3 -V | awk '{print $2}') \
+    && echo $python_ver
+    && whereis python
+    && echo "/app/" > /usr/local/lib/python${python_ver%.*}/site-packages/app.pth 
 RUN echo 'fs.inotify.max_user_watches=5242880' >> /etc/sysctl.conf 
 RUN echo 'fs.inotify.max_user_instances=5242880' >> /etc/sysctl.conf 
 RUN locale-gen zh_CN.UTF-8 
