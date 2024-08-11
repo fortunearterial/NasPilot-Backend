@@ -69,7 +69,7 @@ RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf \
     && chmod +x /entrypoint /usr/local/bin/mp_update \
     && mkdir -p ${HOME} /var/lib/haproxy/server-state \
     && groupadd -r naspilot -g 911 \
-    && useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 911 \
+    && useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 911
 RUN python_ver=$(python3 -V | awk '{print $2}') \
     && echo $python_ver \
     && whereis python \
