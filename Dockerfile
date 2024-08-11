@@ -71,8 +71,8 @@ RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf \
     && groupadd -r naspilot -g 911 \
     && useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 911 \
 RUN python_ver=$(python3 -V | awk '{print $2}') \
-    && echo $python_ver
-    && whereis python
+    && echo $python_ver \
+    && whereis python \
     && echo "/app/" > /usr/local/lib/python${python_ver%.*}/site-packages/app.pth 
 RUN echo 'fs.inotify.max_user_watches=5242880' >> /etc/sysctl.conf 
 RUN echo 'fs.inotify.max_user_instances=5242880' >> /etc/sysctl.conf 
