@@ -65,18 +65,18 @@ RUN apt-get update -y \
         /var/lib/apt/lists/* \
         /var/tmp/*
 COPY . .
-RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf \
-RUN cp -f /app/update /usr/local/bin/mp_update \
-RUN cp -f /app/entrypoint /entrypoint \
-RUN chmod +x /entrypoint /usr/local/bin/mp_update \
-RUN mkdir -p ${HOME} /var/lib/haproxy/server-state \
-RUN groupadd -r naspilot -g 911 \
-RUN useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 911 \
-RUN python_ver=$(python3 -V | awk '{print $2}') \
-RUN echo "/app/" > /usr/local/lib/python${python_ver%.*}/site-packages/app.pth \
-RUN echo 'fs.inotify.max_user_watches=5242880' >> /etc/sysctl.conf \
-RUN echo 'fs.inotify.max_user_instances=5242880' >> /etc/sysctl.conf \
-RUN locale-gen zh_CN.UTF-8 \
+RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf 
+RUN cp -f /app/update /usr/local/bin/mp_update 
+RUN cp -f /app/entrypoint /entrypoint 
+RUN chmod +x /entrypoint /usr/local/bin/mp_update 
+RUN mkdir -p ${HOME} /var/lib/haproxy/server-state 
+RUN groupadd -r naspilot -g 911 
+RUN useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 911 
+RUN python_ver=$(python3 -V | awk '{print $2}') 
+RUN echo "/app/" > /usr/local/lib/python${python_ver%.*}/site-packages/app.pth 
+RUN echo 'fs.inotify.max_user_watches=5242880' >> /etc/sysctl.conf 
+RUN echo 'fs.inotify.max_user_instances=5242880' >> /etc/sysctl.conf 
+RUN locale-gen zh_CN.UTF-8 
 RUN FRONTEND_VERSION=$(curl -sL "https://api.github.com/repos/fortunearterial/NasPilot-Frontend/releases/latest" | jq -r .tag_name) \
     && curl -sL "https://github.com/fortunearterial/NasPilot-Frontend/releases/download/${FRONTEND_VERSION}/dist.zip" | busybox unzip -d / - \
     && mv /dist /public \
