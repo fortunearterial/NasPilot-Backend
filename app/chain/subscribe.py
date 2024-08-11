@@ -478,7 +478,7 @@ class SubscribeChain(ChainBase):
         """
         订阅刷新
         """
-        DebuggerHelper().get('job.subscribe_refresh').next(f"refresh")
+        # DebuggerHelper().get('job.subscribe_refresh').next(f"refresh")
         # 触发刷新站点资源，从缓存中匹配订阅
         sites = self.get_subscribed_sites()
         if sites is None:

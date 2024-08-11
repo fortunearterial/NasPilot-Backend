@@ -525,6 +525,8 @@ class AVSubscriber(_PluginBase):
         cookies, msg = self._cookiecloud.download()
         self.__cookies = cookies
         _avs_new = []
+        initData = self.get_data('init') or {}
+        subscribeData = self.get_data('subscribe') or []
 
         for avinfo in self._avs.split("\n"):
             name, url = avinfo.split("：")
@@ -532,18 +534,33 @@ class AVSubscriber(_PluginBase):
 
             # 初始化
             if "__init__" in url:
-                for i in range(1, 999):
+                init_success = True
+                start_page = initData.get(name, {}).get("page", 0) + 1
+                for i in range(start_page, 999):
                     page_url = url.replace("__init__", str(i))
                     page_source = self.__get_html(page_url)
+                    if not page_source:
+                        init_success = False
+                        break
                     if "暫無內容" in page_source:
+                        init_success = False
                         break
                     self.__subscribe(page_source=page_source, av_name=name, init=True)
+                    initData[name] = {
+                        "page": i
+                    }
+                    self.save_data('init', initData)
+                    subscribeData.append(f"%s: %s 完成了第 %s 页的首次订阅" % (datetime.now(), name, i))
+                    self.save_data('subscribe', subscribeData)
                 # 完成初始化后，仅订阅最新
-                _avs_new.append(f"{name}：{url.replace('__init__', '1')}")
+                if init_success:
+                    _avs_new.append(f"{name}：{url.replace('__init__', '1')}")
             else:
                 page_source = self.__get_html(url)
                 self.__subscribe(page_source=page_source, av_name=name)
                 _avs_new.append(f"{name}：{url}")
+                subscribeData.append(f"%s: %s 完成了订阅" % (datetime.now(), name))
+                self.save_data('subscribe', subscribeData)
         
         self._avs = "\n".join(_avs_new)
         self.update_config({

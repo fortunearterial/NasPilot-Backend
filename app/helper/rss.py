@@ -226,7 +226,7 @@ class RssHelper:
     }
 
     @staticmethod
-    def parse(url, proxy: bool = False, timeout: int = 15) -> Union[List[dict], None]:
+    def parse(url, proxy: bool = False, timeout: int = 15, encoding: str = None) -> Union[List[dict], None]:
         """
         解析RSS订阅URL，获取RSS中的种子信息
         :param url: RSS地址
@@ -253,21 +253,24 @@ class RssHelper:
                 # 使用chardet检测字符编码
                 raw_data = ret.content
                 if raw_data:
-                    try:
-                        result = chardet.detect(raw_data)
-                        encoding = result['encoding']
-                        # 解码为字符串
+                    if encoding:
                         ret_xml = raw_data.decode(encoding)
-                    except Exception as e:
-                        logger.debug(f"chardet解码失败：{str(e)}")
-                        # 探测utf-8解码
-                        match = re.search(r'encoding\s*=\s*["\']([^"\']+)["\']', ret.text)
-                        if match:
-                            encoding = match.group(1)
-                            if encoding:
-                                ret_xml = raw_data.decode(encoding)
-                        else:
-                            ret.encoding = ret.apparent_encoding
+                    else:
+                        try:
+                            result = chardet.detect(raw_data)
+                            encoding = result['encoding']
+                            # 解码为字符串
+                            ret_xml = raw_data.decode(encoding)
+                        except Exception as e:
+                            logger.debug(f"chardet解码失败：{str(e)}")
+                            # 探测utf-8解码
+                            match = re.search(r'encoding\s*=\s*["\']([^"\']+)["\']', ret.text)
+                            if match:
+                                encoding = match.group(1)
+                                if encoding:
+                                    ret_xml = raw_data.decode(encoding)
+                            else:
+                                ret.encoding = ret.apparent_encoding
                 if not ret_xml:
                     ret_xml = ret.text
                 # 解析XML
