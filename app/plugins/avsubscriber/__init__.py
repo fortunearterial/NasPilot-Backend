@@ -515,7 +515,62 @@ class AVSubscriber(_PluginBase):
         }
 
     def get_page(self) -> List[dict]:
-        pass
+        """
+        拼装插件详情页面，需要返回页面配置，同时附带数据
+        """
+        # 查询历史记录
+        subscribeData = self.get_data('subscribe') or []
+        if not historys:
+            return [
+                {
+                    'component': 'div',
+                    'text': '暂无数据',
+                    'props': {
+                        'class': 'text-center',
+                    }
+                }
+            ]
+        # 数据按时间降序排序
+        # 拼装页面
+        contents = []
+        for subscribe in subscribeData:
+            contents.append(
+                {
+                    'component': 'VCard',
+                    'content': [
+                        {
+                            'component': 'div',
+                            'props': {
+                                'class': 'd-flex justify-space-start flex-nowrap flex-row',
+                            },
+                            'content': [
+                                {
+                                    'component': 'div',
+                                    'content': [
+                                        {
+                                            'component': 'VCardText',
+                                            'props': {
+                                                'class': 'pa-0 px-2'
+                                            },
+                                            'text': subscribe
+                                        },
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            )
+
+        return [
+            {
+                'component': 'div',
+                'props': {
+                    'class': 'grid gap-3 grid-info-card',
+                },
+                'content': contents
+            }
+        ]
 
     def subscribe(self):
         """
