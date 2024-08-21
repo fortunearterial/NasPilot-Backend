@@ -262,7 +262,8 @@ class Plex:
                 continue
             if episode.seasonNumber not in season_episodes:
                 season_episodes[episode.seasonNumber] = []
-            season_episodes[episode.seasonNumber].append(episode.index)
+            # FIX: 非整数剧集
+            season_episodes[episode.seasonNumber].append(float(episode.index))
         return videos.key, season_episodes
 
     def get_remote_image_by_id(self, item_id: str, image_type: str, depth: int = 0) -> Optional[str]:

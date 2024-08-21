@@ -584,7 +584,7 @@ class DownloadChain(ChainBase):
                     start_episode = tv.start_episode or 1
                     # 缺失整季的转化为缺失集进行比较
                     if not need_episodes:
-                        need_episodes = list(range(start_episode, total_episode + 1))
+                        need_episodes = [float(ep) for ep in list(range(start_episode, total_episode + 1))]
                     # 循环种子
                     for context in contexts:
                         # 媒体信息
@@ -843,12 +843,10 @@ class DownloadChain(ChainBase):
                         # 已存在取差集
                         if totals.get(season):
                             # 按总集数计算缺失集（开始集为TMDB中的最小集）
-                            lack_episodes = list(set(range(min(episodes),
-                                                           season_total + min(episodes))
-                                                     ).difference(set(exist_episodes)))
+                            lack_episodes = list(set([float(ep) for ep in range(min(episodes), season_total + min(episodes))]).difference(set(exist_episodes)))
                         else:
                             # 按TMDB集数计算缺失集
-                            lack_episodes = list(set(episodes).difference(set(exist_episodes)))
+                            lack_episodes = list(set([float(ep) for ep in episodes]).difference(set(exist_episodes)))
                         if not lack_episodes:
                             # 全部集存在
                             continue

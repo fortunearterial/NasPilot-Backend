@@ -4,6 +4,7 @@ from typing import Union, Optional, List, Self
 
 import cn2an
 import regex as re
+import math
 
 from app.log import logger
 from app.utils.string import StringUtils
@@ -192,8 +193,8 @@ class MetaBase(object):
                 else:
                     return
                 try:
-                    begin_episode = StringUtils.str_float(cn2an.cn2an(begin_episode.strip(), mode='smart'))
-                    end_episode = StringUtils.str_float(cn2an.cn2an(end_episode.strip(), mode='smart'))
+                    begin_episode = cn2an.cn2an(begin_episode.strip(), mode='smart')
+                    end_episode = cn2an.cn2an(end_episode.strip(), mode='smart')
                 except Exception as err:
                     logger.debug(f'识别集失败：{str(err)} - {traceback.format_exc()}')
                     return
@@ -249,7 +250,7 @@ class MetaBase(object):
                 self.type = MediaType.TV
                 self._subtitle_flag = True
                 return
-            # x集全
+            # x集全 全x集
             episode_all_str = re.search(r'%s' % self._subtitle_episode_all_re, title_text, re.IGNORECASE)
             if episode_all_str:
                 episode_all = episode_all_str.group(1)
@@ -261,8 +262,8 @@ class MetaBase(object):
                     except Exception as err:
                         logger.debug(f'识别集失败：{str(err)} - {traceback.format_exc()}')
                         return
-                    self.begin_episode = None
-                    self.end_episode = None
+                    self.begin_episode = 1
+                    self.end_episode = self.total_episode
                     self.type = MediaType.TV
                     self._subtitle_flag = True
                 return
@@ -345,7 +346,7 @@ class MetaBase(object):
         if self.begin_episode is None:
             return []
         elif self.end_episode is not None:
-            return [episode for episode in range(self.begin_episode.__int__(), self.end_episode.__int__() + 1)]
+            return [float(episode) for episode in range(math.floor(self.begin_episode), math.ceil(self.end_episode) + 1)]
         else:
             return [self.begin_episode]
 

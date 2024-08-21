@@ -343,7 +343,7 @@ class SubscribeChain(ChainBase):
                 )
 
             # 站点范围
-            sites = self.get_sub_sites(subscribe)
+            sites = self.get_sub_sites(subscribe, SystemConfigKey.IndexerSites)
 
             # 优先级过滤规则
             if subscribe.best_version:
@@ -487,14 +487,14 @@ class SubscribeChain(ChainBase):
             self.torrentschain.refresh(sites=sites)
         )
 
-    def get_sub_sites(self, subscribe: Subscribe) -> List[int]:
+    def get_sub_sites(self, subscribe: Subscribe, configKey: str = SystemConfigKey.RssSites) -> List[int]:
         """
         获取订阅中涉及的站点清单
         :param subscribe: 订阅信息对象
         :return: 涉及的站点清单
         """
         # 从系统配置获取默认订阅站点
-        default_sites = self.systemconfig.get(SystemConfigKey.RssSites) or []
+        default_sites = self.systemconfig.get(configKey) or []
         # 如果订阅未指定站点信息，直接返回默认站点
         if not subscribe.sites:
             return default_sites
@@ -514,7 +514,7 @@ class SubscribeChain(ChainBase):
             # 如果 JSON 解析失败，返回默认站点
             return default_sites
 
-    def get_subscribed_sites(self) -> Optional[List[int]]:
+    def get_subscribed_sites(self, configKey: str = SystemConfigKey.RssSites) -> Optional[List[int]]:
         """
         获取订阅中涉及的所有站点清单（节约资源）
         :return: 返回[]代表所有站点命中，返回None代表没有订阅
@@ -527,7 +527,7 @@ class SubscribeChain(ChainBase):
         # 刷新订阅选中的Rss站点
         for subscribe in subscribes:
             # 刷新选中的站点
-            ret_sites.extend(self.get_sub_sites(subscribe))
+            ret_sites.extend(self.get_sub_sites(subscribe, configKey))
         # 去重
         if ret_sites:
             ret_sites = list(set(ret_sites))
@@ -1072,7 +1072,7 @@ class SubscribeChain(ChainBase):
                         # 没有自定义总集数
                         total_episode = total
                     # 新的集列表
-                    new_episodes = list(range(max(start_episode, start), total_episode + 1))
+                    new_episodes = list([float(ep) for ep in range(max(start_episode, start), total_episode + 1)])
                     # 与原集列表取交集
                     episodes = list(set(episode_list).intersection(set(new_episodes)))
                 # 更新集合
@@ -1112,7 +1112,7 @@ class SubscribeChain(ChainBase):
                 # 不存在的季
                 no_exists[mediakey][begin_season] = NotExistMediaInfo(
                     season=begin_season,
-                    episodes=list(set(range(start, total_episode + 1)).difference(set(downloaded_episodes))),
+                    episodes=list(set([float(ep) for ep in range(start, total_episode + 1)]).difference(set(downloaded_episodes))),
                     total_episode=total_episode,
                     start_episode=start
                 )

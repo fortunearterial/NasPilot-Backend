@@ -58,7 +58,7 @@ class TorrentSpider:
     # 页码
     page: int = 0
     # 搜索条数, 默认: 100条
-    result_num: int = 100
+    result_num: int = 9999
     # 单个种子信息
     torrents_info: dict = {}
     # 种子列表
@@ -94,7 +94,7 @@ class TorrentSpider:
         self.fields = indexer.get('torrents').get('fields')
         self.render = indexer.get('render')
         self.domain = indexer.get('domain')
-        self.result_num = int(indexer.get('result_num') or 100)
+        self.result_num = int(indexer.get('result_num') or 9999)
         self._timeout = int(indexer.get('timeout') or 15)
         self.page = page
         if self.domain and not str(self.domain).endswith("/"):

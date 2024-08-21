@@ -411,7 +411,8 @@ class Emby:
                         continue
                     if season_index not in season_episodes:
                         season_episodes[season_index] = []
-                    season_episodes[season_index].append(episode_index)
+                    # FIX: 非整数剧集
+                    season_episodes[season_index].append(float(episode_index))
                 # 返回
                 return item_id, season_episodes
         except Exception as e:

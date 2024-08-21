@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence
+from sqlalchemy import Column, Integer, String, Sequence, Text
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -11,7 +11,7 @@ class PluginData(Base):
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     plugin_id = Column(String(255), nullable=False, index=True)
     key = Column(String(255), index=True, nullable=False)
-    value = Column(String(255))
+    value = Column(Text)
 
     @staticmethod
     @db_query

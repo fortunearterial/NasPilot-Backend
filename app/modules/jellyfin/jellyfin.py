@@ -398,7 +398,8 @@ class Jellyfin:
                         continue
                     if not season_episodes.get(season_index):
                         season_episodes[season_index] = []
-                    season_episodes[season_index].append(episode_index)
+                    # FIX: 非整数剧集
+                    season_episodes[season_index].append(float(episode_index))
                 return item_id, season_episodes
         except Exception as e:
             logger.error(f"连接Shows/Id/Episodes出错：" + str(e))

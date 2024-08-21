@@ -66,7 +66,7 @@ class DetailTorrentSpider:
     # 页码
     page: int = 0
     # 搜索条数
-    result_num: int = 100
+    result_num: int = 9999
     # 单个链接信息
     link_path: str = None
     # 单个种子信息
