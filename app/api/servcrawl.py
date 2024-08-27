@@ -1,7 +1,7 @@
 from typing import Any, List
 
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import RedirectResponse
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 import json
 from pyquery import PyQuery
@@ -23,7 +23,7 @@ from app.core.config import settings
 crawl_router = APIRouter(tags=['servcrawl'])
 
 
-@crawl_router.get("/page", summary="页面爬虫", response_class=RedirectResponse)
+@crawl_router.get("/page", summary="页面爬虫", response_class=PlainTextResponse)
 def crawl_page(url: str, query: str) -> Any:
     """
     页面爬虫
@@ -40,10 +40,7 @@ def crawl_page(url: str, query: str) -> Any:
     domain = indexer.get('domain')
     encoding = indexer.get('encoding')
 
-    if indexer.get('ua'):
-        ua = indexer.get('ua') or settings.USER_AGENT
-    else:
-        ua = settings.USER_AGENT
+    ua = indexer.get('ua') or settings.USER_AGENT
     if indexer.get('proxy'):
         proxies = settings.PROXY
         proxy_server = settings.PROXY_SERVER

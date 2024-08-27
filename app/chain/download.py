@@ -94,6 +94,58 @@ class DownloadChain(ChainBase):
             image=mediainfo.get_message_image(),
             link=settings.MP_DOMAIN('/#/downloading')))
 
+    def __get_redict_url(self, url: str, ua: str = None, cookie: str = None) -> Optional[str]:
+        """
+        获取下载链接， url格式：[base64]url
+        """
+        # 获取[]中的内容
+        m = re.search(r"\[(.*)](.*)", url)
+        if m:
+            # 参数
+            base64_str = m.group(1)
+            # URL
+            url = m.group(2)
+            if not base64_str:
+                return url
+            # 解码参数
+            req_str = base64.b64decode(base64_str.encode('utf-8')).decode('utf-8')
+            req_params: Dict[str, dict] = json.loads(req_str)
+            # 是否使用cookie
+            if not req_params.get('cookie'):
+                cookie = None
+            # 请求头
+            if req_params.get('header'):
+                headers = req_params.get('header')
+            else:
+                headers = None
+            if req_params.get('method') == 'get':
+                # GET请求
+                res = RequestUtils(
+                    ua=ua,
+                    cookies=cookie,
+                    headers=headers
+                ).get_res(url, params=req_params.get('params'))
+            else:
+                # POST请求
+                res = RequestUtils(
+                    ua=ua,
+                    cookies=cookie,
+                    headers=headers
+                ).post_res(url, params=req_params.get('params'))
+            if not res:
+                return None
+            if not req_params.get('result'):
+                return res.text
+            else:
+                data = res.json()
+                for key in str(req_params.get('result')).split("."):
+                    data = data.get(key)
+                    if not data:
+                        return None
+                logger.info(f"获取到下载地址：{data}")
+                return data
+        return None
+
     def download_torrent(self, torrent: TorrentInfo,
                          channel: MessageChannel = None,
                          userid: Union[str, int] = None
@@ -102,58 +154,6 @@ class DownloadChain(ChainBase):
         下载种子文件，如果是磁力链，会返回磁力链接本身
         :return: 种子路径，种子目录名，种子文件清单
         """
-
-        def __get_redict_url(url: str, ua: str = None, cookie: str = None) -> Optional[str]:
-            """
-            获取下载链接， url格式：[base64]url
-            """
-            # 获取[]中的内容
-            m = re.search(r"\[(.*)](.*)", url)
-            if m:
-                # 参数
-                base64_str = m.group(1)
-                # URL
-                url = m.group(2)
-                if not base64_str:
-                    return url
-                # 解码参数
-                req_str = base64.b64decode(base64_str.encode('utf-8')).decode('utf-8')
-                req_params: Dict[str, dict] = json.loads(req_str)
-                # 是否使用cookie
-                if not req_params.get('cookie'):
-                    cookie = None
-                # 请求头
-                if req_params.get('header'):
-                    headers = req_params.get('header')
-                else:
-                    headers = None
-                if req_params.get('method') == 'get':
-                    # GET请求
-                    res = RequestUtils(
-                        ua=ua,
-                        cookies=cookie,
-                        headers=headers
-                    ).get_res(url, params=req_params.get('params'))
-                else:
-                    # POST请求
-                    res = RequestUtils(
-                        ua=ua,
-                        cookies=cookie,
-                        headers=headers
-                    ).post_res(url, params=req_params.get('params'))
-                if not res:
-                    return None
-                if not req_params.get('result'):
-                    return res.text
-                else:
-                    data = res.json()
-                    for key in str(req_params.get('result')).split("."):
-                        data = data.get(key)
-                        if not data:
-                            return None
-                    logger.info(f"获取到下载地址：{data}")
-                    return data
-            return None
 
         # 获取下载链接
         if not torrent.enclosure:
@@ -164,7 +164,7 @@ class DownloadChain(ChainBase):
         site_cookie = torrent.site_cookie
         if torrent.enclosure.startswith("["):
             # 需要解码获取下载地址
-            torrent_url = __get_redict_url(url=torrent.enclosure,
+            torrent_url = self.__get_redict_url(url=torrent.enclosure,
                                            ua=torrent.site_ua,
                                            cookie=site_cookie)
             # 涉及解析地址的不使用Cookie下载种子，否则MT会出错
@@ -225,12 +225,19 @@ class DownloadChain(ChainBase):
             if new_media:
                 _media = new_media
 
-        # 实际下载的集数
+        # 实际下载的集数 
         download_episodes = StringUtils.format_ep(list(episodes)) if episodes else None
         _folder_name = ""
 
+        if _torrent.enclosure.startswith("["):
+            # 需要解码获取下载地址
+            content = self.__get_redict_url(url=_torrent.enclosure,
+                                            ua=_torrent.site_ua,
+                                            cookie=_torrent.site_cookie)
+        else:
+            content = _torrent.enclosure
         # TODO: 区分链接类型：magnet:/.torrent/ftp:/ed2k:/普通文件
-        content = _torrent.enclosure
+        # if content.startswith("ed2k:") # 用Aria2下载
         _folder_name = ""
         # _file_list = [_torrent.enclosure[_torrent.enclosure.rindex("/") + 1:]]
         _file_list = [""]

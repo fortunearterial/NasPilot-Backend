@@ -5,6 +5,7 @@ import time
 import random
 from typing import List
 from urllib.parse import quote, urlencode
+import base64
 
 import chardet
 import json
@@ -109,10 +110,7 @@ class DetailTorrentSpider:
         self.page = page
         if self.domain and not str(self.domain).endswith("/"):
             self.domain = self.domain + "/"
-        if indexer.get('ua'):
-            self.ua = indexer.get('ua') or settings.USER_AGENT
-        else:
-            self.ua = settings.USER_AGENT
+        self.ua = indexer.get('ua') or settings.USER_AGENT
         if indexer.get('proxy'):
             self.proxies = settings.PROXY
             self.proxy_server = settings.PROXY_SERVER
@@ -448,9 +446,8 @@ class DetailTorrentSpider:
         item = self.__index(items, selector)
         download_link = self.__filter_text(item, selector.get('filters'))
         if download_link:
-            if not download_link.startswith("http") and not download_link.startswith("magnet"):
-                self.torrents_info['enclosure'] = self.domain + download_link[1:] if download_link.startswith(
-                    "/") else self.domain + download_link
+            if not download_link.startswith("http") and not download_link.startswith("magnet") and not download_link.startswith("["):
+                self.torrents_info['enclosure'] = self.domain + download_link[1:] if download_link.startswith("/") else self.domain + download_link
             else:
                 self.torrents_info['enclosure'] = download_link
 
@@ -682,7 +679,12 @@ class DetailTorrentSpider:
                 elif method_name == "appendleft":
                     text = f"{args}{text}"
                 elif method_name == "crawl_page":
-                    text = f"{settings.APP_DOMAIN}/crawl/page?url={text}&query={json.dumps(args)}"
+                    params = base64.b64encode(
+                        json.dumps({
+                            "method": "get",
+                            "params": f"url={text}&query={json.dumps(args)}"
+                        }).encode('utf-8')).decode('utf-8')
+                    text = f"[{params}]{settings.APP_DOMAIN}/crawl/page"
             except Exception as err:
                 print(str(err))
         return text.strip()

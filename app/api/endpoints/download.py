@@ -64,23 +64,27 @@ def add(
     metainfo = MetaInfo(title=torrent_in.title, subtitle=torrent_in.description)
     # 媒体信息
     mediainfo = MediaChain().recognize_media(meta=metainfo)
-    if not mediainfo:
-        return schemas.Response(success=False, message="无法识别媒体信息")
     # 种子信息
     torrentinfo = TorrentInfo()
     torrentinfo.from_dict(torrent_in.dict())
-    # 上下文
-    context = Context(
-        meta_info=metainfo,
-        media_info=mediainfo,
-        torrent_info=torrentinfo
-    )
-    did = DownloadChain().download_single(context=context, username=current_user.name)
-    if not did:
-        return schemas.Response(success=False, message="任务添加失败")
-    return schemas.Response(success=True, data={
-        "download_id": did
-    })
+    if not mediainfo:
+        content, download_dir, _ = DownloadChain().download_torrent(torrent=torrentinfo, userid=current_user.id)
+        DownloadChain().download(content=content, download_dir=download_dir, cookie=torrentinfo.site_cookie)
+        return schemas.Response(success=True, data={
+        })
+    else:
+        # 上下文
+        context = Context(
+            meta_info=metainfo,
+            media_info=mediainfo,
+            torrent_info=torrentinfo
+        )
+        did = DownloadChain().download_single(context=context, username=current_user.name)
+        if not did:
+            return schemas.Response(success=False, message="任务添加失败")
+        return schemas.Response(success=True, data={
+            "download_id": did
+        })
 
 
 @router.get("/start/{hashString}", summary="开始任务", response_model=schemas.Response)
