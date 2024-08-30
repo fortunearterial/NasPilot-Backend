@@ -96,11 +96,12 @@ def create_subscribe(
         mtype = MediaType(subscribe_in.type)
     else:
         mtype = None
-    # 豆瓣标理
-    if subscribe_in.doubanid or subscribe_in.bangumiid:
-        meta = MetaInfo(subscribe_in.name)
-        subscribe_in.name = meta.name
-        subscribe_in.season = meta.begin_season
+    # FIX: 不知道是什么意思的代码
+    # # 豆瓣标理
+    # if subscribe_in.doubanid or subscribe_in.bangumiid:
+    #     meta = MetaInfo(subscribe_in.name)
+    #     subscribe_in.name = meta.name
+    #     subscribe_in.season = meta.begin_season
     # 标题转换
     if subscribe_in.name:
         title = subscribe_in.name
@@ -203,7 +204,7 @@ def subscribe_mediaid(
     # 使用名称检查订阅
     if title_check and title:
         meta = MetaInfo(title)
-        if season:
+        if season is not None:
             meta.begin_season = season
         result = Subscribe.get_by_title(db, title=meta.name, season=meta.begin_season)
     if result and result.sites:
@@ -436,7 +437,7 @@ def popular_subscribes(
             # 处理标题
             title = sub.get("name")
             season = sub.get("season")
-            if season and int(season) > 1 and media.tmdb_id:
+            if season is not None and media.tmdb_id:
                 # 小写数据转大写
                 season_str = cn2an.an2cn(season, "low")
                 title = f"{title} 第{season_str}季"

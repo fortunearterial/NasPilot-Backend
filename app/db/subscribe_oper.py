@@ -59,7 +59,7 @@ class SubscribeOper(DbOper):
         判断是否存在
         """
         if tmdbid:
-            if season:
+            if season is not None:
                 return True if Subscribe.exists(self._db, tmdbid=tmdbid, season=season) else False
             else:
                 return True if Subscribe.exists(self._db, tmdbid=tmdbid) else False

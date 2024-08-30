@@ -7,6 +7,7 @@ from app import schemas
 from app.core.config import settings
 from app.core.context import MediaInfo
 from app.core.meta import MetaBase
+from app.core.metainfo import MetaInfo
 from app.log import logger
 from app.modules import _ModuleBase
 from app.modules.bangumi.bangumi import BangumiApi
@@ -64,6 +65,27 @@ class BangumiModule(_ModuleBase):
             logger.info(f"{bangumiid} 未匹配到Bangumi媒体信息")
 
         return None
+
+    def recognize_media_id(self, media_info: MediaInfo = None,
+                        **kwargs) -> None:
+        """
+        识别媒体信息
+        :param bangumiid: 识别的Bangumi ID
+        :return: 识别的媒体信息，包括剧集信息
+        """
+        if settings.RECOGNIZE_SOURCE and not "bangumi" in settings.RECOGNIZE_SOURCE:
+            return None
+        if not media_info:
+            return None
+        if media_info.bangumi_id:
+            return None
+
+        infos = self.search_medias(MetaInfo(title=media_info.original_title, mtype=media_info.type.value))
+        for info in infos:
+            if info.original_title == media_info.original_title \
+                or info.title == media_info.title:
+                media_info.bangumi_id = info.bangumi_id
+                break
 
     def search_medias(self, meta: MetaBase) -> Optional[List[MediaInfo]]:
         """

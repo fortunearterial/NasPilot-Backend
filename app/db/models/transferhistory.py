@@ -146,14 +146,14 @@ class TransferHistory(Base):
         # TMDBID + 类型
         if tmdbid and mtype:
             # 电视剧某季某集
-            if season and episode:
+            if season is not None and episode:
                 result = db.query(TransferHistory).filter(TransferHistory.tmdbid == tmdbid,
                                                           TransferHistory.type == mtype,
                                                           TransferHistory.seasons == season,
                                                           TransferHistory.episodes == episode,
                                                           TransferHistory.dest == dest).all()
             # 电视剧某季
-            elif season:
+            elif season is not None:
                 result = db.query(TransferHistory).filter(TransferHistory.tmdbid == tmdbid,
                                                           TransferHistory.type == mtype,
                                                           TransferHistory.seasons == season).all()
@@ -170,14 +170,14 @@ class TransferHistory(Base):
         # 标题 + 年份
         elif title and year:
             # 电视剧某季某集
-            if season and episode:
+            if season is not None and episode:
                 result = db.query(TransferHistory).filter(TransferHistory.title == title,
                                                           TransferHistory.year == year,
                                                           TransferHistory.seasons == season,
                                                           TransferHistory.episodes == episode,
                                                           TransferHistory.dest == dest).all()
             # 电视剧某季
-            elif season:
+            elif season is not None:
                 result = db.query(TransferHistory).filter(TransferHistory.title == title,
                                                           TransferHistory.year == year,
                                                           TransferHistory.seasons == season).all()

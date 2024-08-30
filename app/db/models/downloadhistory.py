@@ -93,14 +93,14 @@ class DownloadHistory(Base):
                                                       DownloadHistory.year == year).order_by(
                 DownloadHistory.id.desc()).all()
         # 电视剧某季
-        if season and not episode:
+        if season is not None and not episode:
             result = db.query(DownloadHistory).filter(DownloadHistory.type == mtype,
                                                       DownloadHistory.title == title,
                                                       DownloadHistory.year == year,
                                                       DownloadHistory.seasons == season).order_by(
                 DownloadHistory.id.desc()).all()
         # 电视剧某季某集
-        if season and episode:
+        if season is not None and episode:
             result = db.query(DownloadHistory).filter(DownloadHistory.type == mtype,
                                                       DownloadHistory.title == title,
                                                       DownloadHistory.year == year,

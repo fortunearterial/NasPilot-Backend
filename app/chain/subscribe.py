@@ -72,7 +72,7 @@ class SubscribeChain(ChainBase):
             metainfo.year = year
         if mtype:
             metainfo.type = mtype
-        if season:
+        if season is not None:
             metainfo.type = MediaType.TV
             metainfo.begin_season = season
         if steamid:

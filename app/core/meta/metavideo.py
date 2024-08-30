@@ -78,7 +78,7 @@ class MetaVideo(MetaBase):
         if season_full_res:
             self.type = MediaType.TV
             season = season_full_res.group(1)
-            if season:
+            if season is not None:
                 self.begin_season = int(season)
                 self.total_season = 1
             return

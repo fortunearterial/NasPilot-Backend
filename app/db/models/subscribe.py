@@ -86,7 +86,7 @@ class Subscribe(Base):
             # 区分大小写
             return db.query(Subscribe).filter(Subscribe.javdbid == func.binary(javdbid)).first()
         elif tmdbid:
-            if season:
+            if season is not None:
                 return db.query(Subscribe).filter(Subscribe.tmdbid == tmdbid,
                                                   Subscribe.season == season).first()
             return db.query(Subscribe).filter(Subscribe.tmdbid == tmdbid).first()
@@ -103,7 +103,7 @@ class Subscribe(Base):
     @staticmethod
     @db_query
     def get_by_tmdbid(db: Session, tmdbid: int, season: int = None):
-        if season:
+        if season is not None:
             result = db.query(Subscribe).filter(Subscribe.tmdbid == tmdbid,
                                                 Subscribe.season == season).all()
         else:
@@ -113,7 +113,7 @@ class Subscribe(Base):
     @staticmethod
     @db_query
     def get_by_title(db: Session, title: str, season: int = None):
-        if season:
+        if season is not None:
             return db.query(Subscribe).filter(Subscribe.name == title,
                                               Subscribe.season == season).first()
         return db.query(Subscribe).filter(Subscribe.name == title).first()

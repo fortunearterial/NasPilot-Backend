@@ -46,7 +46,7 @@ class SearchChain(ChainBase):
             logger.error(f'{tmdbid} 媒体信息识别失败！')
             return []
         no_exists = None
-        if season:
+        if season is not None:
             no_exists = {
                 tmdbid or doubanid: {
                     season: NotExistMediaInfo(episodes=[])

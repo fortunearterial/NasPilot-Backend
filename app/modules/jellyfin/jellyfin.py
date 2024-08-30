@@ -391,7 +391,7 @@ class Jellyfin:
                     season_index = res_item.get("ParentIndexNumber")
                     if not season_index:
                         continue
-                    if season and season != season_index:
+                    if season is not None and season != season_index:
                         continue
                     episode_index = res_item.get("IndexNumber")
                     if not episode_index:

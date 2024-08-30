@@ -188,7 +188,7 @@ class MediaChain(ChainBase, metaclass=Singleton):
         # 合并信息
         if mtype:
             meta.type = mtype
-        if season_num:
+        if season_num is not None:
             meta.begin_season = season_num
         if episode_num:
             meta.begin_episode = episode_num
@@ -476,7 +476,7 @@ class MediaChain(ChainBase, metaclass=Singleton):
                 if init_folder:
                     # 识别文件夹名称
                     season_meta = MetaInfo(filepath.name)
-                    if season_meta.begin_season:
+                    if season_meta.begin_season is not None:
                         # 当前目录有季号，生成季nfo
                         season_nfo = self.metadata_nfo(meta=meta, mediainfo=mediainfo, season=meta.begin_season)
                         if not season_nfo:
