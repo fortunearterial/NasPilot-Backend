@@ -7,16 +7,17 @@ from app.core.config import settings
 from app.log import logger
 from app.utils.singleton import Singleton
 from app.schemas.types import MediaType
+from app.utils.string import StringUtils
 
 
-class RssCategoryHelper(metaclass=Singleton):
+class SiteCategoryHelper(metaclass=Singleton):
     """
-    RSS分类
+    Site分类
     """
     _categorys = {}
     
     def __init__(self):
-        self._category_path: Path = settings.CONFIG_PATH / "rsscategory.yaml"
+        self._category_path: Path = settings.CONFIG_PATH / "sitecategory.yaml"
         self.init()
 
     def init(self):
@@ -25,27 +26,28 @@ class RssCategoryHelper(metaclass=Singleton):
         """
         try:
             if not self._category_path.exists():
-                shutil.copy(settings.INNER_CONFIG_PATH / "category.yaml", self._category_path)
+                shutil.copy(settings.INNER_CONFIG_PATH / "sitecategory.yaml", self._category_path)
             with open(self._category_path, mode='r', encoding='utf-8') as f:
                 try:
                     yaml = ruamel.yaml.YAML()
                     self._categorys = yaml.load(f)
                 except Exception as e:
-                    logger.warn(f"RSS分类策略配置文件格式出现严重错误！请检查：{str(e)}")
+                    logger.warn(f"Site分类策略配置文件格式出现严重错误！请检查：{str(e)}")
                     self._categorys = {}
         except Exception as err:
-            logger.warn(f"RSS分类策略配置文件加载出错：{str(err)}")
+            logger.warn(f"Site分类策略配置文件加载出错：{str(err)}")
 
-        logger.info(f"已加载RSS分类策略 category.yaml")
+        logger.info(f"已加载Site分类策略 sitecategory.yaml")
 
     def get_media_type(self, domain: str, category: str) -> MediaType:
         """
         获得分类的媒体类型
         :param domain: 域名
-        :param category: rss.item.category
+        :param category: item.category
         :return: 媒体类型
         """
-        return self.get_category(self._categorys.get(domain), category)
+        _, netloc = StringUtils.get_url_netloc(domain)
+        return self.get_category(self._categorys.get(netloc), category)
 
     @staticmethod
     def get_category(categorys: dict, category: dict) -> MediaType:

@@ -76,7 +76,7 @@ class SearchChain(ChainBase):
             logger.warn(f'{title} 未搜索到资源')
             return []
         # 组装上下文
-        contexts = [Context(meta_info=MetaInfo(title=torrent.title, subtitle=torrent.description),
+        contexts = [Context(meta_info=MetaInfo(title=torrent.title, subtitle=torrent.description, mtype=torrent.category),
                             torrent_info=torrent) for torrent in torrents]
         # 保存结果
         bytes_results = pickle.dumps(contexts)
@@ -202,7 +202,7 @@ class SearchChain(ChainBase):
                     _match_torrents.append(torrent)
                     continue
                 # 识别
-                torrent_meta = MetaInfo(title=torrent.title, subtitle=torrent.description)
+                torrent_meta = MetaInfo(title=torrent.title, subtitle=torrent.description, mtype=torrent.category)
                 if torrent.title != torrent_meta.org_string:
                     logger.info(f"种子名称应用识别词后发生改变：{torrent.title} => {torrent_meta.org_string}")
                 # 比对种子
@@ -251,7 +251,7 @@ class SearchChain(ChainBase):
         mediainfo.clear()
 
         # 组装上下文
-        contexts = [Context(meta_info=MetaInfo(title=torrent.title, subtitle=torrent.description),
+        contexts = [Context(meta_info=MetaInfo(title=torrent.title, subtitle=torrent.description, mtype=torrent.category),
                             media_info=mediainfo,
                             torrent_info=torrent) for torrent in _match_torrents]
 

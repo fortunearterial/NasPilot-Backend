@@ -1,4 +1,7 @@
 from typing import List, Optional, Tuple, Union
+from functools import lru_cache
+
+import re
 
 from app import schemas
 from app.core.config import settings
@@ -79,6 +82,7 @@ class BangumiModule(_ModuleBase):
                     or meta.name.lower() in str(info.get("name_cn")).lower()]
         return []
 
+    @lru_cache(maxsize=128)
     def bangumi_info(self, bangumiid: int) -> Optional[dict]:
         """
         获取Bangumi信息
@@ -88,7 +92,68 @@ class BangumiModule(_ModuleBase):
         if not bangumiid:
             return None
         logger.info(f"开始获取Bangumi信息：{bangumiid} ...")
-        return self.bangumiapi.detail(bangumiid)
+        #FIX: 补充季信息
+        subjects = self.bangumiapi.subjects(bangumiid)
+        # 如果有上一季
+        prev_season_details = list(filter(lambda s: s.get('relation') == '前传', subjects))
+        if prev_season_details:
+            # 返回第一季的信息
+            return self.bangumi_info(prev_season_details[0].get('id'))
+
+        seasons = {}
+        season_eps = {}
+        self._fill_season(seasons, season_eps, 1, bangumiid)
+
+        detail = self.bangumiapi.detail(bangumiid)
+        # 季0
+        if '0' in season_eps:
+            season_eps['0'] = list(sorted([dict(t) for t in set([tuple(d.items()) for d in season_eps.get('0')])], key=lambda t: t.get('airdate')))
+            seasons[0] = {
+                "date": season_eps['0'][0].get('airdate'),
+                "total_episodes": len(season_eps['0']),
+                "name": "特别篇",
+                "season_number": 0
+            }
+        detail['seasons'] = list([seasons.get(s) for s in sorted(seasons.keys())])
+        detail['_season_eps'] = season_eps
+        return detail
+
+    def _fill_season(self, seasons: list, season_eps: dict, season_number: int, bangumiid: int):
+        # 获取正确的季数
+        detail = self.bangumiapi.detail(bangumiid)
+        _season_numbers = re.findall("第([0-9]+)期", detail.get("name"))
+        if _season_numbers:
+            season_number = int(_season_numbers[0])
+        if not season_number in seasons:
+            seasons[season_number] = dict(detail)
+            seasons[season_number].update({"season_number": season_number})
+        # 填充正篇
+        eps = self.bangumiapi.episodes(bangumiid, 0)
+        if eps.get('data'):
+            if not str(season_number) in season_eps:
+                season_eps[str(season_number)] = []
+            season_eps[str(season_number)].extend(eps.get('data'))
+        # 填充OVA
+        sps = self.bangumiapi.episodes(bangumiid, 1)
+        if sps.get('data'):
+            if not '0' in season_eps:
+                season_eps['0'] = []
+            season_eps['0'].extend(sps.get('data'))
+
+        subjects = self.bangumiapi.subjects(bangumiid)
+         # 如果有番外篇
+        ova_season_details = list(filter(lambda s: (s.get('relation') == '番外篇' or s.get('relation') == '衍生') and not s.get("name_cn").startswith("剧场版"), subjects))
+        if ova_season_details:
+            if not '0' in season_eps:
+                season_eps['0'] = []
+            for ova_season_detail in ova_season_details:
+                eps = self.bangumiapi.episodes(ova_season_detail.get('id'), 0)
+                if len(eps.get('data')) < 10: #TODO: 怎么区分是小剧场还是番外
+                    season_eps['0'].extend(eps.get('data'))
+        # 如果有下一季
+        next_season_details = list(filter(lambda s: s.get('relation') == '续集', subjects))
+        if next_season_details:
+            self._fill_season(seasons, season_eps, season_number + 1, next_season_details[0].get('id'))
 
     def bangumi_calendar(self) -> Optional[List[MediaInfo]]:
         """
@@ -144,4 +209,26 @@ class BangumiModule(_ModuleBase):
         credits_info = self.bangumiapi.person_credits(person_id=person_id)
         if credits_info:
             return [MediaInfo(bangumi_info=credit) for credit in credits_info]
+        return []
+
+    def bangumi_episodes(self, bangumiid: int, season: int) -> List[schemas.BangumiEpisode]:
+        """
+        根据Bangumi查询某季的所有信信息
+        :param bangumiid:  bangumiid
+        :param season:  季
+        """
+        eps = self.bangumi_info(bangumiid=bangumiid).get("_season_eps").get(str(season))
+        if eps:
+            return [{
+                "air_date": ep.get("airdate"),
+                "episode_number": ep.get("ep"),
+                "name": ep.get("name_cn") or ep.get("name"),
+                "overview": ep.get("desc"),
+                "runtime": ep.get("duration"),
+                "season_number": season,
+                "still_path": None,
+                "vote_average": None,
+                "crew": None,
+                "guest_stars": None
+            } for ep in eps]
         return []

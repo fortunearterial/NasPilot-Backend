@@ -403,7 +403,7 @@ class TorrentHelper(metaclass=Singleton):
             # 大小范围
             begin_size, end_size = __get_size_range(size)
             if begin_size or end_size:
-                meta = MetaInfo(title=torrent_info.title, subtitle=torrent_info.description)
+                meta = MetaInfo(title=torrent_info.title, subtitle=torrent_info.description, mtype=torrent_info.category)
                 # 集数
                 if mediainfo.type == MediaType.TV:
                     # 电视剧

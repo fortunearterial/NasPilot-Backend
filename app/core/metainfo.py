@@ -11,7 +11,7 @@ from app.schemas.types import MediaType
 from app.utils.string import StringUtils
 
 
-def MetaInfo(title: str, subtitle: str = None, type: str = None) -> MetaBase:
+def MetaInfo(title: str, subtitle: str = None, mtype: str = None) -> MetaBase:
     """
     根据标题和副标题识别元数据
     :param title: 标题、种子名、文件名
@@ -33,10 +33,10 @@ def MetaInfo(title: str, subtitle: str = None, type: str = None) -> MetaBase:
         isfile = False
 
     meta = None
-    if type:
-        if type == MediaType.TV.name or type == MediaType.MOVIE.name:
+    if mtype:
+        if mtype == MediaType.TV.value or mtype == MediaType.MOVIE.value:
             meta = MetaVideo(title, subtitle, isfile)
-        elif type == MediaType.ANIME.name:
+        elif mtype == MediaType.ANIME.value:
             meta = MetaAnime(title, subtitle, isfile)
     if not meta:
         # 识别
@@ -53,8 +53,8 @@ def MetaInfo(title: str, subtitle: str = None, type: str = None) -> MetaBase:
             logger.warn("tmdbid 必须是数字")
     if metainfo.get('doubanid'):
         meta.doubanid = metainfo['doubanid']
-    if type:
-        meta.type = MediaType[type]
+    if mtype:
+        meta.type = MediaType(mtype)
     elif metainfo.get('type'):
         meta.type = metainfo['type']
     if metainfo.get('begin_season'):

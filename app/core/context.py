@@ -428,7 +428,7 @@ class MediaInfo:
                 for seainfo in info.get('seasons'):
                     # 季
                     season = seainfo.get("season_number")
-                    if not season:
+                    if not season and season != 0:
                         continue
                     # 集
                     episode_count = seainfo.get("episode_count")
@@ -640,14 +640,37 @@ class MediaInfo:
                 akas = [item.get("value") for item in infobox if item.get("key") == "别名"]
                 if akas:
                     self.names = [aka.get("v") for aka in akas[0]]
-
         # 剧集
         if self.type == MediaType.TV and not self.seasons:
-            meta = MetaInfo(self.title)
-            season = meta.begin_season or 1
-            episodes_count = info.get("total_episodes")
-            if episodes_count:
-                self.seasons[season] = list(range(1, episodes_count + 1))
+            if info.get('seasons'):
+                self.season_info = [{
+                    "air_date": seainfo.get("date"),
+                    "episode_count": seainfo.get("total_episodes"),
+                    "id": seainfo.get("id"),
+                    "name": f"第 %s 季" % seainfo.get("season_number"),
+                    "overview": seainfo.get("summary"),
+                    "poster_path": info.get("images", {}).get("large") or info.get("image"),
+                    "season_number": seainfo.get("season_number"),
+                    "vote_average": float(info.get("rating").get("score")) if info.get("rating") else 0
+                } for seainfo in info.get('seasons')]
+                for seainfo in info.get('seasons'):
+                    # 季
+                    season = seainfo.get("season_number")
+                    if not season and season != 0:
+                        continue
+                    # 集
+                    episode_count = seainfo.get("total_episodes")
+                    self.seasons[season] = [ep.get("sort") for ep in info.get('_season_eps')[str(season)]]
+                    # 年份
+                    air_date = seainfo.get("date")
+                    if air_date:
+                        self.season_years[season] = air_date[:4]
+            else:
+                meta = MetaInfo(self.title)
+                season = meta.begin_season or 1
+                episodes_count = info.get("total_episodes")
+                if episodes_count:
+                    self.seasons[season] = list(range(1, episodes_count + 1))
         # 演员
         if not self.actors:
             self.actors = info.get("actors") or []

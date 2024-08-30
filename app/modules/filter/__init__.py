@@ -186,7 +186,7 @@ class FilterModule(_ModuleBase):
         """
         # 匹配季
         seasons = season_episodes.keys()
-        meta = MetaInfo(title=torrent.title, subtitle=torrent.description)
+        meta = MetaInfo(title=torrent.title, subtitle=torrent.description, mtype=torrent.category)
         # 种子季
         torrent_seasons = meta.season_list
         if not torrent_seasons:

@@ -111,7 +111,7 @@ class SubscribeChain(ChainBase):
             return None, "未识别到媒体信息"
         # 总集数
         if mediainfo.type == MediaType.TV:
-            if not season:
+            if not season and season != 0:
                 season = 1
             # 总集数
             if not kwargs.get('total_episode'):

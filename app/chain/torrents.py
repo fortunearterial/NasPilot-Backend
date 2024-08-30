@@ -217,7 +217,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
                 for torrent in torrents:
                     logger.info(f'处理资源：{torrent.title} ...')
                     # 识别，并使用站点种子分类校正类型识别
-                    meta = MetaInfo(title=torrent.title, subtitle=torrent.description, type=torrent.category)
+                    meta = MetaInfo(title=torrent.title, subtitle=torrent.description, mtype=torrent.category)
                     if torrent.title != meta.org_string:
                         logger.info(f'种子名称应用识别词后发生改变：{torrent.title} => {meta.org_string}')
                     # 识别媒体信息

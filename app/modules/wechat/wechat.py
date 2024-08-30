@@ -264,7 +264,7 @@ class WeChat:
         index = 1
         for context in torrents:
             torrent = context.torrent_info
-            meta = MetaInfo(title=torrent.title, subtitle=torrent.description)
+            meta = MetaInfo(title=torrent.title, subtitle=torrent.description, mtype=torrent.category)
             mediainfo = context.media_info
             torrent_title = f"{index}.【{torrent.site_name}】" \
                             f"{meta.season_episode} " \

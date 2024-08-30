@@ -13,7 +13,7 @@ from app.log import logger
 from app.utils.dom import DomUtils
 from app.utils.http import RequestUtils
 from app.utils.string import StringUtils
-from app.helper.rsscategory import RssCategoryHelper
+from app.helper.sitecategory import SiteCategoryHelper
 
 
 class RssHelper:
@@ -316,7 +316,7 @@ class RssHelper:
                                     'link': link,
                                     'pubdate': pubdate,
                                     'author': author,
-                                    'category': RssCategoryHelper().get_media_type(domain, category)}
+                                    'category': SiteCategoryHelper().get_media_type(domain, category)}
                         ret_array.append(tmp_dict)
                     except Exception as e1:
                         logger.debug(f"解析RSS失败：{str(e1)} - {traceback.format_exc()}")

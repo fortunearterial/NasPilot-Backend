@@ -222,6 +222,8 @@ class TorrentInfo(BaseModel):
     volume_factor: Optional[str] = None
     # 剩余免费时间
     freedate_diff: Optional[str] = None
+    # 分类
+    category: Optional[str] = None
 
 
 class Context(BaseModel):

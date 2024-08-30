@@ -388,7 +388,7 @@ class MetaBase(object):
         """
         返回季集字符串
         """
-        if self.type == MediaType.TV:
+        if self.type == MediaType.TV or self.type == MediaType.ANIME:
             seaion = self.season
             episode = self.episode
             if seaion and episode:
