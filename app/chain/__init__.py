@@ -144,7 +144,8 @@ class ChainBase(metaclass=ABCMeta):
                         steamid: int = None,
                         javdbid: str = None,
                         bangumiid: int = None,
-                        cache: bool = True) -> Optional[MediaInfo]:
+                        cache: bool = True,
+                        **kwargs) -> Optional[MediaInfo]:
         """
         识别媒体信息，不含Fanart图片
         :param meta:     识别的元数据
@@ -174,7 +175,8 @@ class ChainBase(metaclass=ABCMeta):
         if not javdbid and hasattr(meta, "javdbid"):
             javdbid = meta.javdbid
         media_info = self.run_module("recognize_media", meta=meta, mtype=mtype,
-                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, steamid=steamid, javdbid=javdbid, cache=cache)
+                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, steamid=steamid, javdbid=javdbid,
+                               cache=cache, **kwargs)
         self.run_module("recognize_media_id", media_info=media_info, cache=cache)
         return media_info
 

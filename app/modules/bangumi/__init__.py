@@ -41,7 +41,10 @@ class BangumiModule(_ModuleBase):
     def get_name() -> str:
         return "Bangumi"
 
-    def recognize_media(self, bangumiid: int = None,
+    def recognize_media(self, meta: MetaBase = None,
+                        mtype: MediaType = None,
+                        bangumiid: int = None,
+                        only_ova_episodes: bool = False,
                         **kwargs) -> Optional[MediaInfo]:
         """
         识别媒体信息
@@ -54,7 +57,7 @@ class BangumiModule(_ModuleBase):
             return None
 
         # 直接查询详情
-        info = self.bangumi_info(bangumiid=bangumiid)
+        info = self.bangumi_info(bangumiid=bangumiid, only_ova_episodes=only_ova_episodes)
         if info:
             # 赋值TMDB信息并返回
             mediainfo = MediaInfo(bangumi_info=info)
@@ -74,11 +77,11 @@ class BangumiModule(_ModuleBase):
         :return: 识别的媒体信息，包括剧集信息
         """
         if settings.RECOGNIZE_SOURCE and not "bangumi" in settings.RECOGNIZE_SOURCE:
-            return None
+            return
         if not media_info:
-            return None
+            return
         if media_info.bangumi_id:
-            return None
+            return
 
         infos = self.search_medias(MetaInfo(title=media_info.original_title, mtype=media_info.type.value))
         for info in infos:
@@ -105,7 +108,7 @@ class BangumiModule(_ModuleBase):
         return []
 
     @lru_cache(maxsize=128)
-    def bangumi_info(self, bangumiid: int) -> Optional[dict]:
+    def bangumi_info(self, bangumiid: int, only_ova_episodes: bool = False) -> Optional[dict]:
         """
         获取Bangumi信息
         :param bangumiid: BangumiID
@@ -124,7 +127,7 @@ class BangumiModule(_ModuleBase):
 
         seasons = {}
         season_eps = {}
-        self._fill_season(seasons, season_eps, 1, bangumiid)
+        self._fill_season(seasons, season_eps, 1, bangumiid,only_ova_episodes)
 
         detail = self.bangumiapi.detail(bangumiid)
         # 季0
@@ -140,7 +143,7 @@ class BangumiModule(_ModuleBase):
         detail['_season_eps'] = season_eps
         return detail
 
-    def _fill_season(self, seasons: list, season_eps: dict, season_number: int, bangumiid: int):
+    def _fill_season(self, seasons: list, season_eps: dict, season_number: int, bangumiid: int, only_ova_episodes: bool = False):
         # 获取正确的季数
         detail = self.bangumiapi.detail(bangumiid)
         _season_numbers = re.findall("第([0-9]+)期", detail.get("name"))
@@ -150,17 +153,22 @@ class BangumiModule(_ModuleBase):
             seasons[season_number] = dict(detail)
             seasons[season_number].update({"season_number": season_number})
         # 填充正篇
-        eps = self.bangumiapi.episodes(bangumiid, 0)
-        if eps.get('data'):
-            if not str(season_number) in season_eps:
-                season_eps[str(season_number)] = []
-            season_eps[str(season_number)].extend(eps.get('data'))
+        if not only_ova_episodes:
+            eps = self.bangumiapi.episodes(bangumiid, 0)
+            if eps.get('data'):
+                if not str(season_number) in season_eps:
+                    season_eps[str(season_number)] = []
+                season_eps[str(season_number)].extend(eps.get('data'))
         # 填充OVA
         sps = self.bangumiapi.episodes(bangumiid, 1)
         if sps.get('data'):
             if not '0' in season_eps:
                 season_eps['0'] = []
             season_eps['0'].extend(sps.get('data'))
+            if only_ova_episodes:
+                if not str(season_number) in season_eps:
+                    season_eps[str(season_number)] = []
+                season_eps[str(season_number)].extend(sps.get('data'))
 
         subjects = self.bangumiapi.subjects(bangumiid)
          # 如果有番外篇
@@ -175,7 +183,7 @@ class BangumiModule(_ModuleBase):
         # 如果有下一季
         next_season_details = list(filter(lambda s: s.get('relation') == '续集', subjects))
         if next_season_details:
-            self._fill_season(seasons, season_eps, season_number + 1, next_season_details[0].get('id'))
+            self._fill_season(seasons, season_eps, season_number + 1, next_season_details[0].get('id'), only_ova_episodes)
 
     def bangumi_calendar(self) -> Optional[List[MediaInfo]]:
         """

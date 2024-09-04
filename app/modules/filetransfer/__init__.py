@@ -785,7 +785,10 @@ class FileTransferModule(_ModuleBase):
                 seasons: Dict[int, list] = {}
                 for media_file in media_files:
                     file_meta = MetaInfo(media_file.stem)
-                    season_index = file_meta.begin_season or 1
+                    if file_meta.begin_season is not None:
+                        season_index = file_meta.begin_season
+                    else:
+                        season_index = 1
                     episode_index = file_meta.begin_episode
                     if not episode_index:
                         continue

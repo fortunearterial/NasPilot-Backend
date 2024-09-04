@@ -99,7 +99,7 @@ class DoubanModule(_ModuleBase):
                 # 使用中英文名分别识别，去重去空，但要保持顺序
                 names = list(dict.fromkeys([k for k in [meta.cn_name, meta.en_name] if k]))
                 for name in names:
-                    if meta.begin_season:
+                    if meta.begin_season is not None:
                         logger.info(f"正在识别 {name} 第{meta.begin_season}季 ...")
                     else:
                         logger.info(f"正在识别 {name} ...")
@@ -581,7 +581,7 @@ class DoubanModule(_ModuleBase):
                 continue
             ret_medias.append(MediaInfo(douban_info=item_obj.get("target")))
         # 将搜索词中的季写入标题中
-        if ret_medias and meta.begin_season:
+        if ret_medias and meta.begin_season is not None:
             # 小写数据转大写
             season_str = cn2an.an2cn(meta.begin_season, "low")
             for media in ret_medias:
@@ -663,9 +663,10 @@ class DoubanModule(_ModuleBase):
             meta = MetaInfo(title)
             if type_name == MediaType.TV.value:
                 meta.type = MediaType.TV
-                meta.begin_season = meta.begin_season or 1
+                if meta.begin_season is None:
+                    meta.begin_season = 1
             if meta.name == name \
-                    and ((not season and not meta.begin_season) or meta.begin_season == season) \
+                    and ((season is None and meta.begin_season is None) or meta.begin_season == season) \
                     and (not year or item.get('year') == year):
                 logger.info(f"{name} 匹配到豆瓣信息：{item.get('id')} {item.get('title')}")
                 return item

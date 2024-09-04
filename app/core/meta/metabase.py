@@ -135,7 +135,7 @@ class MetaBase(object):
             season_all_str = re.search(r"%s" % self._subtitle_season_all_re, title_text, re.IGNORECASE)
             if season_all_str:
                 season_all = season_all_str.group(1)
-                if not season_all:
+                if season_all is None:
                     season_all = season_all_str.group(2)
                 if season_all and self.begin_season is None and self.begin_episode is None:
                     try:

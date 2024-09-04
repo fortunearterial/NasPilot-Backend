@@ -255,7 +255,7 @@ class TorrentHelper(metaclass=Singleton):
             # 控重的主链是名称、年份、季、集
             meta = context.meta_info
             media = context.media_info
-            if media.type == MediaType.TV:
+            if media.type == MediaType.TV or media.type == MediaType.ANIME:
                 media_name = "%s%s" % (media.title_year,
                                        meta.season_episode)
             else:
@@ -407,7 +407,10 @@ class TorrentHelper(metaclass=Singleton):
                 # 集数
                 if mediainfo.type == MediaType.TV:
                     # 电视剧
-                    season = meta.begin_season or 1
+                    if meta.begin_season is not None:
+                        season = meta.begin_season
+                    else:
+                        season = 1
                     if meta.total_episode:
                         # 识别的总集数
                         episodes_num = meta.total_episode

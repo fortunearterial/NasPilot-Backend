@@ -104,7 +104,7 @@ class MediaChain(ChainBase, metaclass=Singleton):
             org_meta.year = meta_dict.get("year")
             org_meta.begin_season = meta_dict.get("season")
             org_meta.begin_episode = meta_dict.get("episode")
-            if org_meta.begin_season or org_meta.begin_episode:
+            if org_meta.begin_season is not None or org_meta.begin_episode:
                 org_meta.type = MediaType.TV
             # 重新识别
             mediainfo = self.recognize_media(meta=org_meta)
@@ -291,7 +291,7 @@ class MediaChain(ChainBase, metaclass=Singleton):
                 for seainfo in tmdbinfo['seasons']:
                     # 季
                     season_number = seainfo.get("season_number")
-                    if not season_number:
+                    if season_number is None:
                         continue
                     air_date = seainfo.get("air_date")
                     if air_date and season_number == season:

@@ -153,7 +153,7 @@ def media_info(mediaid: str, type_name: str,
     if not tmdbid and not doubanid and not bangumiid and not steamid and not javdbid:
         return schemas.MediaInfo()
     # 识别
-    mediainfo = MediaChain().recognize_media(tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, steamid=steamid, javdbid=javdbid, mtype=mtype)
+    mediainfo = MediaChain().recognize_media(mtype=mtype, tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, steamid=steamid, javdbid=javdbid)
     if mediainfo:
         MediaChain().obtain_images(mediainfo)
         return mediainfo.to_dict()

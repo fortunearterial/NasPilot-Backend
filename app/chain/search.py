@@ -31,7 +31,7 @@ class SearchChain(ChainBase):
         self.systemconfig = SystemConfigOper()
         self.torrenthelper = TorrentHelper()
 
-    def search_by_id(self, tmdbid: int = None, doubanid: str = None, steamid: int = None, javdbid: str = None, 
+    def search_by_id(self, tmdbid: int = None, doubanid: str = None, bangumiid: int = None, steamid: int = None, javdbid: str = None, 
                      mtype: MediaType = None, area: str = "title", season: int = None) -> List[Context]:
         """
         根据TMDBID/豆瓣ID搜索资源，精确匹配，但不不过滤本地存在的资源
@@ -41,7 +41,12 @@ class SearchChain(ChainBase):
         :param area: 搜索范围，title or imdbid
         :param season: 季数
         """
-        mediainfo = self.recognize_media(tmdbid=tmdbid, doubanid=doubanid, steamid=steamid, javdbid=javdbid, mtype=mtype)
+        mediainfo = self.recognize_media(mtype=mtype, 
+                                         tmdbid=tmdbid, 
+                                         doubanid=doubanid, 
+                                         bangumiid=bangumiid, 
+                                         steamid=steamid, 
+                                         javdbid=javdbid)
         if not mediainfo:
             logger.error(f'{tmdbid} 媒体信息识别失败！')
             return []
@@ -135,6 +140,7 @@ class SearchChain(ChainBase):
             mediainfo: MediaInfo = self.recognize_media(mtype=mediainfo.type,
                                                         tmdbid=mediainfo.tmdb_id,
                                                         doubanid=mediainfo.douban_id,
+                                                        bangumiid=mediainfo.bangumiid, 
                                                         steamid=mediainfo.steam_id,
                                                         javdbid=mediainfo.javdb_id)
             if not mediainfo:
@@ -147,7 +153,7 @@ class SearchChain(ChainBase):
             # 过滤剧集
             season_episodes = {sea: info.episodes
                                for sea, info in no_exists[mediakey].items()}
-        elif mediainfo.season:
+        elif mediainfo.season is not None:
             # 豆瓣只搜索当前季
             season_episodes = {mediainfo.season: []}
         else:
@@ -268,6 +274,8 @@ class SearchChain(ChainBase):
                              text=f'搜索完成，共 {len(contexts)} 个资源',
                              key=ProgressKey.Search)
         logger.info(f'搜索完成，共 {len(contexts)} 个资源')
+        for index, context in enumerate(contexts):
+            logger.info(f'搜索完成，第 {index} 个资源：{context.torrent_info.title}')
         self.progress.end(ProgressKey.Search)
 
         # 返回

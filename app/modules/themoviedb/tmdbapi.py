@@ -1015,7 +1015,7 @@ class TmdbApi:
           "season_number": 1
         }
         """
-        if not self.season:
+        if self.season is None:
             return {}
         try:
             logger.debug("正在查询TMDB电视剧：%s，季：%s ..." % (tmdbid, season))

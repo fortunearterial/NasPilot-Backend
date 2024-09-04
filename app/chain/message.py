@@ -60,7 +60,10 @@ class MessageChain(ChainBase):
                 # 补充媒体信息
                 _mediainfo = self.mediachain.recognize_media(mtype=_mediainfo.type,
                                                              tmdbid=_mediainfo.tmdb_id,
-                                                             doubanid=_mediainfo.douban_id,
+                                                             doubanid=_mediainfo.douban_id, 
+                                                             bangumiid=_mediainfo.bangumi_id, 
+                                                             steamid=_mediainfo.steam_id, 
+                                                             javdbid=_mediainfo.javdb_id,
                                                              cache=False)
                 if not _mediainfo:
                     logger.warn(f"{_mediainfo.tmdb_id or _mediainfo.douban_id} 媒体信息识别失败！")
@@ -75,7 +78,7 @@ class MessageChain(ChainBase):
             _no_exists = {
                 _mediakey: {}
             }
-            if _meta.begin_season:
+            if _meta.begin_season is not None:
                 # 指定季
                 episodes = _mediainfo.seasons.get(_meta.begin_season)
                 if not episodes:

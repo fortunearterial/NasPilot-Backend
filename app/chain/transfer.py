@@ -86,8 +86,9 @@ class TransferChain(ChainBase):
                     mediainfo = self.recognize_media(mtype=mtype,
                                                      tmdbid=downloadhis.tmdbid,
                                                      doubanid=downloadhis.doubanid,
-                                                     steamid=downloadhis.steamid,
-                                                     javdbid=downloadhis.javdbid)
+                                                     bangumiid=downloadhis.bangumiid, 
+                                                     steamid=downloadhis.steam_id,
+                                                     javdbid=downloadhis.javdb_id)
                     if mediainfo:
                         # 补充图片
                         self.obtain_images(mediainfo)
@@ -592,7 +593,7 @@ class TransferChain(ChainBase):
                         return False, f"{fileitem.path} 重命名失败"
                     logger.info(f"{fileitem.path} 重命名完成")
                     # 是否有季
-                    if folder_meta.begin_season:
+                    if folder_meta.begin_season is not None:
                         # 创建季目录
                         logger.info(f"正在创建目录 {fileitem.path}{season_name} ...")
                         season_dir = __create_folder(_storage=storage, _drive_id=fileitem.drive_id,
@@ -754,6 +755,7 @@ class TransferChain(ChainBase):
         if mtype and mediaid:
             mediainfo = self.recognize_media(mtype=mtype, tmdbid=int(mediaid) if str(mediaid).isdigit() else None,
                                              doubanid=mediaid, 
+                                             bangumiid=mediaid, 
                                              steamid=int(mediaid) if str(mediaid).isdigit() else None,
                                              javdbid=mediaid)
             if mediainfo:
@@ -790,6 +792,9 @@ class TransferChain(ChainBase):
                         target: Path = None,
                         tmdbid: int = None,
                         doubanid: str = None,
+                        bangumiid: int = None,
+                        steamid: int = None,
+                        javdbid: str = None,
                         mtype: MediaType = None,
                         season: int = None,
                         transfer_type: str = None,
@@ -820,7 +825,12 @@ class TransferChain(ChainBase):
         if tmdbid or doubanid:
             # 有输入TMDBID时单个识别
             # 识别媒体信息
-            mediainfo: MediaInfo = self.mediachain.recognize_media(tmdbid=tmdbid, doubanid=doubanid, mtype=mtype)
+            mediainfo: MediaInfo = self.mediachain.recognize_media(mtype=mtype,
+                                                                   tmdbid=tmdbid, 
+                                                                   doubanid=doubanid, 
+                                                                   bangumiid=bangumiid, 
+                                                                   steamid=steam_id,
+                                                                   javdbid=javdb_id)
             if not mediainfo:
                 return False, f"媒体信息识别失败，tmdbid：{tmdbid}，doubanid：{doubanid}，type: {mtype.value}"
             else:

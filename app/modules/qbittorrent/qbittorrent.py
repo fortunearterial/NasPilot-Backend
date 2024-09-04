@@ -86,7 +86,7 @@ class Qbittorrent:
                     tags = [tags]
                 for torrent in torrents:
                     torrent_tags = [str(tag).strip() for tag in torrent.get("tags").split(',')]
-                    if set(tags).issubset(set(torrent_tags)):
+                    if set(tags).intersection(set(torrent_tags)):
                         results.append(torrent)
                 return results, False
             return torrents or [], False

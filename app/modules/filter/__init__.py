@@ -189,12 +189,17 @@ class FilterModule(_ModuleBase):
         meta = MetaInfo(title=torrent.title, subtitle=torrent.description, mtype=torrent.category)
         # 种子季
         torrent_seasons = meta.season_list
-        if not torrent_seasons:
+        if torrent_seasons is None:
             # 按第一季处理
             torrent_seasons = [1]
         # 种子集
-        torrent_episodes = meta.episode_list
-        if not set(torrent_seasons).issubset(set(seasons)):
+        if hasattr(meta, 'episode_alt_list'):
+            torrent_episodes = []
+            torrent_episodes.extend(meta.episode_list)
+            torrent_episodes.extend(meta.episode_alt_list)
+        else:
+            torrent_episodes = meta.episode_list
+        if not set(torrent_seasons).intersection(set(seasons)):
             # 种子季不在过滤季中
             logger.debug(f"种子 {torrent.site_name} - {torrent.title} 包含季 {torrent_seasons} 不是需要的季 {list(seasons)}")
             return False

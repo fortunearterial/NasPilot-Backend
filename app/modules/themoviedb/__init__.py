@@ -105,7 +105,7 @@ class TheMovieDbModule(_ModuleBase):
                 # 使用中英文名分别识别，去重去空，但要保持顺序
                 names = list(dict.fromkeys([k for k in [meta.cn_name, meta.en_name] if k]))
                 for name in names:
-                    if meta.begin_season:
+                    if meta.begin_season is not None:
                         logger.info(f"正在识别 {name} 第{meta.begin_season}季 ...")
                     else:
                         logger.info(f"正在识别 {name} ...")
@@ -222,7 +222,7 @@ class TheMovieDbModule(_ModuleBase):
         :param season:  季号
         :return: TVDB信息
         """
-        if not season:
+        if season is None:
             return self.tmdb.get_info(mtype=mtype, tmdbid=tmdbid)
         else:
             return self.tmdb.get_tv_season_detail(tmdbid=tmdbid, season=season)
@@ -267,7 +267,7 @@ class TheMovieDbModule(_ModuleBase):
         # 将搜索词中的季写入标题中
         if results:
             medias = [MediaInfo(tmdb_info=info) for info in results]
-            if meta.begin_season:
+            if meta.begin_season is not None:
                 # 小写数据转大写
                 season_str = cn2an.an2cn(meta.begin_season, "low")
                 for media in medias:

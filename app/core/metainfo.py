@@ -57,7 +57,7 @@ def MetaInfo(title: str, subtitle: str = None, mtype: str = None) -> MetaBase:
         meta.type = MediaType(mtype)
     elif metainfo.get('type'):
         meta.type = metainfo['type']
-    if metainfo.get('begin_season'):
+    if metainfo.get('begin_season') is not None:
         meta.begin_season = metainfo['begin_season']
     if metainfo.get('end_season'):
         meta.end_season = metainfo['end_season']

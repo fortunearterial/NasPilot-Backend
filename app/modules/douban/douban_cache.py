@@ -142,7 +142,7 @@ class DoubanCache(metaclass=Singleton):
                     mtype = MediaType.MOVIE if info.get("type") == "movie" else MediaType.TV
                 else:
                     meta = MetaInfo(cache_title)
-                    if meta.begin_season:
+                    if meta.begin_season is not None:
                         mtype = MediaType.TV
                     else:
                         mtype = MediaType.MOVIE

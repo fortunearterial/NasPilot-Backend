@@ -149,7 +149,7 @@ class TransmissionModule(_ModuleBase):
                     if not meta_info.episode_list:
                         unwanted_file_ids.append(file_id)
                         continue
-                    selected = set(meta_info.episode_list).issubset(set(episodes))
+                    selected = set(meta_info.episode_list).intersection(set(episodes))
                     if not selected:
                         unwanted_file_ids.append(file_id)
                         continue

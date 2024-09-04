@@ -376,7 +376,7 @@ class Jellyfin:
             if tmdb_id and item_info.tmdbid:
                 if str(tmdb_id) != str(item_info.tmdbid):
                     return None, {}
-        if not season:
+        if season is None:
             season = ""
         try:
             req_url = "%sShows/%s/Episodes?season=%s&&userId=%s&isMissing=false&api_key=%s" % (
@@ -389,7 +389,7 @@ class Jellyfin:
                 season_episodes = {}
                 for res_item in res_items:
                     season_index = res_item.get("ParentIndexNumber")
-                    if not season_index:
+                    if season_index is None:
                         continue
                     if season is not None and season != season_index:
                         continue

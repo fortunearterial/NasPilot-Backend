@@ -103,7 +103,7 @@ class SubscribeChain(ChainBase):
                     # 豆瓣标题处理
                     meta = MetaInfo(mediainfo.title)
                     mediainfo.title = meta.name
-                    if not season:
+                    if season is None:
                         season = meta.begin_season
         # 识别失败
         if not mediainfo:
@@ -111,7 +111,7 @@ class SubscribeChain(ChainBase):
             return None, "未识别到媒体信息"
         # 总集数
         if mediainfo.type == MediaType.TV:
-            if not season and season != 0:
+            if season is None:
                 season = 1
             # 总集数
             if not kwargs.get('total_episode'):
@@ -275,7 +275,8 @@ class SubscribeChain(ChainBase):
             # 生成元数据
             meta = MetaInfo(subscribe.name)
             meta.year = subscribe.year
-            meta.begin_season = subscribe.season or None
+            if subscribe.season is not None:
+                meta.begin_season = subscribe.season
             try:
                 meta.type = MediaType(subscribe.type)
             except ValueError:
@@ -285,9 +286,10 @@ class SubscribeChain(ChainBase):
             mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                         tmdbid=subscribe.tmdbid,
                                                         doubanid=subscribe.doubanid,
-                                                        cache=False,
-                                                        steamid=subscribe.steamid,
-                                                        javdbid=subscribe.javdbid)
+                                                        bangumiid=subscribe.bangumiid, 
+                                                        steamid=subscribe.steam_id,
+                                                        javdbid=subscribe.javdb_id,
+                                                        cache=False)
             if not mediainfo:
                 logger.warn(
                     f'未识别到媒体信息，标题：{subscribe.name}，tmdbid：{subscribe.tmdbid}，doubanid：{subscribe.doubanid}，steamid：{subscribe.steamid}，javdbid：{subscribe.javdbid}')
@@ -297,7 +299,7 @@ class SubscribeChain(ChainBase):
             if not subscribe.best_version:
                 # 每季总集数
                 totals = {}
-                if subscribe.season and subscribe.total_episode:
+                if subscribe.season is not None and subscribe.total_episode:
                     totals = {
                         subscribe.season: subscribe.total_episode
                     }
@@ -570,7 +572,8 @@ class SubscribeChain(ChainBase):
             # 生成元数据
             meta = MetaInfo(subscribe.name)
             meta.year = subscribe.year
-            meta.begin_season = subscribe.season or None
+            if subscribe.season is not None:
+                meta.begin_season = subscribe.season
             try:
                 meta.type = MediaType(subscribe.type)
             except ValueError:
@@ -589,6 +592,9 @@ class SubscribeChain(ChainBase):
             mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                         tmdbid=subscribe.tmdbid,
                                                         doubanid=subscribe.doubanid,
+                                                        bangumiid=subscribe.bangumiid, 
+                                                        steamid=subscribe.steam_id,
+                                                        javdbid=subscribe.javdb_id,
                                                         cache=False)
             if not mediainfo:
                 logger.warn(
@@ -598,7 +604,7 @@ class SubscribeChain(ChainBase):
             if not subscribe.best_version:
                 # 每季总集数
                 totals = {}
-                if subscribe.season and subscribe.total_episode:
+                if subscribe.season is not None and subscribe.total_episode:
                     totals = {
                         subscribe.season: subscribe.total_episode
                     }
@@ -724,7 +730,7 @@ class SubscribeChain(ChainBase):
                             logger.debug(f'{torrent_info.title} 有多季，不处理')
                             continue
                         # 比对季
-                        if torrent_meta.begin_season:
+                        if torrent_meta.begin_season is not None:
                             if meta.begin_season != torrent_meta.begin_season:
                                 logger.debug(f'{torrent_info.title} 季不匹配')
                                 continue
@@ -805,7 +811,8 @@ class SubscribeChain(ChainBase):
             # 生成元数据
             meta = MetaInfo(subscribe.name)
             meta.year = subscribe.year
-            meta.begin_season = subscribe.season or None
+            if subscribe.season is not None:
+                meta.begin_season = subscribe.season
             try:
                 meta.type = MediaType(subscribe.type)
             except ValueError:
@@ -815,6 +822,9 @@ class SubscribeChain(ChainBase):
             mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                         tmdbid=subscribe.tmdbid,
                                                         doubanid=subscribe.doubanid,
+                                                        bangumiid=subscribe.bangumiid, 
+                                                        steamid=subscribe.steam_id,
+                                                        javdbid=subscribe.javdb_id,
                                                         cache=False)
             if not mediainfo:
                 logger.warn(
