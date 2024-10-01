@@ -19,6 +19,7 @@ class SubscribeOper(DbOper):
         subscribe = Subscribe.exists(self._db,
                                      tmdbid=mediainfo.tmdb_id,
                                      doubanid=mediainfo.douban_id,
+                                     bangumiid=mediainfo.bangumi_id,
                                      steamid=mediainfo.steam_id,
                                      javdbid=mediainfo.javdb_id,
                                      season=kwargs.get('season'))
@@ -47,6 +48,7 @@ class SubscribeOper(DbOper):
             subscribe = Subscribe.exists(self._db,
                                          tmdbid=mediainfo.tmdb_id,
                                          doubanid=mediainfo.douban_id,
+                                         bangumiid=mediainfo.bangumi_id,
                                          steamid=mediainfo.steam_id,
                                          javdbid=mediainfo.javdb_id,
                                          season=kwargs.get('season'))

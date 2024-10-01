@@ -270,6 +270,10 @@ class MetaAnime(MetaBase):
         title = re.sub(r"\[TV\s+(\d{1,4})", r"[\1", title, flags=re.IGNORECASE)
         # 将4K转为2160p
         title = re.sub(r'\[4k]', '2160p', title, flags=re.IGNORECASE)
+        # 将OADxx改为S00OADxx
+        title = re.sub(r"\[OAD\s+(\d{1,4})", r"[S00OAD\1", title, flags=re.IGNORECASE)
+        # 将特别篇改为S00
+        title = re.sub(r"特别篇|外传|SP|sp|外传|外伝", r"S00", title)
         # 处理/分隔的中英文标题
         names = title.split("]")
         if len(names) > 1 and title.find("- ") == -1:

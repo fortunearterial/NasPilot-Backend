@@ -520,7 +520,7 @@ class AVSubscriber(_PluginBase):
         """
         # 查询历史记录
         subscribeData = self.get_data('subscribe') or []
-        if not historys:
+        if not subscribeData:
             return [
                 {
                     'component': 'div',
@@ -581,41 +581,45 @@ class AVSubscriber(_PluginBase):
         self.__cookies = cookies
         _avs_new = []
         initData = self.get_data('init') or {}
-        subscribeData = self.get_data('subscribe') or []
+        # subscribeData = self.get_data('subscribe') or []
 
         for avinfo in self._avs.split("\n"):
-            name, url = avinfo.split("：")
-            logger.info(f"开始订阅女优 {name} ...")
+            try:
+                name, url = avinfo.split("：")
+                logger.info(f"开始订阅女优 {name} ...")
 
-            # 初始化
-            if "__init__" in url:
-                init_success = True
-                start_page = initData.get(name, {}).get("page", 0) + 1
-                for i in range(start_page, 999):
-                    page_url = url.replace("__init__", str(i))
-                    page_source = self.__get_html(page_url)
-                    if not page_source:
-                        init_success = False
-                        break
-                    if "暫無內容" in page_source:
-                        init_success = False
-                        break
-                    self.__subscribe(page_source=page_source, av_name=name, init=True)
-                    initData[name] = {
-                        "page": i
-                    }
-                    self.save_data('init', initData)
-                    subscribeData.append(f"%s: %s 完成了第 %s 页的首次订阅" % (datetime.now(), name, i))
-                    self.save_data('subscribe', subscribeData)
-                # 完成初始化后，仅订阅最新
-                if init_success:
-                    _avs_new.append(f"{name}：{url.replace('__init__', '1')}")
-            else:
-                page_source = self.__get_html(url)
-                self.__subscribe(page_source=page_source, av_name=name)
+                # 初始化
+                if "__init__" in url:
+                    init_success = True
+                    start_page = initData.get(name, {}).get("page", 0) + 1
+                    for i in range(start_page, 99):
+                        page_url = url.replace("__init__", str(i))
+                        page_source = self.__get_html(page_url)
+                        if not page_source:
+                            init_success = False
+                            break
+                        if "暫無內容" in page_source:
+                            init_success = True
+                            break
+                        self.__subscribe(page_source=page_source, av_name=name, init=True)
+                        initData[name] = {
+                            "page": i
+                        }
+                        self.save_data('init', initData)
+                        # subscribeData.append(f"%s: %s 完成了第 %s 页的首次订阅" % (datetime.now(), name, i))
+                        # self.save_data('subscribe', subscribeData)
+                    # 完成初始化后，仅订阅最新
+                    if init_success:
+                        _avs_new.append(f"{name}：{url.replace('__init__', '1')}")
+                else:
+                    page_source = self.__get_html(url)
+                    self.__subscribe(page_source=page_source, av_name=name)
+                    _avs_new.append(f"{name}：{url}")
+                    # subscribeData.append(f"%s: %s 完成了订阅" % (datetime.now(), name))
+                    # self.save_data('subscribe', subscribeData)
+            except Exception as e:
                 _avs_new.append(f"{name}：{url}")
-                subscribeData.append(f"%s: %s 完成了订阅" % (datetime.now(), name))
-                self.save_data('subscribe', subscribeData)
+                print(str(e))
         
         self._avs = "\n".join(_avs_new)
         self.update_config({

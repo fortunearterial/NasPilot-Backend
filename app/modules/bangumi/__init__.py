@@ -12,6 +12,7 @@ from app.log import logger
 from app.modules import _ModuleBase
 from app.modules.bangumi.bangumi import BangumiApi
 from app.utils.http import RequestUtils
+from app.schemas import MediaType
 
 
 class BangumiModule(_ModuleBase):

@@ -87,8 +87,8 @@ class TransferChain(ChainBase):
                                                      tmdbid=downloadhis.tmdbid,
                                                      doubanid=downloadhis.doubanid,
                                                      bangumiid=downloadhis.bangumiid, 
-                                                     steamid=downloadhis.steam_id,
-                                                     javdbid=downloadhis.javdb_id)
+                                                     steamid=downloadhis.steamid,
+                                                     javdbid=downloadhis.javdbid)
                     if mediainfo:
                         # 补充图片
                         self.obtain_images(mediainfo)
@@ -829,8 +829,8 @@ class TransferChain(ChainBase):
                                                                    tmdbid=tmdbid, 
                                                                    doubanid=doubanid, 
                                                                    bangumiid=bangumiid, 
-                                                                   steamid=steam_id,
-                                                                   javdbid=javdb_id)
+                                                                   steamid=steamid,
+                                                                   javdbid=javdbid)
             if not mediainfo:
                 return False, f"媒体信息识别失败，tmdbid：{tmdbid}，doubanid：{doubanid}，type: {mtype.value}"
             else:

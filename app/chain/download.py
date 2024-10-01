@@ -792,10 +792,8 @@ class DownloadChain(ChainBase):
             totals = {}
 
         if mediainfo.type == MediaType.GAME:
-            # TODO: GAME
             return False, {}
         elif mediainfo.type == MediaType.JAV:
-            # TODO: JAV
             return False, {}
             # itemid = self.mediaserver.get_item_id(mtype=mediainfo.type.value,
             #                                       title=mediainfo.title,

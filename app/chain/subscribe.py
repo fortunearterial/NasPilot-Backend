@@ -8,6 +8,8 @@ from typing import Dict, List, Optional, Union, Tuple
 from app.chain import ChainBase
 from app.chain.download import DownloadChain
 from app.chain.media import MediaChain
+from app.chain.tmdb import TmdbChain
+from app.chain.bangumi import BangumiChain
 from app.chain.search import SearchChain
 from app.chain.torrents import TorrentsChain
 from app.core.config import settings
@@ -287,8 +289,8 @@ class SubscribeChain(ChainBase):
                                                         tmdbid=subscribe.tmdbid,
                                                         doubanid=subscribe.doubanid,
                                                         bangumiid=subscribe.bangumiid, 
-                                                        steamid=subscribe.steam_id,
-                                                        javdbid=subscribe.javdb_id,
+                                                        steamid=subscribe.steamid,
+                                                        javdbid=subscribe.javdbid,
                                                         cache=False)
             if not mediainfo:
                 logger.warn(
@@ -364,6 +366,29 @@ class SubscribeChain(ChainBase):
                                                 priority_rule=priority_rule,
                                                 filter_rule=filter_rule,
                                                 area="imdbid" if subscribe.search_imdbid else "title")
+            if meta.type == MediaType.TV or meta.type == MediaType.ANIME:
+                # 如果是第0季，则搜索各个集的名称
+                if subscribe.season == 0:
+                    episodes_info = []
+                    if subscribe.tmdbid:
+                        episodes_info.extend(
+                            map(lambda ep: ep.name, TmdbChain().tmdb_episodes(tmdbid=subscribe.tmdbid, season=subscribe.season))
+                        )
+                    # if subscribe.bangumiid:
+                    #     episodes_info.extend(
+                    #         map(lambda ep: ep.get("name"), BangumiChain().bangumi_episodes(bangumiid=subscribe.bangumiid, season=subscribe.season))
+                    #     )
+                    
+                    for ep_name in set(episodes_info):
+                        # TODO: 123456
+                        contexts.extend(self.searchchain.process(mediainfo=mediainfo,
+                                                                 keyword=ep_name.split(' ')[-1],
+                                                                 no_exists=no_exists,
+                                                                 sites=sites,
+                                                                 priority_rule=priority_rule,
+                                                                 filter_rule=filter_rule,
+                                                                 area="imdbid" if subscribe.search_imdbid else "title"))
+            
             if not contexts:
                 logger.warn(f'订阅 {subscribe.keyword or subscribe.name} 未搜索到资源')
                 self.finish_subscribe_or_not(subscribe=subscribe, meta=meta,
@@ -593,8 +618,8 @@ class SubscribeChain(ChainBase):
                                                         tmdbid=subscribe.tmdbid,
                                                         doubanid=subscribe.doubanid,
                                                         bangumiid=subscribe.bangumiid, 
-                                                        steamid=subscribe.steam_id,
-                                                        javdbid=subscribe.javdb_id,
+                                                        steamid=subscribe.steamid,
+                                                        javdbid=subscribe.javdbid,
                                                         cache=False)
             if not mediainfo:
                 logger.warn(
@@ -823,8 +848,8 @@ class SubscribeChain(ChainBase):
                                                         tmdbid=subscribe.tmdbid,
                                                         doubanid=subscribe.doubanid,
                                                         bangumiid=subscribe.bangumiid, 
-                                                        steamid=subscribe.steam_id,
-                                                        javdbid=subscribe.javdb_id,
+                                                        steamid=subscribe.steamid,
+                                                        javdbid=subscribe.javdbid,
                                                         cache=False)
             if not mediainfo:
                 logger.warn(

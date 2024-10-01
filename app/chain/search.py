@@ -140,7 +140,7 @@ class SearchChain(ChainBase):
             mediainfo: MediaInfo = self.recognize_media(mtype=mediainfo.type,
                                                         tmdbid=mediainfo.tmdb_id,
                                                         doubanid=mediainfo.douban_id,
-                                                        bangumiid=mediainfo.bangumiid, 
+                                                        bangumiid=mediainfo.bangumi_id, 
                                                         steamid=mediainfo.steam_id,
                                                         javdbid=mediainfo.javdb_id)
             if not mediainfo:
@@ -176,6 +176,7 @@ class SearchChain(ChainBase):
             sites=sites,
             area=area
         )
+        
         if not torrents:
             logger.warn(f'{keyword or mediainfo.title} 未搜索到资源')
             return []
