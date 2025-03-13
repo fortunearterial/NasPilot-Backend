@@ -9,18 +9,18 @@ envsubst '${NGINX_PORT}${PORT}${NGINX_CLIENT_MAX_BODY_SIZE}' < /etc/nginx/nginx.
 cd /
 /usr/local/bin/mp_update
 cd /app || exit
-# 更改 moviepilot userid 和 groupid
-groupmod -o -g "${PGID}" moviepilot
-usermod -o -u "${PUID}" moviepilot
+# 更改 naspilot userid 和 groupid
+groupmod -o -g "${PGID}" naspilot
+usermod -o -u "${PUID}" naspilot
 # 更改文件权限
-chown -R moviepilot:moviepilot \
+chown -R naspilot:naspilot \
     "${HOME}" \
     /app \
     /public \
     /config \
     /var/lib/nginx \
     /var/log/nginx
-chown moviepilot:moviepilot /etc/hosts /tmp
+chown naspilot:naspilot /etc/hosts /tmp
 # 下载浏览器内核
 if [[ "$HTTPS_PROXY" =~ ^https?:// ]] || [[ "$https_proxy" =~ ^https?:// ]] || [[ "$PROXY_HOST" =~ ^https?:// ]]; then
   HTTPS_PROXY="${HTTPS_PROXY:-${https_proxy:-$PROXY_HOST}}" gosu moviepilot:moviepilot playwright install chromium

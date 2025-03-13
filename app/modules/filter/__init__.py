@@ -327,6 +327,8 @@ class FilterModule(_ModuleBase):
         downloadvolumefactor = self.rule_set[rule_name].get("downloadvolumefactor")
         # 发布时间规则
         pubdate: str = self.rule_set[rule_name].get("publish_time")
+        # FIX：替换特殊的种子命名规则
+        content = content.replace("-", " - ")
         if includes and not any(re.search(r"%s" % include, content, re.IGNORECASE) for include in includes):
             # 未发现任何包含项
             logger.debug(f"种子 {torrent.site_name} - {torrent.title} 不包含任何项 {includes}")

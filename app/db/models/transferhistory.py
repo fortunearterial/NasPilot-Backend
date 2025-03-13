@@ -24,35 +24,35 @@ class TransferHistory(Base):
     # 目标文件项
     dest_fileitem = Column(JSON, default=dict)
     # 转移模式 move/copy/link...
-    mode = Column(String)
+    mode = Column(String(255))
     # 类型 电影/电视剧
-    type = Column(String)
+    type = Column(String(255))
     # 二级分类
-    category = Column(String)
+    category = Column(String(255))
     # 标题
-    title = Column(String, index=True)
+    title = Column(String(255), index=True)
     # 年份
-    year = Column(String)
+    year = Column(String(255))
     tmdbid = Column(Integer, index=True)
-    imdbid = Column(String)
+    imdbid = Column(String(255))
     tvdbid = Column(Integer)
-    doubanid = Column(String)
+    doubanid = Column(String(255))
     # Sxx
-    seasons = Column(String)
+    seasons = Column(String(255))
     # Exx
-    episodes = Column(String)
+    episodes = Column(String(255))
     # 海报
-    image = Column(String)
+    image = Column(String(255))
     # 下载器
-    downloader = Column(String)
+    downloader = Column(String(255))
     # 下载器hash
-    download_hash = Column(String, index=True)
+    download_hash = Column(String(255), index=True)
     # 转移成功状态
     status = Column(Boolean(), default=True)
     # 转移失败信息
-    errmsg = Column(String)
+    errmsg = Column(String(255))
     # 时间
-    date = Column(String, index=True)
+    date = Column(String(255), index=True)
     # 文件清单，以JSON存储
     files = Column(JSON, default=list)
 
@@ -160,14 +160,14 @@ class TransferHistory(Base):
         # TMDBID + 类型
         if tmdbid and mtype:
             # 电视剧某季某集
-            if season and episode:
+            if season is not None and episode:
                 result = db.query(TransferHistory).filter(TransferHistory.tmdbid == tmdbid,
                                                           TransferHistory.type == mtype,
                                                           TransferHistory.seasons == season,
                                                           TransferHistory.episodes == episode,
                                                           TransferHistory.dest == dest).all()
             # 电视剧某季
-            elif season:
+            elif season is not None:
                 result = db.query(TransferHistory).filter(TransferHistory.tmdbid == tmdbid,
                                                           TransferHistory.type == mtype,
                                                           TransferHistory.seasons == season).all()
@@ -184,14 +184,14 @@ class TransferHistory(Base):
         # 标题 + 年份
         elif title and year:
             # 电视剧某季某集
-            if season and episode:
+            if season is not None and episode:
                 result = db.query(TransferHistory).filter(TransferHistory.title == title,
                                                           TransferHistory.year == year,
                                                           TransferHistory.seasons == season,
                                                           TransferHistory.episodes == episode,
                                                           TransferHistory.dest == dest).all()
             # 电视剧某季
-            elif season:
+            elif season is not None:
                 result = db.query(TransferHistory).filter(TransferHistory.title == title,
                                                           TransferHistory.year == year,
                                                           TransferHistory.seasons == season).all()

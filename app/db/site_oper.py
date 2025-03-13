@@ -73,11 +73,17 @@ class SiteOper(DbOper):
         """
         return Site.get_domains_by_ids(self._db, ids)
 
-    def exists(self, domain: str) -> bool:
+    def get_by_url(self, url: str) -> Site:
+        """
+        按地址获取站点
+        """
+        return Site.get_by_url(self._db, url)
+
+    def exists(self, url: str) -> bool:
         """
         判断站点是否存在
         """
-        return Site.get_by_domain(self._db, domain) is not None
+        return Site.get_by_url(self._db, url) is not None
 
     def update_cookie(self, domain: str, cookies: str) -> Tuple[bool, str]:
         """

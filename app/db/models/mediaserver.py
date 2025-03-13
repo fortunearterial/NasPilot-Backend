@@ -13,33 +13,33 @@ class MediaServerItem(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 服务器类型
-    server = Column(String)
+    server = Column(String(255))
     # 媒体库ID
-    library = Column(String)
+    library = Column(String(255))
     # ID
-    item_id = Column(String, index=True)
+    item_id = Column(String(255), index=True)
     # 类型
-    item_type = Column(String)
+    item_type = Column(String(255))
     # 标题
-    title = Column(String, index=True)
+    title = Column(String(255), index=True)
     # 原标题
-    original_title = Column(String)
+    original_title = Column(String(255))
     # 年份
-    year = Column(String)
+    year = Column(String(255))
     # TMDBID
     tmdbid = Column(Integer, index=True)
     # IMDBID
-    imdbid = Column(String, index=True)
+    imdbid = Column(String(255), index=True)
     # TVDBID
-    tvdbid = Column(String, index=True)
+    tvdbid = Column(String(255), index=True)
     # 路径
-    path = Column(String)
+    path = Column(String(2000))
     # 季集
     seasoninfo = Column(JSON, default=dict)
     # 备注
     note = Column(JSON)
     # 同步时间
-    lst_mod_date = Column(String, default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    lst_mod_date = Column(String(255), default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     @staticmethod
     @db_query

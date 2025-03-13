@@ -1,7 +1,7 @@
 FROM python:3.11.4-slim-bookworm
 ENV LANG="C.UTF-8" \
     TZ="Asia/Shanghai" \
-    HOME="/moviepilot" \
+    HOME="/naspilot" \
     CONFIG_DIR="/config" \
     TERM="xterm" \
     DISPLAY=:987 \
@@ -43,7 +43,7 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf \
         /tmp/* \
-        /moviepilot/.cache \
+        /naspilot/.cache \
         /var/lib/apt/lists/* \
         /var/tmp/*
 COPY requirements.in requirements.in
@@ -59,7 +59,7 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf \
         /tmp/* \
-        /moviepilot/.cache \
+        /naspilot/.cache \
         /var/lib/apt/lists/* \
         /var/tmp/*
 COPY . .

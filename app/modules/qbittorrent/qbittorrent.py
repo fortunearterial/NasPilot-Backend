@@ -106,7 +106,7 @@ class Qbittorrent:
                     tags = [tags]
                 for torrent in torrents:
                     torrent_tags = [str(tag).strip() for tag in torrent.get("tags").split(',')]
-                    if set(tags).issubset(set(torrent_tags)):
+                    if set(tags).intersection(set(torrent_tags)):
                         results.append(torrent)
                 return results, False
             return torrents or [], False
@@ -123,7 +123,7 @@ class Qbittorrent:
         if not self.qbc:
             return None
         # completed会包含移动状态 改为获取seeding状态 包含活动上传, 正在做种, 及强制做种
-        torrents, error = self.get_torrents(status="seeding", ids=ids, tags=tags)
+        torrents, error = self.get_torrents(status=["seeding", "completed"], ids=ids, tags=tags)
         return None if error else torrents or []
 
     def get_downloading_torrents(self, ids: Union[str, list] = None,

@@ -3,6 +3,7 @@ from typing import List, Any
 import cn2an
 from fastapi import APIRouter, Request, BackgroundTasks, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app import schemas
 from app.chain.subscribe import SubscribeChain
@@ -82,6 +83,8 @@ def create_subscribe(
                                         season=subscribe_in.season,
                                         doubanid=subscribe_in.doubanid,
                                         bangumiid=subscribe_in.bangumiid,
+                                        steamid=subscribe_in.steamid,
+                                        javdbid=subscribe_in.javdbid,
                                         mediaid=subscribe_in.mediaid,
                                         username=current_user.name,
                                         best_version=subscribe_in.best_version,
@@ -170,7 +173,7 @@ def subscribe_mediaid(
         db: Session = Depends(get_db),
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
-    根据 TMDBID/豆瓣ID/BangumiId 查询订阅 tmdb:/douban:
+    根据 TMDBID/豆瓣ID/BangumiId/SteamId/JavdbId 查询订阅 tmdb:/douban:/steam:/javdb:
     """
     title_check = False
     if mediaid.startswith("tmdb:"):
@@ -190,6 +193,17 @@ def subscribe_mediaid(
         if not bangumiid or not str(bangumiid).isdigit():
             return Subscribe()
         result = Subscribe.get_by_bangumiid(db, int(bangumiid))
+    elif mediaid.startswith("steam:"):
+        steamid = mediaid[6:]
+        if not steamid:
+            return Subscribe()
+        result = Subscribe.get_by_steamid(db, steamid)
+    elif mediaid.startswith("javdb:"):
+        javdbid = mediaid[6:]
+        if not javdbid:
+            return Subscribe()
+        result = Subscribe.get_by_javdbid(db, javdbid)
+
         if not result and title:
             title_check = True
     else:
@@ -199,7 +213,7 @@ def subscribe_mediaid(
     # 使用名称检查订阅
     if title_check and title:
         meta = MetaInfo(title)
-        if season:
+        if season is not None:
             meta.begin_season = season
         result = Subscribe.get_by_title(db, title=meta.name, season=meta.begin_season)
 
@@ -299,7 +313,7 @@ def delete_subscribe_by_mediaid(
         _: schemas.TokenPayload = Depends(verify_token)
 ) -> Any:
     """
-    根据TMDBID或豆瓣ID删除订阅 tmdb:/douban:
+    根据TMDBID或豆瓣ID删除订阅 tmdb:/douban:/steam:
     """
     delete_subscribes = []
     if mediaid.startswith("tmdb:"):
@@ -313,6 +327,20 @@ def delete_subscribe_by_mediaid(
         if not doubanid:
             return schemas.Response(success=False)
         subscribe = Subscribe().get_by_doubanid(db, doubanid)
+        if subscribe:
+            delete_subscribes.append(subscribe)
+    elif mediaid.startswith("steam:"):
+        steamid = mediaid[6:]
+        if not steamid:
+            return schemas.Response(success=False)
+        subscribe = Subscribe().get_by_steamid(db, steamid)
+        if subscribe:
+            delete_subscribes.append(subscribe)
+    elif mediaid.startswith("javdb:"):
+        javdbid = mediaid[6:]
+        if not javdbid:
+            return schemas.Response(success=False)
+        subscribe = Subscribe().get_by_javdbid(db, javdbid)
         if subscribe:
             delete_subscribes.append(subscribe)
     else:
@@ -432,7 +460,7 @@ def popular_subscribes(
             # 处理标题
             title = sub.get("name")
             season = sub.get("season")
-            if season and int(season) > 1 and media.tmdb_id:
+            if season is not None and media.tmdb_id:
                 # 小写数据转大写
                 season_str = cn2an.an2cn(season, "low")
                 title = f"{title} 第{season_str}季"

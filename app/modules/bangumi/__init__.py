@@ -51,7 +51,7 @@ class BangumiModule(_ModuleBase):
         获取模块子类型
         """
         return MediaRecognizeType.Bangumi
-    
+
     @staticmethod
     def get_priority() -> int:
         """
@@ -66,6 +66,8 @@ class BangumiModule(_ModuleBase):
         :param bangumiid: 识别的Bangumi ID
         :return: 识别的媒体信息，包括剧集信息
         """
+        if settings.RECOGNIZE_SOURCE and not "bangumi" in settings.RECOGNIZE_SOURCE:
+            return None
         if not bangumiid:
             return None
 

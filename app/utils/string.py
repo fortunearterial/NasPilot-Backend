@@ -37,7 +37,8 @@ class StringUtils:
         if text.isdigit():
             return int(text)
         text = text.replace(",", "").replace(" ", "").upper()
-        size = re.sub(r"[KMGTPI]*B?", "", text, flags=re.IGNORECASE)
+        # fix: 适配俄文
+        size = re.sub(r"[KMGTPI]*B?|[ГМ]*Б?", "", text, flags=re.IGNORECASE)
         try:
             size = float(size)
         except ValueError:
@@ -46,9 +47,9 @@ class StringUtils:
             size *= 1024 ** 5
         elif text.find("TB") != -1 or text.find("TIB") != -1:
             size *= 1024 ** 4
-        elif text.find("GB") != -1 or text.find("GIB") != -1:
+        elif text.find("GB") != -1 or text.find("GIB") != -1 or text.find("ГБ") != -1:
             size *= 1024 ** 3
-        elif text.find("MB") != -1 or text.find("MIB") != -1:
+        elif text.find("MB") != -1 or text.find("MIB") != -1 or text.find("МБ") != -1:
             size *= 1024 ** 2
         elif text.find("KB") != -1 or text.find("KIB") != -1:
             size *= 1024

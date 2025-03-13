@@ -151,7 +151,7 @@ class MediaChain(ChainBase, metaclass=Singleton):
         # 合并信息
         if mtype:
             meta.type = mtype
-        if season_num:
+        if season_num is not None:
             meta.begin_season = season_num
         if episode_num:
             meta.begin_episode = episode_num
@@ -254,7 +254,7 @@ class MediaChain(ChainBase, metaclass=Singleton):
                 for seainfo in tmdbinfo['seasons']:
                     # 季
                     season_number = seainfo.get("season_number")
-                    if not season_number:
+                    if season_number is None:
                         continue
                     air_date = seainfo.get("air_date")
                     if air_date and season_number == season:

@@ -23,7 +23,7 @@ class MetaBase(object):
     org_string: Optional[str] = None
     # 副标题
     subtitle: Optional[str] = None
-    # 类型 电影、电视剧
+    # 类型 电影、电视剧、游戏
     type: MediaType = MediaType.UNKNOWN
     # 识别的中文名
     cn_name: Optional[str] = None
@@ -40,9 +40,9 @@ class MetaBase(object):
     # 总集数
     total_episode: int = 0
     # 识别的开始集
-    begin_episode: Optional[int] = None
+    begin_episode: Optional[float] = None
     # 识别的结束集
-    end_episode: Optional[int] = None
+    end_episode: Optional[float] = None
     # Partx Cd Dvd Disk Disc
     part: Optional[str] = None
     # 识别的资源类型
@@ -64,6 +64,8 @@ class MetaBase(object):
     # 附加信息
     tmdbid: int = None
     doubanid: str = None
+    steamid: str = None
+    javdbid: str = None
 
     # 副标题解析
     _subtitle_flag = False
@@ -132,7 +134,7 @@ class MetaBase(object):
             season_all_str = re.search(r"%s" % self._subtitle_season_all_re, title_text, re.IGNORECASE)
             if season_all_str:
                 season_all = season_all_str.group(1)
-                if not season_all:
+                if season_all is None:
                     season_all = season_all_str.group(2)
                 if season_all and self.begin_season is None and self.begin_episode is None:
                     try:
@@ -190,8 +192,8 @@ class MetaBase(object):
                 else:
                     return
                 try:
-                    begin_episode = int(cn2an.cn2an(begin_episode.strip(), mode='smart'))
-                    end_episode = int(cn2an.cn2an(end_episode.strip(), mode='smart'))
+                    begin_episode = cn2an.cn2an(begin_episode.strip(), mode='smart')
+                    end_episode = cn2an.cn2an(end_episode.strip(), mode='smart')
                 except Exception as err:
                     logger.debug(f'识别集失败：{str(err)} - {traceback.format_exc()}')
                     return
@@ -199,7 +201,7 @@ class MetaBase(object):
                     return
                 if end_episode and end_episode >= 10000:
                     return
-                if self.begin_episode is None and isinstance(begin_episode, int):
+                if self.begin_episode is None and isinstance(begin_episode, float):
                     self.begin_episode = begin_episode
                     self.total_episode = 1
                 if self.begin_episode is not None \
@@ -223,11 +225,11 @@ class MetaBase(object):
                     end_episode = None
                     if episodes.find('-') != -1:
                         episodes = episodes.split('-')
-                        begin_episode = int(cn2an.cn2an(episodes[0].strip(), mode='smart'))
+                        begin_episode = cn2an.cn2an(episodes[0].strip(), mode='smart')
                         if len(episodes) > 1:
-                            end_episode = int(cn2an.cn2an(episodes[1].strip(), mode='smart'))
+                            end_episode = cn2an.cn2an(episodes[1].strip(), mode='smart')
                     else:
-                        begin_episode = int(cn2an.cn2an(episodes, mode='smart'))
+                        begin_episode = cn2an.cn2an(episodes, mode='smart')
                 except Exception as err:
                     logger.debug(f'识别集失败：{str(err)} - {traceback.format_exc()}')
                     return
@@ -235,7 +237,7 @@ class MetaBase(object):
                     return
                 if end_episode and end_episode >= 10000:
                     return
-                if self.begin_episode is None and isinstance(begin_episode, int):
+                if self.begin_episode is None and isinstance(begin_episode, float):
                     self.begin_episode = begin_episode
                     self.total_episode = 1
                 if self.begin_episode is not None \
@@ -341,7 +343,7 @@ class MetaBase(object):
         if self.begin_episode is None:
             return []
         elif self.end_episode is not None:
-            return [episode for episode in range(self.begin_episode, self.end_episode + 1)]
+            return [float(episode) for episode in range(math.floor(self.begin_episode), math.ceil(self.end_episode) + 1)]
         else:
             return [self.begin_episode]
 
@@ -383,7 +385,7 @@ class MetaBase(object):
         """
         返回季集字符串
         """
-        if self.type == MediaType.TV:
+        if self.type == MediaType.TV or self.type == MediaType.ANIME:
             seaion = self.season
             episode = self.episode
             if seaion and episode:
@@ -481,7 +483,7 @@ class MetaBase(object):
             return set(meta_episode).issuperset(set(episode))
         else:
             if self.end_episode is not None:
-                return self.begin_episode <= int(episode) <= self.end_episode
+                return self.begin_episode <= StringUtils.str_float(episode) <= self.end_episode
             else:
                 return int(episode) == self.begin_episode
 
@@ -509,15 +511,15 @@ class MetaBase(object):
         if not ep:
             return
         if isinstance(ep, list):
-            if len(ep) == 1 and str(ep[0]).isdigit():
-                self.begin_episode = int(ep[0])
+            if len(ep) == 1 and StringUtils.is_number(ep[0]):
+                self.begin_episode = StringUtils.str_float(ep[0])
                 self.end_episode = None
-            elif len(ep) > 1 and str(ep[0]).isdigit() and str(ep[-1]).isdigit():
-                self.begin_episode = int(ep[0])
-                self.end_episode = int(ep[-1])
+            elif len(ep) > 1 and StringUtils.is_number(ep[0]) and StringUtils.is_number(ep[-1]):
+                self.begin_episode = StringUtils.str_float(ep[0])
+                self.end_episode = StringUtils.str_float(ep[-1])
                 self.total_episode = (self.end_episode - self.begin_episode) + 1
-        elif str(ep).isdigit():
-            self.begin_episode = int(ep)
+        elif StringUtils.is_number(ep):
+            self.begin_episode = StringUtils.str_float(ep)
             self.end_episode = None
 
     def set_episodes(self, begin: int, end: int):

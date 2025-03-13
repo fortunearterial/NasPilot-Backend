@@ -6,8 +6,8 @@ class OtpUtils:
     def generate_secret_key(username: str) -> (str, str):
         try:
             secret = pyotp.random_base32()
-            uri = pyotp.totp.TOTP(secret).provisioning_uri(name='MoviePilot',
-                                                           issuer_name='MoviePilot(' + username + ')')
+            uri = pyotp.totp.TOTP(secret).provisioning_uri(name='NasPilot',
+                                                           issuer_name='NasPilot(' + username + ')')
             return secret, uri
         except Exception as err:
             print(str(err))

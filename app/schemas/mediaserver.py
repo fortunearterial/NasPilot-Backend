@@ -10,7 +10,7 @@ class ExistMediaInfo(BaseModel):
     """
     媒体服务器存在媒体信息
     """
-    # 类型 电影、电视剧
+    # 类型 电影、电视剧、游戏
     type: Optional[MediaType]
     # 季
     seasons: Optional[Dict[int, list]] = Field(default_factory=dict)

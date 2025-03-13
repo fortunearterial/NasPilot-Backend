@@ -59,6 +59,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             tmdbid: int = None,
             doubanid: str = None,
             bangumiid: int = None,
+            steamid: int = None,
+            javdbid: str = None,
             mediaid: str = None,
             season: int = None,
             channel: MessageChannel = None,
@@ -100,37 +102,47 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             metainfo.year = year
         if mtype:
             metainfo.type = mtype
-        if season:
+        if season is not None:
             metainfo.type = MediaType.TV
             metainfo.begin_season = season
-        # 识别媒体信息
-        if settings.RECOGNIZE_SOURCE == "themoviedb":
-            # TMDB识别模式
-            if not tmdbid:
+        if steamid:
+            # 识别STEAM信息
+            mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, steamid=steamid)
+        elif javdbid:
+            # 识别JavDB信息
+            mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, javdbid=javdbid)
+            if mediainfo and mediainfo.title != title:
+                logger.warn(f"{javdbid} 识别标题“{mediainfo.title}”与指定标题“{title}”不匹配！")
+                mediainfo.title = title
+        else:
+            # 识别媒体信息
+            if "themoviedb" in settings.RECOGNIZE_SOURCE:
+                # TMDB识别模式
+                if not tmdbid:
+                    if doubanid:
+                        # 将豆瓣信息转换为TMDB信息
+                        tmdbinfo = self.mediachain.get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
+                        if tmdbinfo:
+                            mediainfo = MediaInfo(tmdb_info=tmdbinfo)
+                    elif mediaid:
+                        # 未知前缀，广播事件解析媒体信息
+                        mediainfo = __get_event_meida(mediaid, metainfo)
+                else:
+                    # 使用TMDBID识别
+                    mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, tmdbid=tmdbid, cache=False)
+            else:
                 if doubanid:
-                    # 将豆瓣信息转换为TMDB信息
-                    tmdbinfo = self.mediachain.get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
-                    if tmdbinfo:
-                        mediainfo = MediaInfo(tmdb_info=tmdbinfo)
+                    # 豆瓣识别模式，不使用缓存
+                    mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, doubanid=doubanid, cache=False)
                 elif mediaid:
                     # 未知前缀，广播事件解析媒体信息
                     mediainfo = __get_event_meida(mediaid, metainfo)
-            else:
-                # 使用TMDBID识别
-                mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, tmdbid=tmdbid, cache=False)
-        else:
-            if doubanid:
-                # 豆瓣识别模式，不使用缓存
-                mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, doubanid=doubanid, cache=False)
-            elif mediaid:
-                # 未知前缀，广播事件解析媒体信息
-                mediainfo = __get_event_meida(mediaid, metainfo)
-            if mediainfo:
-                # 豆瓣标题处理
-                meta = MetaInfo(mediainfo.title)
-                mediainfo.title = meta.name
-                if not season:
-                    season = meta.begin_season
+                if mediainfo:
+                    # 豆瓣标题处理
+                    meta = MetaInfo(mediainfo.title)
+                    mediainfo.title = meta.name
+                    if not season:
+                        season = meta.begin_season
 
         # 使用名称识别兜底
         if not mediainfo:
@@ -143,7 +155,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
 
         # 总集数
         if mediainfo.type == MediaType.TV:
-            if not season:
+            if season is None:
                 season = 1
             # 总集数
             if not kwargs.get('total_episode'):
@@ -183,6 +195,10 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             mediainfo.douban_id = doubanid
         if bangumiid:
             mediainfo.bangumi_id = bangumiid
+        if steamid:
+            mediainfo.steam_id = steamid
+        if javdbid:
+            mediainfo.javdb_id = javdbid
 
         # 添加订阅
         kwargs.update({
@@ -782,7 +798,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             # 生成元数据
             meta = MetaInfo(subscribe.name)
             meta.year = subscribe.year
-            meta.begin_season = subscribe.season or None
+            if subscribe.season is not None:
+                meta.begin_season = subscribe.season
             try:
                 meta.type = MediaType(subscribe.type)
             except ValueError:
@@ -1125,7 +1142,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                         # 没有自定义总集数
                         total_episode = total
                     # 新的集列表
-                    new_episodes = list(range(max(start_episode, start), total_episode + 1))
+                    new_episodes = list([float(ep) for ep in range(max(start_episode, start), total_episode + 1)])
                     # 与原集列表取交集
                     episodes = list(set(episode_list).intersection(set(new_episodes)))
                 # 更新集合
@@ -1172,7 +1189,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     return True, {}
                 no_exists[mediakey][begin_season] = schemas.NotExistMediaInfo(
                     season=begin_season,
-                    episodes=episodes,
+                    episodes=list(set([float(ep) for ep in range(start, total_episode + 1)]).difference(set(downloaded_episodes))),
                     total_episode=total_episode,
                     start_episode=start,
                 )
@@ -1227,6 +1244,10 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             default_subscribe_key = SystemConfigKey.DefaultTvSubscribeConfig.value
         if mtype == MediaType.MOVIE:
             default_subscribe_key = SystemConfigKey.DefaultMovieSubscribeConfig.value
+        elif mtype == MediaType.GAME:
+            default_subscribe_key = SystemConfigKey.DefaultGameSubscribeConfig.value
+        elif mtype == MediaType.JAV:
+            default_subscribe_key = SystemConfigKey.DefaultJavSubscribeConfig.value
 
         # 默认订阅规则
         if hasattr(settings, default_subscribe_key):

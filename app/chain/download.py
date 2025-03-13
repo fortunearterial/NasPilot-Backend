@@ -343,6 +343,8 @@ class DownloadChain(ChainBase):
                 imdbid=_media.imdb_id,
                 tvdbid=_media.tvdb_id,
                 doubanid=_media.douban_id,
+                steamid=_media.steam_id,
+                javdbid=_media.javdb_id,
                 seasons=_meta.season,
                 episodes=download_episodes or _meta.episode,
                 image=_media.get_backdrop_image(),
@@ -516,12 +518,14 @@ class DownloadChain(ChainBase):
         # 分组排序
         contexts = TorrentHelper().sort_group_torrents(contexts)
 
-        # 如果是电影，直接下载
+        # 如果是电影、游戏、JAV，直接下载
         for context in contexts:
             if global_vars.is_system_stopped:
                 break
-            if context.media_info.type == MediaType.MOVIE:
-                logger.info(f"开始下载电影 {context.torrent_info.title} ...")
+            if context.media_info.type == MediaType.MOVIE \
+                or context.media_info.type == MediaType.GAME \
+                or context.media_info.type == MediaType.JAV:
+                logger.info(f"开始下载{context.media_info.type} {context.torrent_info.title} ...")
                 if self.download_single(context, save_path=save_path, channel=channel,
                                         source=source, userid=userid, username=username,
                                         media_category=media_category, downloader=downloader):
@@ -542,7 +546,10 @@ class DownloadChain(ChainBase):
                     if not tv.episodes:
                         if not need_seasons.get(need_mid):
                             need_seasons[need_mid] = []
-                        need_seasons[need_mid].append(tv.season or 1)
+                        if tv.season is not None:
+                            need_seasons[need_mid].append(tv.season)
+                        else:
+                            need_seasons[need_mid].append(1)
             logger.info(f"缺失整季：{need_seasons}")
             # 查找整季包含的种子，只处理整季没集的种子或者是集数超过季的种子
             for need_mid, need_season in need_seasons.items():
@@ -557,12 +564,12 @@ class DownloadChain(ChainBase):
                     # 种子信息
                     torrent = context.torrent_info
                     # 排除电视剧
-                    if media.type != MediaType.TV:
+                    if media.type != MediaType.TV and media.type != MediaType.ANIME:
                         continue
                     # 种子的季清单
                     torrent_season = meta.season_list
                     # 没有季的默认为第1季
-                    if not torrent_season:
+                    if torrent_season is None:
                         torrent_season = [1]
                     # 种子有集的不要
                     if meta.episode_list:
@@ -573,7 +580,7 @@ class DownloadChain(ChainBase):
                         if context in downloaded_list:
                             continue
                         # 种子季是需要季或者子集
-                        if set(torrent_season).issubset(set(need_season)):
+                        if set(torrent_season).intersection(set(need_season)):
                             if len(torrent_season) == 1:
                                 # 只有一季的可能是命名错误，需要打开种子鉴别，只有实际集数大于等于总集数才下载
                                 logger.info(f"开始下载种子 {torrent.title} ...")
@@ -656,7 +663,7 @@ class DownloadChain(ChainBase):
                     start_episode = tv.start_episode or 1
                     # 缺失整季的转化为缺失集进行比较
                     if not need_episodes:
-                        need_episodes = list(range(start_episode, total_episode + 1))
+                        need_episodes = [float(ep) for ep in list(range(start_episode, total_episode + 1))]
                     # 循环种子
                     for context in contexts:
                         if global_vars.is_system_stopped:
@@ -666,7 +673,7 @@ class DownloadChain(ChainBase):
                         # 识别元数据
                         meta = context.meta_info
                         # 非剧集不处理
-                        if media.type != MediaType.TV:
+                        if media.type != MediaType.TV and media.type != MediaType.ANIME:
                             continue
                         # 匹配TMDB
                         if media.tmdb_id == need_mid or media.douban_id == need_mid:
@@ -684,7 +691,7 @@ class DownloadChain(ChainBase):
                             if not torrent_episodes:
                                 continue
                             # 为需要集的子集则下载
-                            if torrent_episodes.issubset(set(need_episodes)):
+                            if torrent_episodes.intersection(set(need_episodes)):
                                 # 下载
                                 logger.info(f"开始下载 {meta.title} ...")
                                 download_id = self.download_single(context, save_path=save_path,
@@ -737,7 +744,7 @@ class DownloadChain(ChainBase):
                         # 种子信息
                         torrent = context.torrent_info
                         # 非剧集不处理
-                        if media.type != MediaType.TV:
+                        if media.type != MediaType.TV and media.type != MediaType.ANIME:
                             continue
                         # 不重复添加
                         if context in downloaded_list:
@@ -851,6 +858,10 @@ class DownloadChain(ChainBase):
         if not totals:
             totals = {}
 
+        if mediainfo.type == MediaType.GAME:
+            return False, {}
+        elif mediainfo.type == MediaType.JAV:
+            return False, {}
         if mediainfo.type == MediaType.MOVIE:
             # 电影
             itemid = self.mediaserver.get_item_id(mtype=mediainfo.type.value,
@@ -893,6 +904,14 @@ class DownloadChain(ChainBase):
                     total_ep = totals.get(season) or len(episodes)
                     __append_no_exists(_season=season, _episodes=[],
                                        _total=total_ep, _start=min(episodes))
+                    # 如果是ANIME，且为第0季，增加其他季的SP
+                    if season == 0 and mediainfo.bangumi_id:
+                        bangumi_info = self.recognize_media(mtype=mediainfo.type, bangumiid=mediainfo.bangumi_id, only_ova_episodes=True)
+                        for _season, _episodes in bangumi_info.seasons.items():
+                            if _season != season:
+                                __append_no_exists(_season=_season, _episodes=_episodes,
+                                                   _total=len(_episodes), _start=None)
+
                 return False, no_exists
             else:
                 # 存在一些，检查每季缺失的季集
@@ -910,12 +929,10 @@ class DownloadChain(ChainBase):
                         # 已存在取差集
                         if totals.get(season):
                             # 按总集数计算缺失集（开始集为TMDB中的最小集）
-                            lack_episodes = list(set(range(min(episodes),
-                                                           season_total + min(episodes))
-                                                     ).difference(set(exist_episodes)))
+                            lack_episodes = list(set([float(ep) for ep in range(min(episodes), season_total + min(episodes))]).difference(set(exist_episodes)))
                         else:
                             # 按TMDB集数计算缺失集
-                            lack_episodes = list(set(episodes).difference(set(exist_episodes)))
+                            lack_episodes = list(set([float(ep) for ep in episodes]).difference(set(exist_episodes)))
                         if not lack_episodes:
                             # 全部集存在
                             continue
@@ -926,6 +943,14 @@ class DownloadChain(ChainBase):
                         # 全季不存在
                         __append_no_exists(_season=season, _episodes=[],
                                            _total=season_total, _start=min(episodes))
+
+                    # 如果是ANIME，且为第0季，增加其他季的SP
+                    if season == 0 and mediainfo.bangumi_id:
+                        bangumi_info = self.recognize_media(mtype=mediainfo.type, bangumiid=mediainfo.bangumi_id, only_ova_episodes=True)
+                        for _season, _episodes in bangumi_info.seasons.items():
+                            if _season != season:
+                                __append_no_exists(_season=_season, _episodes=_episodes,
+                                                   _total=len(_episodes), _start=None)
             # 存在不完整的剧集
             if no_exists:
                 logger.debug(f"媒体库中已存在部分剧集，缺失：{no_exists}")

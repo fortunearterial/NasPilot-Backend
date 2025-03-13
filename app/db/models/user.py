@@ -11,21 +11,21 @@ class User(Base):
     # ID
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 用户名，唯一值
-    name = Column(String, index=True, nullable=False)
+    name = Column(String(255), index=True, nullable=False)
     # 邮箱
-    email = Column(String)
+    email = Column(String(255))
     # 加密后密码
-    hashed_password = Column(String)
+    hashed_password = Column(String(255))
     # 是否启用
     is_active = Column(Boolean(), default=True)
     # 是否管理员
     is_superuser = Column(Boolean(), default=False)
     # 头像
-    avatar = Column(String)
+    avatar = Column(String(255))
     # 是否启用otp二次验证
     is_otp = Column(Boolean(), default=False)
     # otp秘钥
-    otp_secret = Column(String, default=None)
+    otp_secret = Column(String(255), default=None)
     # 用户权限 json
     permissions = Column(JSON, default=dict)
     # 用户个性化设置 json

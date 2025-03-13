@@ -103,7 +103,7 @@ class Transmission:
             # 种子标签
             labels = [str(tag).strip()
                       for tag in torrent.labels] if hasattr(torrent, "labels") else []
-            if tags and not set(tags).issubset(set(labels)):
+            if tags and not set(tags).intersection(set(labels)):
                 continue
             ret_torrents.append(torrent)
         return ret_torrents, False

@@ -10,7 +10,7 @@ class SystemConfig(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 主键
-    key = Column(String, index=True)
+    key = Column(String(255), index=True)
     # 值
     value = Column(JSON)
 

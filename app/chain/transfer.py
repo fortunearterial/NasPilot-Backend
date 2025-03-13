@@ -795,10 +795,13 @@ class TransferChain(ChainBase, metaclass=Singleton):
                         mtype = MediaType(downloadhis.type)
                     except ValueError:
                         mtype = MediaType.TV
-                    # 按TMDBID识别
+                    # 按各ID识别
                     mediainfo = self.recognize_media(mtype=mtype,
                                                      tmdbid=downloadhis.tmdbid,
-                                                     doubanid=downloadhis.doubanid)
+                                                     doubanid=downloadhis.doubanid,
+                                                     bangumiid=downloadhis.bangumiid,
+                                                     steamid=downloadhis.steamid,
+                                                     javdbid=downloadhis.javdbid)
                     if mediainfo:
                         # 补充图片
                         self.obtain_images(mediainfo)
@@ -806,7 +809,7 @@ class TransferChain(ChainBase, metaclass=Singleton):
                         if downloadhis.media_category:
                             mediainfo.category = downloadhis.media_category
                 else:
-                    # 非MoviePilot下载的任务，按文件识别
+                    # 非NasPilot下载的任务，按文件识别
                     mediainfo = None
 
                 # 执行实时整理，匹配源目录
@@ -1214,7 +1217,10 @@ class TransferChain(ChainBase, metaclass=Singleton):
         # 查询媒体信息
         if mtype and mediaid:
             mediainfo = self.recognize_media(mtype=mtype, tmdbid=int(mediaid) if str(mediaid).isdigit() else None,
-                                             doubanid=mediaid)
+                                             doubanid=mediaid,
+                                             bangumiid=mediaid,
+                                             steamid=int(mediaid) if str(mediaid).isdigit() else None,
+                                             javdbid=mediaid)
             if mediainfo:
                 # 更新媒体图片
                 self.obtain_images(mediainfo=mediainfo)
@@ -1250,6 +1256,9 @@ class TransferChain(ChainBase, metaclass=Singleton):
                         target_path: Path = None,
                         tmdbid: int = None,
                         doubanid: str = None,
+                        bangumiid: int = None,
+                        steamid: int = None,
+                        javdbid: str = None,
                         mtype: MediaType = None,
                         season: int = None,
                         transfer_type: str = None,
@@ -1282,7 +1291,12 @@ class TransferChain(ChainBase, metaclass=Singleton):
         if tmdbid or doubanid:
             # 有输入TMDBID时单个识别
             # 识别媒体信息
-            mediainfo: MediaInfo = self.mediachain.recognize_media(tmdbid=tmdbid, doubanid=doubanid, mtype=mtype)
+            mediainfo: MediaInfo = self.mediachain.recognize_media(mtype=mtype,
+                                                                   tmdbid=tmdbid,
+                                                                   doubanid=doubanid,
+                                                                   bangumiid=bangumiid,
+                                                                   steamid=steamid,
+                                                                   javdbid=javdbid)
             if not mediainfo:
                 return False, f"媒体信息识别失败，tmdbid：{tmdbid}，doubanid：{doubanid}，type: {mtype.value}"
             else:

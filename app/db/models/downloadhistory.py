@@ -12,45 +12,47 @@ class DownloadHistory(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 保存路径
-    path = Column(String, nullable=False, index=True)
+    path = Column(Text, nullable=False)
     # 类型 电影/电视剧
-    type = Column(String, nullable=False)
+    type = Column(String(255), nullable=False)
     # 标题
-    title = Column(String, nullable=False)
+    title = Column(String(255), nullable=False)
     # 年份
-    year = Column(String)
+    year = Column(String(255))
     tmdbid = Column(Integer, index=True)
-    imdbid = Column(String)
+    imdbid = Column(String(255))
     tvdbid = Column(Integer)
-    doubanid = Column(String)
+    doubanid = Column(String(255))
+    steamid = Column(Integer, index=True)
+    javdbid = Column(String(10), index=True)
     # Sxx
-    seasons = Column(String)
+    seasons = Column(String(255))
     # Exx
-    episodes = Column(String)
+    episodes = Column(String(255))
     # 海报
-    image = Column(String)
+    image = Column(String(255))
     # 下载器
-    downloader = Column(String)
+    downloader = Column(String(255))
     # 下载任务Hash
-    download_hash = Column(String, index=True)
+    download_hash = Column(String(255), index=True)
     # 种子名称
-    torrent_name = Column(String)
+    torrent_name = Column(String(255))
     # 种子描述
-    torrent_description = Column(String)
+    torrent_description = Column(String(255))
     # 种子站点
-    torrent_site = Column(String)
+    torrent_site = Column(String(255))
     # 下载用户
-    userid = Column(String)
+    userid = Column(String(255))
     # 下载用户名/插件名
-    username = Column(String)
+    username = Column(String(255))
     # 下载渠道
-    channel = Column(String)
+    channel = Column(String(255))
     # 创建时间
-    date = Column(String)
+    date = Column(String(255))
     # 附加信息
     note = Column(JSON)
     # 自定义媒体类别
-    media_category = Column(String)
+    media_category = Column(String(255))
 
     @staticmethod
     @db_query
@@ -97,20 +99,20 @@ class DownloadHistory(Base):
                                                       DownloadHistory.episodes == episode).order_by(
                 DownloadHistory.id.desc()).all()
         # 电视剧所有季集｜电影
-        if not season and not episode:
+        if season is None and not episode:
             result = db.query(DownloadHistory).filter(DownloadHistory.type == mtype,
                                                       DownloadHistory.title == title,
                                                       DownloadHistory.year == year).order_by(
                 DownloadHistory.id.desc()).all()
         # 电视剧某季
-        if season and not episode:
+        if season is not None and not episode:
             result = db.query(DownloadHistory).filter(DownloadHistory.type == mtype,
                                                       DownloadHistory.title == title,
                                                       DownloadHistory.year == year,
                                                       DownloadHistory.seasons == season).order_by(
                 DownloadHistory.id.desc()).all()
         # 电视剧某季某集
-        if season and episode:
+        if season is not None and episode:
             result = db.query(DownloadHistory).filter(DownloadHistory.type == mtype,
                                                       DownloadHistory.title == title,
                                                       DownloadHistory.year == year,
@@ -171,17 +173,17 @@ class DownloadFiles(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 下载器
-    downloader = Column(String)
+    downloader = Column(String(255))
     # 下载任务Hash
-    download_hash = Column(String, index=True)
+    download_hash = Column(String(255), index=True)
     # 完整路径
-    fullpath = Column(String, index=True)
+    fullpath = Column(Text)
     # 保存路径
-    savepath = Column(String, index=True)
+    savepath = Column(Text)
     # 文件相对路径/名称
-    filepath = Column(String)
+    filepath = Column(Text)
     # 种子名称
-    torrentname = Column(String)
+    torrentname = Column(String(255))
     # 状态 0-已删除 1-正常
     state = Column(Integer, nullable=False, default=1)
 

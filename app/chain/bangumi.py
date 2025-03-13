@@ -58,3 +58,11 @@ class BangumiChain(ChainBase, metaclass=Singleton):
         :param person_id:  人物ID
         """
         return self.run_module("bangumi_person_credits", person_id=person_id)
+
+    def bangumi_episodes(self, bangumiid: int, season: int) -> List[schemas.BangumiEpisode]:
+        """
+        根据Bangumi查询某季的所有信信息
+        :param bangumiid:  bangumiid
+        :param season:  季
+        """
+        return self.run_module("bangumi_episodes", bangumiid=bangumiid, season=season)

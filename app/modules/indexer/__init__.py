@@ -133,7 +133,13 @@ class IndexerModule(_ModuleBase):
                 search_word = StringUtils.clear(search_word, replace_word=" ", allow_space=True)
 
             try:
-                if site.get('parser') == "TNodeSpider":
+                if site.get('parser') == "HtmlSpider":
+                    error_flag, result = HtmlSpider(site).search(
+                        keyword=search_word,
+                        mtype=mtype,
+                        page=page
+                    )
+                elif site.get('parser') == "TNodeSpider":
                     error_flag, result = TNodeSpider(site).search(
                         keyword=search_word,
                         page=page

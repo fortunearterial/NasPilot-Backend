@@ -309,7 +309,7 @@ async def get_message(request: Request, role: str = "system", _: schemas.TokenPa
 
 
 @router.get("/logging", summary="实时日志")
-async def get_logging(request: Request, length: int = 50, logfile: str = "moviepilot.log",
+async def get_logging(request: Request, length: int = 50, logfile: str = "naspilot.log",
                       _: schemas.TokenPayload = Depends(verify_resource_token)):
     """
     实时获取系统日志
@@ -370,7 +370,7 @@ def latest_version(_: schemas.TokenPayload = Depends(verify_token)):
     查询Github所有Release版本
     """
     version_res = RequestUtils(proxies=settings.PROXY, headers=settings.GITHUB_HEADERS).get_res(
-        f"https://api.github.com/repos/jxxghp/MoviePilot/releases")
+        f"https://api.github.com/repos/fortunearterial/NasPilot/releases")
     if version_res:
         ver_json = version_res.json()
         if ver_json:

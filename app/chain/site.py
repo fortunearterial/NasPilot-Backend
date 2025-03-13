@@ -336,7 +336,7 @@ class SiteChain(ChainBase):
         _fail_count = 0
         for domain, cookie in cookies.items():
             # 索引器信息
-            indexer = self.siteshelper.get_indexer(domain)
+            indexer = self.siteshelper.get_indexer(domain=domain)
             # 数据库的站点信息
             site_info = self.siteoper.get_by_domain(domain)
             if site_info and site_info.is_active == 1:
@@ -470,7 +470,7 @@ class SiteChain(ChainBase):
         # Cookie
         cookie = siteinfo.cookie
         # 索引器
-        indexer = self.siteshelper.get_indexer(domain)
+        indexer = self.siteshelper.get_indexer(domain=domain)
         if not indexer:
             logger.warn(f"站点 {domain} 索引器不存在！")
             return
@@ -710,7 +710,7 @@ class SiteChain(ChainBase):
             username=username,
             password=password,
             two_step_code=two_step_code,
-            proxies=settings.PROXY_HOST if site_info.proxy else None
+            proxies=settings.PROXY if site_info.proxy else None
         )
         if result:
             cookie, ua, msg = result

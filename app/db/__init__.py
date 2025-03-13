@@ -28,6 +28,11 @@ if pool_class == QueuePool:
         "pool_timeout": settings.DB_POOL_TIMEOUT,
         "max_overflow": settings.DB_MAX_OVERFLOW
     })
+# feat: change db to mariadb
+if settings.DB_URL:
+    db_kwargs.update({
+        "url": settings.DB_URL
+    })
 # 创建数据库引擎
 Engine = create_engine(**db_kwargs)
 # 根据配置设置日志模式

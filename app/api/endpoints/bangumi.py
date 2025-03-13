@@ -72,3 +72,11 @@ def bangumi_info(bangumiid: int,
         return MediaInfo(bangumi_info=info).to_dict()
     else:
         return schemas.MediaInfo()
+
+@router.get("/{bangumiid}/{season}", summary="Bangumi季所有集") # , response_model=List[schemas.BangumiEpisode]
+def bangumi_season_episodes(bangumiid: int, season: int,
+                         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+    """
+    根据Bangumi查询某季的所有信信息
+    """
+    return BangumiChain().bangumi_episodes(bangumiid=bangumiid, season=season)

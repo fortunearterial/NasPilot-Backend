@@ -90,7 +90,7 @@ class DoubanModule(_ModuleBase):
             return None
 
         if meta and not doubanid \
-                and settings.RECOGNIZE_SOURCE != "douban":
+                and "douban" in settings.RECOGNIZE_SOURCE:
             return None
 
         if not meta:
@@ -680,9 +680,10 @@ class DoubanModule(_ModuleBase):
             meta = MetaInfo(title)
             if type_name == MediaType.TV.value:
                 meta.type = MediaType.TV
-                meta.begin_season = meta.begin_season or 1
+                if meta.begin_season is None:
+                    meta.begin_season = 1
             if meta.name == name \
-                    and ((not season and not meta.begin_season) or meta.begin_season == season) \
+                    and ((season is None and meta.begin_season is None) or meta.begin_season == season) \
                     and (not year or item.get('year') == year):
                 logger.info(f"{name} 匹配到豆瓣信息：{item.get('id')} {item.get('title')}")
                 return item
@@ -725,7 +726,7 @@ class DoubanModule(_ModuleBase):
         :param mediainfo:  识别的媒体信息
         :return: 更新后的媒体信息
         """
-        if settings.RECOGNIZE_SOURCE != "douban":
+        if not "douban" in settings.RECOGNIZE_SOURCE:
             return None
         if not mediainfo.douban_id:
             return None

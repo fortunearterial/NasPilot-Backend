@@ -12,27 +12,37 @@ class Site(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 站点名
-    name = Column(String, nullable=False)
+    name = Column(String(255), nullable=False)
     # 域名Key
-    domain = Column(String, index=True)
+    domain = Column(String(255), index=True)
     # 站点地址
-    url = Column(String, nullable=False)
+    url = Column(String(255), nullable=False)
+    # 适用类型
+    types = Column(JSON)
+    # 下载器
+    downloader = Column(String(20))
     # 站点优先级
     pri = Column(Integer, default=1)
     # RSS地址，未启用
     rss = Column(String)
+    # FEED地址
+    feed = Column(JSON)
+    # SEARCH地址
+    search = Column(JSON)
+    # XPATH
+    xpath = Column(String(2000))
     # Cookie
-    cookie = Column(String)
+    cookie = Column(Text)
     # User-Agent
-    ua = Column(String)
+    ua = Column(String(255))
     # ApiKey
-    apikey = Column(String)
+    apikey = Column(String(255))
     # Token
-    token = Column(String)
+    token = Column(String(255))
     # 是否使用代理 0-否，1-是
     proxy = Column(Integer)
     # 过滤规则
-    filter = Column(String)
+    filter = Column(String(255))
     # 是否渲染
     render = Column(Integer)
     # 是否公开站点
@@ -50,7 +60,7 @@ class Site(Base):
     # 是否启用
     is_active = Column(Boolean(), default=True)
     # 创建时间
-    lst_mod_date = Column(String, default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    lst_mod_date = Column(String(255), default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     # 下载器
     downloader = Column(String)
 

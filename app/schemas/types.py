@@ -5,6 +5,11 @@ from enum import Enum
 class MediaType(Enum):
     MOVIE = '电影'
     TV = '电视剧'
+    GAME = '游戏'
+    JAV = 'Jav'
+    COMIC = '漫画'
+    ANIME = '动画'
+    MUSIC = '音乐'
     COLLECTION = '系列'
     UNKNOWN = '未知'
 

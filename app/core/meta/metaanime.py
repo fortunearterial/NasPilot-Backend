@@ -3,6 +3,8 @@ import traceback
 
 import zhconv
 import anitopy
+import math
+from typing import List, Optional
 from app.core.meta.customization import CustomizationMatcher
 from app.core.meta.metabase import MetaBase
 from app.core.meta.releasegroup import ReleaseGroupsMatcher
@@ -17,6 +19,11 @@ class MetaAnime(MetaBase):
     """
     _anime_no_words = ['CHS&CHT', 'MP4', 'GB MP4', 'WEB-DL']
     _name_nostring_re = r"S\d{2}\s*-\s*S\d{2}|S\d{2}|\s+S\d{1,2}|EP?\d{2,4}\s*-\s*EP?\d{2,4}|EP?\d{2,4}|\s+EP?\d{1,4}|\s+GB"
+
+    # 识别的开始集(别名)
+    begin_episode_alt: Optional[float] = None
+    # 识别的结束集(别名)
+    end_episode_alt: Optional[float] = None
 
     def __init__(self, title: str, subtitle: str = None, isfile: bool = False):
         super().__init__(title, subtitle, isfile)
@@ -97,20 +104,20 @@ class MetaAnime(MetaBase):
                     else:
                         begin_season = anime_season[0]
                         end_season = anime_season[-1]
-                elif anime_season:
+                elif anime_season is not None:
                     begin_season = anime_season
                     end_season = None
                 else:
                     begin_season = None
                     end_season = None
-                if begin_season:
+                if begin_season is not None:
                     self.begin_season = int(begin_season)
                     if end_season and int(end_season) != self.begin_season:
                         self.end_season = int(end_season)
                         self.total_season = (self.end_season - self.begin_season) + 1
                     else:
                         self.total_season = 1
-                    self.type = MediaType.TV
+                    self.type = MediaType.ANIME
                 # 集号
                 episode_number = anitopy_info.get("episode_number")
                 if isinstance(episode_number, list):
@@ -126,9 +133,23 @@ class MetaAnime(MetaBase):
                 else:
                     begin_episode = None
                     end_episode = None
+                episode_number_alt = anitopy_info.get("episode_number_alt")
+                if isinstance(episode_number_alt, list):
+                    if len(episode_number_alt) == 1:
+                        begin_episode_alt = episode_number_alt[0]
+                        end_episode_alt = None
+                    else:
+                        begin_episode_alt = episode_number_alt[0]
+                        end_episode_alt = episode_number_alt[-1]
+                elif episode_number_alt:
+                    begin_episode_alt = episode_number_alt
+                    end_episode_alt = None
+                else:
+                    begin_episode_alt = None
+                    end_episode_alt = None
                 if begin_episode:
                     try:
-                        self.begin_episode = int(begin_episode)
+                        self.begin_episode = float(begin_episode)
                         if end_episode and int(end_episode) != self.begin_episode:
                             self.end_episode = int(end_episode)
                             self.total_episode = (self.end_episode - self.begin_episode) + 1
@@ -138,16 +159,28 @@ class MetaAnime(MetaBase):
                         logger.debug(f"解析集数失败：{str(err)} - {traceback.format_exc()}")
                         self.begin_episode = None
                         self.end_episode = None
-                    self.type = MediaType.TV
+                    self.type = MediaType.ANIME
+                if begin_episode_alt:
+                    try:
+                        self.begin_episode_alt = float(begin_episode_alt)
+                        if end_episode_alt and int(end_episode_alt) != self.begin_episode_alt:
+                            self.end_episode_alt = int(end_episode_alt)
+                            self.total_episode_alt = (self.end_episode_alt - self.begin_episode_alt) + 1
+                        else:
+                            self.total_episode_alt = 1
+                    except Exception as err:
+                        logger.debug(f"解析集数失败：{str(err)} - {traceback.format_exc()}")
+                        self.begin_episode_alt = None
+                        self.end_episode_alt = None
                 # 类型
                 if not self.type:
                     anime_type = anitopy_info.get('anime_type')
                     if isinstance(anime_type, list):
                         anime_type = anime_type[0]
-                    if anime_type and anime_type.upper() == "TV":
-                        self.type = MediaType.TV
+                    if anime_type and anime_type.upper() == "ANIME":
+                        self.type = MediaType.ANIME
                     else:
-                        self.type = MediaType.MOVIE
+                        self.type = MediaType.ANIME
                 # 分辨率
                 self.resource_pix = anitopy_info.get("video_resolution")
                 if isinstance(self.resource_pix, list):
@@ -178,9 +211,36 @@ class MetaAnime(MetaBase):
                 if not self._subtitle_flag and self.subtitle:
                     self.init_subtitle(self.subtitle)
             if not self.type:
-                self.type = MediaType.TV
+                self.type = MediaType.ANIME
         except Exception as e:
             logger.error(f"解析动漫信息失败：{str(e)} - {traceback.format_exc()}")
+
+    @property
+    def episode_alt_list(self) -> List[int]:
+        """
+        返回集的数组
+        """
+        if self.begin_episode_alt is None:
+            return []
+        elif self.end_episode_alt is not None:
+            return [float(episode) for episode in range(math.floor(self.begin_episode_alt), math.ceil(self.end_episode_alt) + 1)]
+        else:
+            return [self.begin_episode_alt]
+
+    @property
+    def episode_list(self) -> List[int]:
+        """
+        返回集的数组
+        """
+        episodes = None
+        if self.begin_episode is None:
+            episodes = []
+        elif self.end_episode is not None:
+            episodes = [float(episode) for episode in range(math.floor(self.begin_episode), math.ceil(self.end_episode) + 1)]
+        else:
+            episodes = [self.begin_episode]
+        episodes.extend(self.episode_alt_list)
+        return episodes
 
     @staticmethod
     def __prepare_title(title: str):
@@ -209,6 +269,10 @@ class MetaAnime(MetaBase):
         title = re.sub(r"\[TV\s+(\d{1,4})", r"[\1", title, flags=re.IGNORECASE)
         # 将4K转为2160p
         title = re.sub(r'\[4k]', '2160p', title, flags=re.IGNORECASE)
+        # 将OADxx改为S00OADxx
+        title = re.sub(r"\[OAD\s+(\d{1,4})", r"[S00OAD\1", title, flags=re.IGNORECASE)
+        # 将特别篇改为S00
+        title = re.sub(r"特别篇|外传|SP|sp|外传|外伝", r"S00", title)
         # 处理/分隔的中英文标题
         names = title.split("]")
         if len(names) > 1 and title.find("- ") == -1:

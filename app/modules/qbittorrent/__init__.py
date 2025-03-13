@@ -187,7 +187,7 @@ class QbittorrentModule(_ModuleBase, _DownloaderBase[Qbittorrent]):
                         file_name = torrent_file.get("name")
                         meta_info = MetaInfo(file_name)
                         if not meta_info.episode_list \
-                                or not set(meta_info.episode_list).issubset(episodes):
+                                or not set(meta_info.episode_list).intersection(episodes):
                             file_ids.append(file_id)
                         else:
                             sucess_epidised = list(set(sucess_epidised).union(set(meta_info.episode_list)))

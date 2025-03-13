@@ -235,7 +235,7 @@ class Jellyfin:
         url = f"{self._host}Users/authenticatebyname"
         try:
             res = RequestUtils(headers={
-                'X-Emby-Authorization': f'MediaBrowser Client="MoviePilot", '
+                'X-Emby-Authorization': f'MediaBrowser Client="NasPilot", '
                                         f'Device="requests", '
                                         f'DeviceId="1", '
                                         f'Version="1.0.0", '
@@ -409,7 +409,7 @@ class Jellyfin:
             if tmdb_id and item_info.tmdbid:
                 if str(tmdb_id) != str(item_info.tmdbid):
                     return None, {}
-        if not season:
+        if season is None:
             season = ""
         url = f"{self._host}Shows/{item_id}/Episodes"
         params = {
@@ -427,16 +427,17 @@ class Jellyfin:
                 season_episodes = {}
                 for res_item in res_items:
                     season_index = res_item.get("ParentIndexNumber")
-                    if not season_index:
+                    if season_index is None:
                         continue
-                    if season and season != season_index:
+                    if season is not None and season != season_index:
                         continue
                     episode_index = res_item.get("IndexNumber")
                     if not episode_index:
                         continue
                     if not season_episodes.get(season_index):
                         season_episodes[season_index] = []
-                    season_episodes[season_index].append(episode_index)
+                    # FIX: 非整数剧集
+                    season_episodes[season_index].append(float(episode_index))
                 return item_id, season_episodes
         except Exception as e:
             logger.error(f"连接Shows/Id/Episodes出错：" + str(e))

@@ -34,7 +34,7 @@ class SearchChain(ChainBase):
         self.systemconfig = SystemConfigOper()
         self.torrenthelper = TorrentHelper()
 
-    def search_by_id(self, tmdbid: int = None, doubanid: str = None,
+    def search_by_id(self, tmdbid: int = None, doubanid: str = None, bangumiid: int = None, steamid: int = None, javdbid: str = None,
                      mtype: MediaType = None, area: str = "title", season: int = None,
                      sites: List[int] = None) -> List[Context]:
         """
@@ -51,7 +51,7 @@ class SearchChain(ChainBase):
             logger.error(f'{tmdbid} 媒体信息识别失败！')
             return []
         no_exists = None
-        if season:
+        if season is not None:
             no_exists = {
                 tmdbid or doubanid: {
                     season: NotExistMediaInfo(episodes=[])
@@ -82,7 +82,7 @@ class SearchChain(ChainBase):
             logger.warn(f'{title} 未搜索到资源')
             return []
         # 组装上下文
-        contexts = [Context(meta_info=MetaInfo(title=torrent.title, subtitle=torrent.description),
+        contexts = [Context(meta_info=MetaInfo(title=torrent.title, subtitle=torrent.description, mtype=torrent.category),
                             torrent_info=torrent) for torrent in torrents]
         # 保存到本地文件
         if cache_local:
@@ -154,7 +154,7 @@ class SearchChain(ChainBase):
             # 过滤剧集
             season_episodes = {sea: info.episodes
                                for sea, info in no_exists[mediakey].items()}
-        elif mediainfo.season:
+        elif mediainfo.season is not None:
             # 豆瓣只搜索当前季
             season_episodes = {mediainfo.season: []}
         else:

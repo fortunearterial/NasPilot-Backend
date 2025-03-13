@@ -34,7 +34,7 @@ def search_by_id(mediaid: str,
                  sites: str = None,
                  _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
-    根据TMDBID/豆瓣ID精确搜索站点资源 tmdb:/douban:/bangumi:
+    根据TMDBID/豆瓣ID精确搜索站点资源 tmdb:/douban:/bangumi:/steam:/javdb:
     """
     if mtype:
         mtype = MediaType(mtype)
@@ -48,7 +48,7 @@ def search_by_id(mediaid: str,
     # 根据前缀识别媒体ID
     if mediaid.startswith("tmdb:"):
         tmdbid = int(mediaid.replace("tmdb:", ""))
-        if settings.RECOGNIZE_SOURCE == "douban":
+        if "douban" in settings.SEARCH_SOURCE:
             # 通过TMDBID识别豆瓣ID
             doubaninfo = MediaChain().get_doubaninfo_by_tmdbid(tmdbid=tmdbid, mtype=mtype)
             if doubaninfo:
@@ -62,7 +62,7 @@ def search_by_id(mediaid: str,
                                                   sites=site_list)
     elif mediaid.startswith("douban:"):
         doubanid = mediaid.replace("douban:", "")
-        if settings.RECOGNIZE_SOURCE == "themoviedb":
+        if "themoviedb" in settings.SEARCH_SOURCE:
             # 通过豆瓣ID识别TMDBID
             tmdbinfo = MediaChain().get_tmdbinfo_by_doubanid(doubanid=doubanid, mtype=mtype)
             if tmdbinfo:
@@ -78,7 +78,7 @@ def search_by_id(mediaid: str,
                                                   sites=site_list)
     elif mediaid.startswith("bangumi:"):
         bangumiid = int(mediaid.replace("bangumi:", ""))
-        if settings.RECOGNIZE_SOURCE == "themoviedb":
+        if "themoviedb" in settings.SEARCH_SOURCE:
             # 通过BangumiID识别TMDBID
             tmdbinfo = MediaChain().get_tmdbinfo_by_bangumiid(bangumiid=bangumiid)
             if tmdbinfo:
@@ -137,6 +137,12 @@ def search_by_id(mediaid: str,
     # 返回搜索结果
     if not torrents:
         return schemas.Response(success=False, message="未搜索到任何资源")
+    elif mediaid.startswith("steam:"):
+        steamid = mediaid.replace("steam:", "")
+        torrents = SearchChain().search_by_id(steamid=steamid, mtype=mtype, area=area)
+    elif mediaid.startswith("javdb:"):
+        javdbid = mediaid.replace("javdb:", "")
+        torrents = SearchChain().search_by_id(javdbid=javdbid, mtype=mtype, area=area)
     else:
         return schemas.Response(success=True, data=[torrent.to_dict() for torrent in torrents])
 

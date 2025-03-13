@@ -15,7 +15,7 @@ class MetaInfo(BaseModel):
     title: Optional[str] = None
     # 副标题
     subtitle: Optional[str] = None
-    # 类型 电影、电视剧
+    # 类型 电影、电视剧、游戏、Jav
     type: Optional[str] = None
     # 名称
     name: Optional[str] = None
@@ -34,9 +34,9 @@ class MetaInfo(BaseModel):
     # 总集数
     total_episode: Optional[int] = 0
     # 识别的开始集
-    begin_episode: Optional[int] = None
+    begin_episode: Optional[float] = None
     # 识别的结束集
-    end_episode: Optional[int] = None
+    end_episode: Optional[float] = None
     # SxxExx
     season_episode: Optional[str] = None
     # 集列表
@@ -65,9 +65,9 @@ class MediaInfo(BaseModel):
     """
     识别媒体信息
     """
-    # 来源：themoviedb、douban、bangumi
+    # 来源：themoviedb、douban、bangumi、steam、javdb
     source: Optional[str] = None
-    # 类型 电影、电视剧、合集
+    # 类型 电影、电视剧、游戏、Jav、合集
     type: Optional[str] = None
     # 媒体标题
     title: Optional[str] = None
@@ -87,6 +87,10 @@ class MediaInfo(BaseModel):
     tvdb_id: Optional[str] = None
     # 豆瓣ID
     douban_id: Optional[str] = None
+    # STEAM ID
+    steam_id: Optional[str] = None
+    # JavDB ID
+    javdb_id: Optional[str] = None
     # Bangumi ID
     bangumi_id: Optional[int] = None
     # 合集ID

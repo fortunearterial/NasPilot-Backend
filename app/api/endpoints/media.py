@@ -192,6 +192,10 @@ def detail(mediaid: str, type_name: str, title: str = None, year: int = None,
         mediainfo = MediaChain().recognize_media(doubanid=mediaid[7:], mtype=mtype)
     elif mediaid.startswith("bangumi:"):
         mediainfo = MediaChain().recognize_media(bangumiid=int(mediaid[8:]), mtype=mtype)
+    elif mediaid.startswith("steam:"):
+        mediainfo = MediaChain().recognize_media(bangumiid=int(mediaid[6:]), mtype=mtype)
+    elif mediaid.startswith("jabdb:"):
+        mediainfo = MediaChain().recognize_media(bangumiid=int(mediaid[6:]), mtype=mtype)
     else:
         # 广播事件解析媒体信息
         event_data = MediaRecognizeConvertEventData(

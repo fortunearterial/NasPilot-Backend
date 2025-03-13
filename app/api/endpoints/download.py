@@ -37,7 +37,7 @@ def download(
     添加下载任务（含媒体信息）
     """
     # 元数据
-    metainfo = MetaInfo(title=torrent_in.title, subtitle=torrent_in.description)
+    metainfo = MetaInfo(title=torrent_in.title, subtitle=torrent_in.description, mtype=torrent_in.category)
     # 媒体信息
     mediainfo = MediaInfo()
     mediainfo.from_dict(media_in.dict())
@@ -69,7 +69,7 @@ def add(
     添加下载任务（不含媒体信息）
     """
     # 元数据
-    metainfo = MetaInfo(title=torrent_in.title, subtitle=torrent_in.description)
+    metainfo = MetaInfo(title=torrent_in.title, subtitle=torrent_in.description, mtype=torrent_in.category)
     # 媒体信息
     mediainfo = MediaChain().recognize_media(meta=metainfo)
     if not mediainfo:

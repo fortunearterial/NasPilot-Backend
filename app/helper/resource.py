@@ -15,8 +15,8 @@ class ResourceHelper(metaclass=Singleton):
     检测和更新资源包
     """
     # 资源包的git仓库地址
-    _repo = f"{settings.GITHUB_PROXY}https://raw.githubusercontent.com/jxxghp/MoviePilot-Resources/main/package.json"
-    _files_api = f"https://api.github.com/repos/jxxghp/MoviePilot-Resources/contents/resources"
+    _repo = f"{settings.GITHUB_PROXY}https://raw.githubusercontent.com/fortunearterial/NasPilot-Backend-Resources/main/package.json"
+    _files_api = f"https://api.github.com/repos/fortunearterial/NasPilot-Backend-Resources/contents/resources"
     _base_dir: Path = settings.ROOT_PATH
 
     def __init__(self):

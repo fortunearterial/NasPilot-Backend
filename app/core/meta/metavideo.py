@@ -68,9 +68,9 @@ class MetaVideo(MetaBase):
         self._effect = []
         # 判断是否纯数字命名
         if isfile \
-                and title.isdigit() \
+                and StringUtils.is_number(title) \
                 and len(title) < 5:
-            self.begin_episode = int(title)
+            self.begin_episode = StringUtils.str_float(title)
             self.type = MediaType.TV
             return
         # 全名为Season xx 及 Sxx 直接返回
@@ -78,7 +78,7 @@ class MetaVideo(MetaBase):
         if season_full_res:
             self.type = MediaType.TV
             season = season_full_res.group(1)
-            if season:
+            if season is not None:
                 self.begin_season = int(season)
                 self.total_season = 1
             return
@@ -192,18 +192,18 @@ class MetaVideo(MetaBase):
         name = re.sub(r'%s' % self._name_nostring_re, '', name,
                       flags=re.IGNORECASE).strip()
         name = re.sub(r'\s+', ' ', name)
-        if name.isdigit() \
-                and int(name) < 1800 \
+        if StringUtils.is_number(name) \
+                and StringUtils.str_float(name) < 1800 \
                 and not self.year \
-                and not self.begin_season \
+                and self.begin_season is None \
                 and not self.resource_pix \
                 and not self.resource_type \
                 and not self.audio_encode \
                 and not self.video_encode:
             if self.begin_episode is None:
-                self.begin_episode = int(name)
+                self.begin_episode = StringUtils.str_float(name)
                 name = None
-            elif self.is_in_episode(int(name)) and not self.begin_season:
+            elif self.is_in_episode(StringUtils.str_float(name)) and self.begin_season is None:
                 name = None
         return name
 
@@ -245,7 +245,7 @@ class MetaVideo(MetaBase):
         else:
             is_roman_digit = re.search(self._roman_numerals, token)
             # 阿拉伯数字或者罗马数字
-            if token.isdigit() or is_roman_digit:
+            if StringUtils.is_number(token) or is_roman_digit:
                 # 第季集后面的不要
                 if self._last_token_type == 'name_se_words':
                     return
@@ -254,24 +254,21 @@ class MetaVideo(MetaBase):
                     if token.startswith('0'):
                         return
                     # 检查是否真正的数字
-                    if token.isdigit():
-                        try:
-                            int(token)
-                        except ValueError:
-                            return
+                    if not StringUtils.is_number(token):
+                        return
                     # 中文名后面跟的数字不是年份的极有可能是集
                     if not is_roman_digit \
                             and self._last_token_type == "cnname" \
-                            and int(token) < 1900:
+                            and StringUtils.str_float(token) < 1900:
                         return
-                    if (token.isdigit() and len(token) < 4) or is_roman_digit:
+                    if (StringUtils.is_number(token) and len(token) < 4) or is_roman_digit:
                         # 4位以下的数字或者罗马数字，拼装到已有标题中
                         if self._last_token_type == "cnname":
                             self.cn_name = "%s %s" % (self.cn_name, token)
                         elif self._last_token_type == "enname":
                             self.en_name = "%s %s" % (self.en_name, token)
                         self._continue_flag = False
-                    elif token.isdigit() and len(token) == 4:
+                    elif StringUtils.is_number(token) and len(token) == 4:
                         # 4位数字，可能是年份，也可能真的是标题的一部分，也有可能是集
                         if not self._unknown_name_str:
                             self._unknown_name_str = token
@@ -310,7 +307,7 @@ class MetaVideo(MetaBase):
         if not self.name:
             return
         if not self.year \
-                and not self.begin_season \
+                and self.begin_season is None \
                 and not self.begin_episode \
                 and not self.resource_pix \
                 and not self.resource_type:
@@ -339,7 +336,7 @@ class MetaVideo(MetaBase):
             return
         if len(token) != 4:
             return
-        if not 1900 < int(token) < 2050:
+        if not 1900 < StringUtils.str_float(token) < 2050:
             return
         if self.year:
             if self.en_name:
@@ -426,15 +423,11 @@ class MetaVideo(MetaBase):
                         if self.isfile and self.total_season > 1:
                             self.end_season = None
                             self.total_season = 1
-        elif token.isdigit():
-            try:
-                int(token)
-            except ValueError:
-                return
+        elif StringUtils.is_number(token):
             if self._last_token_type == "SEASON" \
                     and self.begin_season is None \
                     and len(token) < 3:
-                self.begin_season = int(token)
+                self.begin_season = StringUtils.str_float(token)
                 self.total_season = 1
                 self._last_token_type = "season"
                 self._stop_name_flag = True
@@ -478,17 +471,13 @@ class MetaVideo(MetaBase):
                         if self.isfile and self.total_episode > 2:
                             self.end_episode = None
                             self.total_episode = 1
-        elif token.isdigit():
-            try:
-                int(token)
-            except ValueError:
-                return
+        elif StringUtils.is_number(token):
             if self.begin_episode is not None \
                     and self.end_episode is None \
                     and len(token) < 5 \
-                    and int(token) > self.begin_episode \
+                    and StringUtils.str_float(token) > self.begin_episode \
                     and self._last_token_type == "episode":
-                self.end_episode = int(token)
+                self.end_episode = StringUtils.str_float(token)
                 self.total_episode = (self.end_episode - self.begin_episode) + 1
                 if self.isfile and self.total_episode > 2:
                     self.end_episode = None
@@ -500,7 +489,7 @@ class MetaVideo(MetaBase):
                     and self._last_token_type != "year" \
                     and self._last_token_type != "videoencode" \
                     and token != self._unknown_name_str:
-                self.begin_episode = int(token)
+                self.begin_episode = StringUtils.str_float(token)
                 self.total_episode = 1
                 self._last_token_type = "episode"
                 self._continue_flag = False
@@ -509,7 +498,7 @@ class MetaVideo(MetaBase):
             elif self._last_token_type == "EPISODE" \
                     and self.begin_episode is None \
                     and len(token) < 5:
-                self.begin_episode = int(token)
+                self.begin_episode = StringUtils.str_float(token)
                 self.total_episode = 1
                 self._last_token_type = "episode"
                 self._continue_flag = False
@@ -583,7 +572,7 @@ class MetaVideo(MetaBase):
         if not self.year \
                 and not self.resource_pix \
                 and not self.resource_type \
-                and not self.begin_season \
+                and self.begin_season is None \
                 and not self.begin_episode:
             return
         re_res = re.search(r"(%s)" % self._video_encode_re, token, re.IGNORECASE)
@@ -626,7 +615,7 @@ class MetaVideo(MetaBase):
         if not self.year \
                 and not self.resource_pix \
                 and not self.resource_type \
-                and not self.begin_season \
+                and self.begin_season is None \
                 and not self.begin_episode:
             return
         re_res = re.search(r"(%s)" % self._audio_encode_re, token, re.IGNORECASE)

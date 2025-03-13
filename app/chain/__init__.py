@@ -149,6 +149,8 @@ class ChainBase(metaclass=ABCMeta):
                         mtype: MediaType = None,
                         tmdbid: int = None,
                         doubanid: str = None,
+                        steamid: int = None,
+                        javdbid: str = None,
                         bangumiid: int = None,
                         cache: bool = True) -> Optional[MediaInfo]:
         """
@@ -158,22 +160,31 @@ class ChainBase(metaclass=ABCMeta):
         :param tmdbid:   tmdbid
         :param doubanid: 豆瓣ID
         :param bangumiid: BangumiID
+        :param steamid: STEAM ID
+        :param javdbid: JAVDB ID
         :param cache:    是否使用缓存
         :return: 识别的媒体信息，包括剧集信息
         """
         # 识别用名中含指定信息情形
-        if not mtype and meta and meta.type in [MediaType.TV, MediaType.MOVIE]:
+        if not mtype and meta and meta.type in [MediaType.TV, MediaType.MOVIE, MediaType.GAME, MediaType.JAV]:
             mtype = meta.type
         if not tmdbid and hasattr(meta, "tmdbid"):
             tmdbid = meta.tmdbid
         if not doubanid and hasattr(meta, "doubanid"):
             doubanid = meta.doubanid
+        if not bangumiid and hasattr(meta, "bangumiid"):
+            bangumiid = meta.bangumiid
+        if not steamid and hasattr(meta, "steamid"):
+            steamid = meta.steamid
+        if not javdbid and hasattr(meta, "javdbid"):
+            javdbid = meta.javdbid
         # 有tmdbid时不使用其它ID
         if tmdbid:
             doubanid = None
             bangumiid = None
+        # TODO: self.run_module("recognize_media_id", media_info=media_info, cache=cache)
         return self.run_module("recognize_media", meta=meta, mtype=mtype,
-                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, cache=cache)
+                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, steamid=steamid, javdbid=javdbid, cache=cache)
 
     def match_doubaninfo(self, name: str, imdbid: str = None,
                          mtype: MediaType = None, year: str = None, season: int = None,

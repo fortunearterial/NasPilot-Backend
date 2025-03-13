@@ -22,6 +22,7 @@ class BangumiApi(object):
         "characters": "v0/subjects/%s/characters",
         "person_detail": "v0/persons/%s",
         "person_credits": "v0/persons/%s/subjects",
+        "episodes": "v0/episodes?subject_id=%s&limit=100&offset=0%s"
     }
     _base_url = "https://api.bgm.tv/"
     _req = RequestUtils(session=requests.Session())
@@ -50,7 +51,7 @@ class BangumiApi(object):
         """
         搜索媒体信息
         """
-        result = self.__invoke("search/subject/%s" % name)
+        result = self.__invoke("search/subject/%s?responseGroup=large" % name)
         if result:
             return result.get("list")
         return []
@@ -158,6 +159,12 @@ class BangumiApi(object):
         获取番剧详情
         """
         return self.__invoke(self._urls["detail"] % bid, _ts=datetime.strftime(datetime.now(), '%Y%m%d'))
+      
+    def episodes(self, bid: int, etype: int = None):
+        """
+        获取番剧详情
+        """
+        return self.__invoke(self._urls["episodes"] % (bid, (f"&type=%s" % (etype)) if etype != None else ""), _ts=datetime.strftime(datetime.now(), '%Y%m%d'))
 
     def credits(self, bid: int):
         """

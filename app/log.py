@@ -95,7 +95,7 @@ class LoggerManager:
     # 管理所有的 Logger
     _loggers: Dict[str, Any] = {}
     # 默认日志文件名称
-    _default_log_file = "moviepilot.log"
+    _default_log_file = "naspilot.log"
     # 线程锁
     _lock = threading.Lock()
 

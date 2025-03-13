@@ -4,6 +4,8 @@ from typing import Any, Callable
 
 from app.schemas import ImmediateException
 
+from app.schemas.exception import ImmediateException
+
 
 def retry(ExceptionToCheck: Any,
           tries: int = 3, delay: int = 3, backoff: int = 2, logger: Any = None):

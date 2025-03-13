@@ -23,8 +23,8 @@ def arr_system_status(_: str = Depends(verify_apikey)) -> Any:
     模拟Radarr、Sonarr系统状态
     """
     return {
-        "appName": "MoviePilot",
-        "instanceName": "moviepilot",
+        "appName": "NasPilot",
+        "instanceName": "naspilot",
         "version": APP_VERSION,
         "buildTime": "",
         "isDebug": False,
@@ -42,7 +42,7 @@ def arr_system_status(_: str = Depends(verify_apikey)) -> Any:
         "isDocker": True,
         "mode": "console",
         "branch": "main",
-        "databaseType": "sqLite",
+        "databaseType": "mariadb",
         "databaseVersion": {
             "major": 0,
             "minor": 0,
@@ -65,7 +65,7 @@ def arr_system_status(_: str = Depends(verify_apikey)) -> Any:
         "runtimeName": "",
         "startTime": "",
         "packageVersion": "",
-        "packageAuthor": "jxxghp",
+        "packageAuthor": "fortunearterial",
         "packageUpdateMechanism": "builtIn",
         "packageUpdateMechanismMessage": ""
     }

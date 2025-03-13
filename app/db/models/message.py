@@ -10,23 +10,23 @@ class Message(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 消息渠道
-    channel = Column(String)
+    channel = Column(String(255))
     # 消息来源
-    source = Column(String)
+    source = Column(String(255))
     # 消息类型
-    mtype = Column(String)
+    mtype = Column(String(255))
     # 标题
-    title = Column(String)
+    title = Column(String(255))
     # 文本内容
-    text = Column(String)
+    text = Column(Text)
     # 图片
-    image = Column(String)
+    image = Column(String(2000))
     # 链接
-    link = Column(String)
+    link = Column(String(2000))
     # 用户ID
-    userid = Column(String)
+    userid = Column(String(255))
     # 登记时间
-    reg_time = Column(String, index=True)
+    reg_time = Column(Date, index=True)
     # 消息方向：0-接收息，1-发送消息
     action = Column(Integer)
     # 附件json

@@ -10,9 +10,9 @@ class UserConfig(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 用户名
-    username = Column(String, index=True)
+    username = Column(String(255), index=True)
     # 配置键
-    key = Column(String)
+    key = Column(String(255))
     # 值
     value = Column(JSON)
 

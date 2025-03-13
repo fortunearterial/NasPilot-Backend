@@ -16,6 +16,8 @@ class Subscribe(BaseModel):
     tmdbid: Optional[int] = None
     doubanid: Optional[str] = None
     bangumiid: Optional[int] = None
+    steamid: Optional[str] = None
+    javdbid: Optional[str] = None
     mediaid: Optional[str] = None
     # 季号
     season: Optional[int] = None

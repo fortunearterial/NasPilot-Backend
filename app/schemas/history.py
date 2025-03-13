@@ -8,7 +8,7 @@ class DownloadHistory(BaseModel):
     id: int
     # 保存路程
     path: Optional[str] = None
-    # 类型：电影、电视剧
+    # 类型：电影、电视剧、游戏
     type: Optional[str] = None
     # 标题
     title: Optional[str] = None
@@ -62,7 +62,7 @@ class TransferHistory(BaseModel):
     dest: Optional[str] = None
     # 转移模式
     mode: Optional[str] = None
-    # 类型：电影、电视剧
+    # 类型：电影、电视剧、游戏
     type: Optional[str] = None
     # 二级分类
     category: Optional[str] = None

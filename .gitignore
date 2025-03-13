@@ -20,4 +20,4 @@ config/cache/
 *.pyc
 *.log
 .vscode
-venv
+.venv

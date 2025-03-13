@@ -24,7 +24,7 @@ class ConfigModel(BaseModel):
         extra = "ignore"  # 忽略未定义的配置项
 
     # 项目名称
-    PROJECT_NAME = "MoviePilot"
+    PROJECT_NAME = "NasPilot"
     # 域名 格式；https://movie-pilot.org
     APP_DOMAIN: str = ""
     # API路径
@@ -81,6 +81,8 @@ class ConfigModel(BaseModel):
     CONFIG_DIR: Optional[str] = None
     # 超级管理员
     SUPERUSER: str = "admin"
+    # 数据库连接
+    DB_URL:str = ""
     # 辅助认证，允许通过外部服务进行认证、单点登录以及自动创建用户
     AUXILIARY_AUTH_ENABLE: bool = False
     # API密钥，需要更换
@@ -89,11 +91,11 @@ class ConfigModel(BaseModel):
     PROXY_HOST: Optional[str] = None
     # 登录页面电影海报,tmdb/bing/mediaserver
     WALLPAPER: str = "tmdb"
-    # 媒体搜索来源 themoviedb/douban/bangumi，多个用,分隔
+    # 媒体搜索来源 themoviedb/douban/bangumi/steam/javdb，多个用,分隔
     SEARCH_SOURCE: str = "themoviedb,douban,bangumi"
-    # 媒体识别来源 themoviedb/douban
+    # 媒体识别来源 themoviedb/douban/steam/javdb
     RECOGNIZE_SOURCE: str = "themoviedb"
-    # 刮削来源 themoviedb/douban
+    # 刮削来源 themoviedb/douban/steam/javdb
     SCRAP_SOURCE: str = "themoviedb"
     # 新增已入库媒体是否跟随TMDB信息变化
     SCRAP_FOLLOW_TMDB: bool = True
@@ -172,7 +174,7 @@ class ConfigModel(BaseModel):
     # 读取和发送站点消息
     SITE_MESSAGE: bool = True
     # 种子标签
-    TORRENT_TAG: str = "MOVIEPILOT"
+    TORRENT_TAG: str = "NASPILOT"
     # 下载站点字幕
     DOWNLOAD_SUBTITLE: bool = True
     # 交互搜索自动下载用户ID，使用,分割
@@ -182,13 +184,17 @@ class ConfigModel(BaseModel):
     # CookieCloud服务器地址
     COOKIECLOUD_HOST: str = "https://movie-pilot.org/cookiecloud"
     # CookieCloud用户KEY
-    COOKIECLOUD_KEY: Optional[str] = None
+    COOKIECLOUD_KEY: Optional[list] = None
     # CookieCloud端对端加密密码
-    COOKIECLOUD_PASSWORD: Optional[str] = None
+    COOKIECLOUD_PASSWORD: Optional[list] = None
     # CookieCloud同步间隔（分钟）
     COOKIECLOUD_INTERVAL: Optional[int] = 60 * 24
     # CookieCloud同步黑名单，多个域名,分割
-    COOKIECLOUD_BLACKLIST: Optional[str] = None
+    COOKIECLOUD_BLACKLIST: Optional[list] = None
+    # CookieCloud浏览器UA
+    COOKIECLOUD_USER_AGENT: Optional[list] = None
+    # OCR服务器地址
+    OCR_HOST: str = "https://movie-pilot.org"
     # CookieCloud对应的浏览器UA
     USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.57"
     # 电影重命名格式
@@ -515,6 +521,8 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
                 "douban": 512,
                 "bangumi": 512,
                 "fanart": 512,
+                "steam": 1024,
+                "javdb": 1024,
                 "meta": (self.META_CACHE_EXPIRE or 24) * 3600
             }
         return {
@@ -524,6 +532,8 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
             "douban": 256,
             "bangumi": 256,
             "fanart": 128,
+            "steam": 256,
+            "javdb": 256,
             "meta": (self.META_CACHE_EXPIRE or 2) * 3600
         }
 

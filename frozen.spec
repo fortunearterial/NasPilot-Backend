@@ -92,7 +92,7 @@ exe = EXE(
     collect_pkg_data('database', include_py_files=True),
     collect_pkg_data('app.helper'),
     [],
-    name='MoviePilot',
+    name='NasPilot',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

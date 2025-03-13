@@ -12,41 +12,43 @@ class Subscribe(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 标题
-    name = Column(String, nullable=False, index=True)
+    name = Column(String(255), nullable=False, index=True)
     # 年份
-    year = Column(String)
+    year = Column(String(255))
     # 类型
-    type = Column(String)
+    type = Column(String(255))
     # 搜索关键字
-    keyword = Column(String)
+    keyword = Column(String(255))
     tmdbid = Column(Integer, index=True)
-    imdbid = Column(String)
+    imdbid = Column(String(255))
     tvdbid = Column(Integer)
-    doubanid = Column(String, index=True)
+    doubanid = Column(String(255), index=True)
+    steamid = Column(Integer, index=True)
+    javdbid = Column(String(10), index=True)
     bangumiid = Column(Integer, index=True)
     mediaid = Column(String, index=True)
     # 季号
     season = Column(Integer)
     # 海报
-    poster = Column(String)
+    poster = Column(String(255))
     # 背景图
-    backdrop = Column(String)
+    backdrop = Column(String(255))
     # 评分，float
     vote = Column(Float)
     # 简介
-    description = Column(String)
+    description = Column(Text)
     # 过滤规则
-    filter = Column(String)
+    filter = Column(String(255))
     # 包含
-    include = Column(String)
+    include = Column(String(255))
     # 排除
-    exclude = Column(String)
+    exclude = Column(String(255))
     # 质量
-    quality = Column(String)
+    quality = Column(String(255))
     # 分辨率
-    resolution = Column(String)
+    resolution = Column(String(255))
     # 特效
-    effect = Column(String)
+    effect = Column(String(255))
     # 总集数
     total_episode = Column(Integer)
     # 开始集数
@@ -56,13 +58,13 @@ class Subscribe(Base):
     # 附加信息
     note = Column(JSON)
     # 状态：N-新建 R-订阅中 P-待定 S-暂停
-    state = Column(String, nullable=False, index=True, default='N')
+    state = Column(String(255), nullable=False, index=True, default='N')
     # 最后更新时间
-    last_update = Column(String)
+    last_update = Column(String(255))
     # 创建时间
-    date = Column(String)
+    date = Column(String(255))
     # 订阅用户
-    username = Column(String)
+    username = Column(String(255))
     # 订阅站点
     sites = Column(JSON, default=list)
     # 下载器
@@ -72,7 +74,7 @@ class Subscribe(Base):
     # 当前优先级
     current_priority = Column(Integer)
     # 保存路径
-    save_path = Column(String)
+    save_path = Column(String(2000))
     # 是否使用 imdbid 搜索
     search_imdbid = Column(Integer, default=0)
     # 是否手动修改过总集数 0否 1是
@@ -86,7 +88,13 @@ class Subscribe(Base):
 
     @staticmethod
     @db_query
-    def exists(db: Session, tmdbid: int = None, doubanid: str = None, season: int = None):
+    def exists(db: Session, tmdbid: int = None, doubanid: str = None, steamid: int = None, javdbid: str = None, season: int = None):
+        if steamid:
+            return db.query(Subscribe).filter(Subscribe.steamid == steamid).first()
+        elif javdbid:
+            # 区分大小写
+            return db.query(Subscribe).filter(Subscribe.javdbid == func.binary(javdbid)).first()
+        el
         if tmdbid:
             if season:
                 return db.query(Subscribe).filter(Subscribe.tmdbid == tmdbid,
@@ -119,7 +127,7 @@ class Subscribe(Base):
     @staticmethod
     @db_query
     def get_by_tmdbid(db: Session, tmdbid: int, season: int = None):
-        if season:
+        if season is not None:
             result = db.query(Subscribe).filter(Subscribe.tmdbid == tmdbid,
                                                 Subscribe.season == season).all()
         else:
@@ -135,6 +143,17 @@ class Subscribe(Base):
     @db_query
     def get_by_bangumiid(db: Session, bangumiid: int):
         return db.query(Subscribe).filter(Subscribe.bangumiid == bangumiid).first()
+
+    @staticmethod
+    @db_query
+    def get_by_steamid(db: Session, steamid: str):
+        return db.query(Subscribe).filter(Subscribe.steamid == steamid).first()
+
+    @staticmethod
+    @db_query
+    def get_by_javdbid(db: Session, javdbid: str):
+        # 区分大小写
+        return db.query(Subscribe).filter(Subscribe.javdbid == func.binary(javdbid)).first()
 
     @staticmethod
     @db_query
@@ -190,3 +209,17 @@ class Subscribe(Base):
                                                     time.localtime(time.time() - 86400 * int(days)))
                     ).all()
         return list(result)
+
+    @db_update
+    def delete_by_steamid(self, db: Session, steamid: str):
+        subscribe = self.get_by_steamid(db, steamid)
+        if subscribe:
+            subscribe.delete(db, subscribe.id)
+        return True
+
+    @db_update
+    def delete_by_javdbid(self, db: Session, javdbid: str):
+        subscribe = self.get_by_javdbid(db, javdbid)
+        if subscribe:
+            subscribe.delete(db, subscribe.id)
+        return True

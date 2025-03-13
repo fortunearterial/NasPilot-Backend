@@ -150,9 +150,9 @@ class TorrentInfo:
 
 @dataclass
 class MediaInfo:
-    # 来源：themoviedb、douban、bangumi
+    # 来源：themoviedb、douban、bangumi、stream、javdb
     source: str = None
-    # 类型 电影、电视剧
+    # 类型 电影、电视剧、游戏、Jav
     type: MediaType = None
     # 媒体标题
     title: str = None
@@ -180,6 +180,10 @@ class MediaInfo:
     bangumi_id: int = None
     # 合集ID
     collection_id: int = None
+    # STEAM ID
+    steam_id: str = None
+    # JavDB ID
+    javdb_id: str = None
     # 媒体原语种
     original_language: str = None
     # 媒体原发行标题
@@ -214,6 +218,10 @@ class MediaInfo:
     douban_info: dict = field(default_factory=dict)
     # Bangumi INFO
     bangumi_info: dict = field(default_factory=dict)
+    # STEAM INFO
+    steam_info: dict = field(default_factory=dict)
+    # JavDB INFO
+    javdb_info: dict = field(default_factory=dict)
     # 导演
     directors: List[dict] = field(default_factory=list)
     # 演员
@@ -273,6 +281,10 @@ class MediaInfo:
             self.set_douban_info(self.douban_info)
         if self.bangumi_info:
             self.set_bangumi_info(self.bangumi_info)
+        if self.steam_info:
+            self.set_steam_info(self.steam_info)
+        if self.javdb_info:
+            self.set_javdb_info(self.javdb_info)
 
     def __setattr__(self, name: str, value: Any):
         self.__dict__[name] = value
@@ -445,7 +457,7 @@ class MediaInfo:
                 for seainfo in info.get('seasons'):
                     # 季
                     season = seainfo.get("season_number")
-                    if not season:
+                    if season is None:
                         continue
                     # 集
                     episode_count = seainfo.get("episode_count")
@@ -512,9 +524,9 @@ class MediaInfo:
         # 识别标题中的季
         meta = MetaInfo(info.get("title"))
         # 季
-        if not self.season:
+        if self.season is None:
             self.season = meta.begin_season
-            if self.season:
+            if self.season is not None:
                 self.type = MediaType.TV
             elif not self.type:
                 self.type = MediaType.MOVIE
@@ -574,13 +586,19 @@ class MediaInfo:
         # 剧集
         if self.type == MediaType.TV and not self.seasons:
             meta = MetaInfo(info.get("title"))
-            season = meta.begin_season or 1
+            if meta.begin_season is not None:
+                season = meta.begin_season
+            else:
+                season = 1
             episodes_count = info.get("episodes_count")
             if episodes_count:
                 self.seasons[season] = list(range(1, episodes_count + 1))
         # 季年份
         if self.type == MediaType.TV and not self.season_years:
-            season = self.season or 1
+            if self.season is not None:
+                season = self.season
+            else:
+                season = 1
             self.season_years = {
                 season: self.year
             }
@@ -625,7 +643,7 @@ class MediaInfo:
         # 识别标题中的季
         meta = MetaInfo(self.title)
         # 季
-        if not self.season:
+        if self.season is None:
             self.season = meta.begin_season
         # 评分
         if not self.vote_average:
@@ -661,13 +679,174 @@ class MediaInfo:
         # 剧集
         if self.type == MediaType.TV and not self.seasons:
             meta = MetaInfo(self.title)
-            season = meta.begin_season or 1
+            if meta.begin_season is None:
+                season = 1
+            else:
+                season = meta.begin_season
             episodes_count = info.get("total_episodes")
             if episodes_count:
                 self.seasons[season] = list(range(1, episodes_count + 1))
         # 演员
         if not self.actors:
             self.actors = info.get("actors") or []
+
+    def set_steam_info(self, info: dict):
+        """
+        初始化STEAM信息
+        """
+        if not info:
+            return
+        # 本体
+        self.steam_info = info
+        # STEAM ID
+        self.steam_id = str(info.get("steam_appid"))
+        # 类型
+        if not self.type:
+            if isinstance(info.get('media_type'), MediaType):
+                self.type = info.get('media_type')
+            elif info.get("type"):
+                self.type = MediaType.GAME if info.get("type") == "game" else MediaType.UNKNOWN
+            else:
+                self.type = MediaType.GAME
+        # 标题
+        if not self.title:
+            self.title = info.get("name")
+        # 原标题
+        if not self.original_title:
+            self.original_title = info.get("original_title")
+        # 年份
+        if not self.year:
+            self.year = info.get("release_date").get("date")[:4] if info.get("release_date") else None
+        # 评分
+        if not self.vote_average:
+            metacritic = info.get("metacritic")
+            if metacritic:
+                vote_average = float(metacritic.get("score")) / 10
+            else:
+                vote_average = 0
+            self.vote_average = vote_average
+        # 状态
+        if not self.status:
+            if info.get("release_date"):
+                self.status = "Coming Soon" if info.get("release_date").get("coming_soon") else "Released"
+        # 发行日期
+        if not self.release_date:
+            if info.get("release_date"):
+                self.release_date = info.get("release_date").get("date")
+        # 海报
+        if not self.poster_path:
+            self.poster_path = info.get("header_image")
+            if not self.poster_path and info.get("capsule_image"):
+                self.poster_path = info.get("capsule_image")
+            if not self.poster_path and info.get("capsule_imagev5"):
+                self.poster_path = info.get("capsule_imagev5")
+        # 背景图
+        if not self.backdrop_path:
+            # TODO: background_raw 可能404，土豆兄弟
+            self.backdrop_path = info.get("background_raw")
+            if not self.backdrop_path and info.get("background"):
+                self.backdrop_path = info.get("background")
+        # 简介
+        if not self.overview:
+            self.overview = info.get("short_description") or info.get("about_the_game") or info.get("detailed_description") or ""
+        # 导演和演员
+        if not self.directors:
+            self.directors = []
+            if info.get("developers"):
+                self.directors.extend([{"id": developer, "job": "开发商", "name": developer} for developer in info.get("developers")])
+            if info.get("publishers"):
+                self.directors.extend([{"id": publisher, "job": "发行商", "name": publisher} for publisher in info.get("publishers")])
+        # # 别名
+        # if not self.names:
+        #     akas = info.get("aka")
+        #     if akas:
+        #         self.names = [re.sub(r'\([港台豆友译名]+\)', "", aka) for aka in akas]
+        # 风格
+        if not self.genres:
+            self.genres = [{"id": genre.get("id"), "name": genre.get("description")} for genre in info.get("genres") or []]
+        # 国家
+        if not self.production_countries:
+            self.production_countries = [{"id": language, "name": language} for language in info.get("supported_languages", "").split(", ")]
+        # 剩余属性赋值
+        for key, value in info.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
+
+    def set_javdb_info(self, info: dict):
+        """
+        初始化JavDB信息
+        """
+        if not info:
+            return
+        # 本体
+        self.javdb_info = info
+        # JavDB ID
+        self.javdb_id = str(info.get("javdbid"))
+        # 类型
+        if not self.type:
+            if isinstance(info.get('media_type'), MediaType):
+                self.type = info.get('media_type')
+            elif info.get("type"):
+                self.type = MediaType.JAV if info.get("type") == "Jav" else MediaType.UNKNOWN
+            else:
+                self.type = MediaType.JAV
+        # 标题
+        if not self.title:
+            self.title = info.get("name")
+        # 原标题
+        if not self.original_title:
+            self.original_title = info.get("original_title")
+        # 年份
+        if not self.year:
+            self.year = info.get("release_date")[:4] if info.get("release_date") else None
+        # 评分
+        if not self.vote_average:
+            metacritic = info.get("metacritic")
+            if metacritic:
+                vote_average = float(metacritic.get("score")) / 10
+            else:
+                vote_average = 0
+            self.vote_average = vote_average
+        # 状态
+        if not self.status:
+            if info.get("release_date"):
+                self.status = "Released" if info.get("status") else ""
+        # 发行日期
+        if not self.release_date:
+            if info.get("release_date"):
+                self.release_date = info.get("release_date")
+        # 海报
+        if not self.poster_path:
+            self.poster_path = info.get("header_image")
+        # 背景图
+        if not self.backdrop_path:
+            self.backdrop_path = info.get("header_image")
+        # # 简介
+        # if not self.overview:
+        #     self.overview = info.get("short_description") or info.get("about_the_game") or info.get("detailed_description") or ""
+        # 导演和演员
+        if not self.directors:
+            self.directors = info.get("directors") or []
+        if not self.actors:
+            self.actors = info.get("actors") or []
+        # # 别名
+        # if not self.names:
+        #     akas = info.get("aka")
+        #     if akas:
+        #         self.names = [re.sub(r'\([港台豆友译名]+\)', "", aka) for aka in akas]
+        # 风格
+        if not self.genres:
+            self.genres = [{"id": tag, "name": tag} for tag in info.get("tags") or []]
+        # 时长
+        if not self.runtime and info.get("duration"):
+            self.runtime = int(info.get("duration"))
+        # # 国家
+        # if not self.production_countries:
+        #     self.production_countries = [{"id": language, "name": language} for language in info.get("supported_languages", "").split(", ")]
+        # 剩余属性赋值
+        for key, value in info.items():
+            if not hasattr(self, key):
+                setattr(self, key, value)
 
     @property
     def title_year(self):
@@ -689,6 +868,10 @@ class MediaInfo:
             return "https://movie.douban.com/subject/%s" % self.douban_id
         elif self.bangumi_id:
             return "http://bgm.tv/subject/%s" % self.bangumi_id
+        elif self.steam_id:
+            return "https://store.steampowered.com/app/%s" % self.steam_id
+        elif self.javdb_id:
+            return "https://javdb.com/v/%s" % self.javdb_id
         return ""
 
     @property
@@ -711,7 +894,10 @@ class MediaInfo:
         返回背景图片地址
         """
         if self.backdrop_path:
-            return self.backdrop_path.replace("original", "w500")
+            if self.tmdb_id:
+                return self.backdrop_path.replace("original", "w500")
+            else:
+                return self.backdrop_path
         return default or ""
 
     def get_message_image(self, default: bool = None):
@@ -719,7 +905,10 @@ class MediaInfo:
         返回消息图片地址
         """
         if self.backdrop_path:
-            return self.backdrop_path.replace("original", "w500")
+            if self.tmdb_id:
+                return self.backdrop_path.replace("original", "w500")
+            else:
+                return self.backdrop_path
         return self.get_poster_image(default=default)
 
     def get_poster_image(self, default: bool = None):
@@ -727,7 +916,10 @@ class MediaInfo:
         返回海报图片地址
         """
         if self.poster_path:
-            return self.poster_path.replace("original", "w500")
+            if self.tmdb_id:
+                return self.poster_path.replace("original", "w500")
+            else:
+                return self.poster_path
         return default or ""
 
     def get_overview_string(self, max_len: int = 140):
@@ -762,6 +954,7 @@ class MediaInfo:
         self.tmdb_info = {}
         self.douban_info = {}
         self.bangumi_info = {}
+        self.steam_info = {}
         self.seasons = {}
         self.genres = []
         self.season_info = []
