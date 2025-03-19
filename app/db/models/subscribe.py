@@ -93,9 +93,8 @@ class Subscribe(Base):
             return db.query(Subscribe).filter(Subscribe.steamid == steamid).first()
         elif javdbid:
             # 区分大小写
-            return db.query(Subscribe).filter(Subscribe.javdbid == func.binary(javdbid)).first()
-        el
-        if tmdbid:
+            return db.query(Subscribe).filter(Subscribe.javdbid == javdbid).first()
+        elif tmdbid:
             if season:
                 return db.query(Subscribe).filter(Subscribe.tmdbid == tmdbid,
                                                   Subscribe.season == season).first()
