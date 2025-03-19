@@ -15,8 +15,6 @@ from app.utils.system import SystemUtils
 
 class SteamScraper:
 
-    _transfer_type = settings.TRANSFER_TYPE
-
     def gen_scraper_files(self, meta: MetaBase, mediainfo: MediaInfo,
                           file_path: Path, transfer_type: str):
         """

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON
+from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON, Text
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -24,7 +24,7 @@ class Site(Base):
     # 站点优先级
     pri = Column(Integer, default=1)
     # RSS地址，未启用
-    rss = Column(String)
+    rss = Column(String(255))
     # FEED地址
     feed = Column(JSON)
     # SEARCH地址
@@ -62,7 +62,7 @@ class Site(Base):
     # 创建时间
     lst_mod_date = Column(String(255), default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     # 下载器
-    downloader = Column(String)
+    downloader = Column(String(255))
 
     @staticmethod
     @db_query

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence, JSON
+from sqlalchemy import Column, Integer, String, Sequence, JSON, Text, Date
 from sqlalchemy.orm import Session
 
 from app.db import db_query, Base

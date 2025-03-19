@@ -12,17 +12,17 @@ class SiteUserData(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 站点域名
-    domain = Column(String, index=True)
+    domain = Column(String(255), index=True)
     # 站点名称
-    name = Column(String)
+    name = Column(String(255))
     # 用户名
-    username = Column(String)
+    username = Column(String(255))
     # 用户ID
     userid = Column(Integer)
     # 用户等级
-    user_level = Column(String)
+    user_level = Column(String(255))
     # 加入时间
-    join_at = Column(String)
+    join_at = Column(String(255))
     # 积分
     bonus = Column(Float, default=0)
     # 上传量
@@ -46,11 +46,11 @@ class SiteUserData(Base):
     # 未读消息内容 JSON
     message_unread_contents = Column(JSON, default=list)
     # 错误信息
-    err_msg = Column(String)
+    err_msg = Column(String(255))
     # 更新日期
-    updated_day = Column(String, index=True, default=datetime.now().strftime('%Y-%m-%d'))
+    updated_day = Column(String(255), index=True, default=datetime.now().strftime('%Y-%m-%d'))
     # 更新时间
-    updated_time = Column(String, default=datetime.now().strftime('%H:%M:%S'))
+    updated_time = Column(String(255), default=datetime.now().strftime('%H:%M:%S'))
 
     @staticmethod
     @db_query

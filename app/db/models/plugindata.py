@@ -9,8 +9,8 @@ class PluginData(Base):
     插件数据表
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
-    plugin_id = Column(String, nullable=False, index=True)
-    key = Column(String, index=True, nullable=False)
+    plugin_id = Column(String(255), nullable=False, index=True)
+    key = Column(String(255), index=True, nullable=False)
     value = Column(JSON)
 
     @staticmethod

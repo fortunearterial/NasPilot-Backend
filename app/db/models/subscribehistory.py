@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence, Float, JSON
+from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, Text, Date
 from sqlalchemy.orm import Session
 
 from app.db import db_query, Base
@@ -64,9 +64,9 @@ class SubscribeHistory(Base):
     # 是否使用 imdbid 搜索
     search_imdbid = Column(Integer, default=0)
     # 自定义识别词
-    custom_words = Column(String)
+    custom_words = Column(String(255))
     # 自定义媒体类别
-    media_category = Column(String)
+    media_category = Column(String(255))
     # 过滤规则组
     filter_groups = Column(JSON, default=list)
 

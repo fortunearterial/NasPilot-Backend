@@ -12,17 +12,17 @@ class Workflow(Base):
     # ID
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 名称
-    name = Column(String, index=True, nullable=False)
+    name = Column(String(255), index=True, nullable=False)
     # 描述
-    description = Column(String)
+    description = Column(String(255))
     # 定时器
-    timer = Column(String)
+    timer = Column(String(255))
     # 状态：W-等待 R-运行中 P-暂停 S-成功 F-失败
-    state = Column(String, nullable=False, index=True, default='W')
+    state = Column(String(255), nullable=False, index=True, default='W')
     # 已执行动作（,分隔）
-    current_action = Column(String)
+    current_action = Column(String(255))
     # 任务执行结果
-    result = Column(String)
+    result = Column(String(255))
     # 已执行次数
     run_count = Column(Integer, default=0)
     # 任务列表
@@ -32,9 +32,9 @@ class Workflow(Base):
     # 执行上下文
     context = Column(JSON, default=dict)
     # 创建时间
-    add_time = Column(String, default=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    add_time = Column(String(255), default=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     # 最后执行时间
-    last_time = Column(String)
+    last_time = Column(String(255))
 
     @staticmethod
     @db_query

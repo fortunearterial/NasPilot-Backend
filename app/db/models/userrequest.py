@@ -11,39 +11,39 @@ class UserRequest(Base):
     # ID
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 申请用户
-    req_user = Column(String, index=True, nullable=False)
+    req_user = Column(String(255), index=True, nullable=False)
     # 申请时间
-    req_time = Column(String)
+    req_time = Column(String(255))
     # 申请备注
-    req_remark = Column(String)
+    req_remark = Column(String(255))
     # 审批用户
-    app_user = Column(String, index=True, nullable=False)
+    app_user = Column(String(255), index=True, nullable=False)
     # 审批时间
-    app_time = Column(String)
+    app_time = Column(String(255))
     # 审批状态 0-待审批 1-通过 2-拒绝
     app_status = Column(Integer, default=0)
     # 类型
-    type = Column(String)
+    type = Column(String(255))
     # 标题
-    title = Column(String)
+    title = Column(String(255))
     # 年份
-    year = Column(String)
+    year = Column(String(255))
     # 媒体ID
     tmdbid = Column(Integer)
-    imdbid = Column(String)
+    imdbid = Column(String(255))
     tvdbid = Column(Integer)
-    doubanid = Column(String)
+    doubanid = Column(String(255))
     bangumiid = Column(Integer)
     # 季号
     season = Column(Integer)
     # 海报
-    poster = Column(String)
+    poster = Column(String(255))
     # 背景图
-    backdrop = Column(String)
+    backdrop = Column(String(255))
     # 评分，float
     vote = Column(Float)
     # 简介
-    description = Column(String)
+    description = Column(String(255))
 
     @staticmethod
     @db_query

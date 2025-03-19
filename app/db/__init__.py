@@ -8,13 +8,13 @@ from app.core.config import settings
 # 根据池类型设置 poolclass 和相关参数
 pool_class = NullPool if settings.DB_POOL_TYPE == "NullPool" else QueuePool
 connect_args = {
-    "timeout": settings.DB_TIMEOUT
+    # "timeout": settings.DB_TIMEOUT
 }
 # 启用 WAL 模式时的额外配置
 if settings.DB_WAL_ENABLE:
     connect_args["check_same_thread"] = False
 db_kwargs = {
-    "url": f"sqlite:///{settings.CONFIG_PATH}/user.db",
+    "url": settings.DB_URL,
     "pool_pre_ping": settings.DB_POOL_PRE_PING,
     "echo": settings.DB_ECHO,
     "poolclass": pool_class,
@@ -28,18 +28,14 @@ if pool_class == QueuePool:
         "pool_timeout": settings.DB_POOL_TIMEOUT,
         "max_overflow": settings.DB_MAX_OVERFLOW
     })
-# feat: change db to mariadb
-if settings.DB_URL:
-    db_kwargs.update({
-        "url": settings.DB_URL
-    })
 # 创建数据库引擎
 Engine = create_engine(**db_kwargs)
-# 根据配置设置日志模式
-journal_mode = "WAL" if settings.DB_WAL_ENABLE else "DELETE"
-with Engine.connect() as connection:
-    current_mode = connection.execute(text(f"PRAGMA journal_mode={journal_mode};")).scalar()
-    print(f"Database journal mode set to: {current_mode}")
+if Engine.dialect.name == "sqlite":
+    # 根据配置设置日志模式
+    journal_mode = "WAL" if settings.DB_WAL_ENABLE else "DELETE"
+    with Engine.connect() as connection:
+        current_mode = connection.execute(text(f"PRAGMA journal_mode={journal_mode};")).scalar()
+        print(f"Database journal mode set to: {current_mode}")
 
 # 会话工厂
 SessionFactory = sessionmaker(bind=Engine)

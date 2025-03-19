@@ -1,6 +1,6 @@
 import time
 
-from sqlalchemy import Column, Integer, String, Sequence, Float, JSON
+from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, Text
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -26,7 +26,7 @@ class Subscribe(Base):
     steamid = Column(Integer, index=True)
     javdbid = Column(String(10), index=True)
     bangumiid = Column(Integer, index=True)
-    mediaid = Column(String, index=True)
+    mediaid = Column(String(255), index=True)
     # 季号
     season = Column(Integer)
     # 海报
@@ -68,7 +68,7 @@ class Subscribe(Base):
     # 订阅站点
     sites = Column(JSON, default=list)
     # 下载器
-    downloader = Column(String)
+    downloader = Column(String(255))
     # 是否洗版
     best_version = Column(Integer, default=0)
     # 当前优先级
@@ -80,9 +80,9 @@ class Subscribe(Base):
     # 是否手动修改过总集数 0否 1是
     manual_total_episode = Column(Integer, default=0)
     # 自定义识别词
-    custom_words = Column(String)
+    custom_words = Column(String(255))
     # 自定义媒体类别
-    media_category = Column(String)
+    media_category = Column(String(255))
     # 过滤规则组
     filter_groups = Column(JSON, default=list)
 

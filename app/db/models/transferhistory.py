@@ -12,15 +12,15 @@ class TransferHistory(Base):
     """
     id = Column(Integer, Sequence('id'), primary_key=True, index=True)
     # 源路径
-    src = Column(String, index=True)
+    src = Column(String(255), index=True)
     # 源存储
-    src_storage = Column(String)
+    src_storage = Column(String(255))
     # 源文件项
     src_fileitem = Column(JSON, default=dict)
     # 目标路径
-    dest = Column(String)
+    dest = Column(String(255))
     # 目标存储
-    dest_storage = Column(String)
+    dest_storage = Column(String(255))
     # 目标文件项
     dest_fileitem = Column(JSON, default=dict)
     # 转移模式 move/copy/link...

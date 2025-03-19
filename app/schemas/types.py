@@ -236,6 +236,10 @@ class MediaRecognizeType(Enum):
     TVDB = "TheTvDb"
     # bangumi
     Bangumi = "Bangumi"
+    # JavDB
+    JavDB = "JavDB"
+    # Steam
+    Steam = "Steam"
 
 
 # 其他杂项模块类型

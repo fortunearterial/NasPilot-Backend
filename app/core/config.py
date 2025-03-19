@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from dotenv import set_key
+from plexapi import CONFIG_PATH
 from pydantic import BaseModel, BaseSettings, validator, Field
 
 from app.log import logger, log_settings, LogConfigModel
@@ -82,7 +83,7 @@ class ConfigModel(BaseModel):
     # 超级管理员
     SUPERUSER: str = "admin"
     # 数据库连接
-    DB_URL:str = ""
+    DB_URL:str = f"sqlite:///{CONFIG_PATH}/user.db"
     # 辅助认证，允许通过外部服务进行认证、单点登录以及自动创建用户
     AUXILIARY_AUTH_ENABLE: bool = False
     # API密钥，需要更换
@@ -193,8 +194,6 @@ class ConfigModel(BaseModel):
     COOKIECLOUD_BLACKLIST: Optional[list] = None
     # CookieCloud浏览器UA
     COOKIECLOUD_USER_AGENT: Optional[list] = None
-    # OCR服务器地址
-    OCR_HOST: str = "https://movie-pilot.org"
     # CookieCloud对应的浏览器UA
     USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36 Edg/113.0.1774.57"
     # 电影重命名格式
