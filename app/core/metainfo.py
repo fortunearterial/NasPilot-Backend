@@ -11,7 +11,7 @@ from app.schemas.types import MediaType
 from app.utils.string import StringUtils
 
 
-def MetaInfo(title: str, subtitle: str = None, mtype: str = None) -> MetaBase:
+def MetaInfo(title: str, subtitle: str = None, mtype: str = None, custom_words: List[str] = None) -> MetaBase:
     """
     根据标题和副标题识别元数据
     :param title: 标题、种子名、文件名

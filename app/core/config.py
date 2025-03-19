@@ -83,7 +83,7 @@ class ConfigModel(BaseModel):
     # 超级管理员
     SUPERUSER: str = "admin"
     # 数据库连接
-    DB_URL:str = f"sqlite:///{CONFIG_PATH}/user.db"
+    DB_URL: str = f"sqlite:///{CONFIG_PATH}/user.db"
     # 辅助认证，允许通过外部服务进行认证、单点登录以及自动创建用户
     AUXILIARY_AUTH_ENABLE: bool = False
     # API密钥，需要更换
@@ -106,6 +106,8 @@ class ConfigModel(BaseModel):
     TMDB_API_DOMAIN: str = "api.themoviedb.org"
     # TMDB API Key
     TMDB_API_KEY: str = "db55323b8d3e4154498498a75642b381"
+    # TMDB_API_ADULT
+    TMDB_API_ADULT: bool = False
     # TVDB API Key
     TVDB_API_KEY: str = "6b481081-10aa-440c-99f2-21d17717ee02"
     # Fanart开关
