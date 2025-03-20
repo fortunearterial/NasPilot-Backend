@@ -50,7 +50,7 @@ def add_site(
     if SitesHelper().auth_level < 2:
         return schemas.Response(success=False, message="用户未通过认证，无法使用站点功能！")
     domain = StringUtils.get_url_domain(site_in.url)
-    site_info = SitesHelper().get_indexer(domain)
+    site_info = SitesHelper().get_indexer(domain, site_in)
     if not site_info:
         return schemas.Response(success=False, message="该站点不支持，请检查站点域名是否正确")
     if Site.get_by_domain(db, domain):

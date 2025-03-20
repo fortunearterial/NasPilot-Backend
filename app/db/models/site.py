@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON, Text
+from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON, Text, DateTime
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -19,18 +19,24 @@ class Site(Base):
     url = Column(String(255), nullable=False)
     # 适用类型
     types = Column(JSON)
-    # 下载器
-    downloader = Column(String(20))
     # 站点优先级
     pri = Column(Integer, default=1)
-    # RSS地址，未启用
+    # RSS地址
     rss = Column(String(255))
-    # FEED地址
-    feed = Column(JSON)
+    # RSS转标准值映射
+    rss_mapping = Column(JSON)
+    # BROWSE地址
+    browse = Column(String(255))
+    # BROWSE请求方式
+    browse_method = Column(String(20))
+    # BROWSE获取种子列表配置
+    browse_config = Column(JSON)
     # SEARCH地址
-    search = Column(JSON)
-    # XPATH
-    xpath = Column(String(2000))
+    search = Column(String(255))
+    # SEARCH请求方式
+    search_method = Column(String(20))
+    # SEARCH获取种子列表配置
+    search_config = Column(JSON)
     # Cookie
     cookie = Column(Text)
     # User-Agent
@@ -58,11 +64,11 @@ class Site(Base):
     # 超时时间
     timeout = Column(Integer, default=15)
     # 是否启用
-    is_active = Column(Boolean(), default=True)
+    is_active = Column(Boolean, default=True)
     # 创建时间
-    lst_mod_date = Column(String(255), default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    lst_mod_date = Column(DateTime, default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     # 下载器
-    downloader = Column(String(255))
+    downloader = Column(String(20))
 
     @staticmethod
     @db_query

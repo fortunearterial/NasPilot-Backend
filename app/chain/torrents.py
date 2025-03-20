@@ -72,7 +72,7 @@ class TorrentsChain(ChainBase, metaclass=Singleton):
         self.remove_cache(self._rss_file)
         logger.info(f'种子缓存数据清理完成')
 
-    @cached(cache=TTLCache(maxsize=128, ttl=595))
+    # @cached(cache=TTLCache(maxsize=128, ttl=595))
     def browse(self, domain: str, keyword: str = None, cat: str = None, page: int = 0) -> List[TorrentInfo]:
         """
         浏览站点首页内容，返回种子清单，TTL缓存10分钟

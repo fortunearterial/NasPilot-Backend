@@ -60,7 +60,7 @@ pyotp~=2.9.0
 Pinyin2Hanzi~=0.1.1
 pywebpush~=2.0.0
 python-115==0.0.9.8.8.4
-git+https://github.com/ChenyangGao/p115client.git@366b34ea7a362011aad75bbd77c84d764ac76592 # p115client
+p115client @ git+https://github.com/ChenyangGao/p115client.git@366b34ea7a362011aad75bbd77c84d764ac76592
 python-cookietools==0.0.2.1
 aligo~=6.2.4
 aiofiles~=24.1.0
@@ -69,3 +69,4 @@ rsa~=4.9
 redis~=5.2.1
 async_timeout~=5.0.1; python_full_version < "3.11.3"
 PyMySQL~=1.1.0
+# browser-use~=0.1.40

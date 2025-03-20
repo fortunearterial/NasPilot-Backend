@@ -2,6 +2,7 @@ import multiprocessing
 import os
 import sys
 import threading
+import asyncio
 
 import uvicorn as uvicorn
 from PIL import Image
@@ -78,4 +79,7 @@ if __name__ == '__main__':
     # 更新数据库
     update_db()
     # 启动API服务
-    Server.run()
+    if settings.DEV:
+        asyncio.run(Server.serve())
+    else:
+        Server.run()
