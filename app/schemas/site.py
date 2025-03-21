@@ -2,21 +2,6 @@ from typing import Optional, Any, Union, Dict, List
 
 from pydantic import BaseModel, Field
 
-class Feed(BaseModel):
-    method: str
-    path: str
-
-    class Config:
-        orm_mode = False
-
-class Search(BaseModel):
-    method: str
-    path: str
-    body: Optional[str]
-
-    class Config:
-        orm_mode = False
-
 class Site(BaseModel):
     # ID
     id: Optional[int] = None
@@ -30,16 +15,22 @@ class Site(BaseModel):
     pri: Optional[int] = 0
     # 适用类型
     types: Optional[List[str]] = None
-    # 下载器
-    downloader: Optional[str] = None
     # RSS地址
     rss: Optional[str] = None
-    # FEED地址
-    feed: Optional[Feed] = None
+    # RSS转标准值映射
+    rss_mapping: Optional[str] = None
+    # BROWSE地址
+    browse: Optional[str] = None
+    # BROWSE请求方式
+    browse_method: Optional[str] = None
+    # BROWSE获取种子列表配置
+    browse_config: Optional[dict] = None
     # SEARCH地址
-    search: Optional[Search] = None
-    # XPATH
-    xpath: Optional[str] = None
+    search: Optional[str] = None
+    # SEARCH请求方式
+    search_method: Optional[str] = None
+    # SEARCH获取种子列表配置
+    search_config: Optional[dict] = None
     # Cookie
     cookie: Optional[str] = None
     # User-Agent

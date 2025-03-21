@@ -12,6 +12,8 @@ from app.utils.string import StringUtils
 
 @dataclass
 class TorrentInfo:
+    # ID
+    id: str = None
     # 站点ID
     site: int = None
     # 站点名称
@@ -554,7 +556,8 @@ class MediaInfo:
                 self.poster_path = info.get("pic", {}).get("large")
             if not self.poster_path and info.get("cover_url"):
                 # imageView2/0/q/80/w/9999/h/120/format/webp ->  imageView2/1/w/500/h/750/format/webp
-                self.poster_path = re.sub(r'imageView2/\d/q/\d+/w/\d+/h/\d+/format/webp', 'imageView2/1/w/500/h/750/format/webp', info.get("cover_url"))
+                self.poster_path = re.sub(r'imageView2/\d/q/\d+/w/\d+/h/\d+/format/webp',
+                                          'imageView2/1/w/500/h/750/format/webp', info.get("cover_url"))
             if not self.poster_path and info.get("cover"):
                 if info.get("cover").get("url"):
                     self.poster_path = info.get("cover").get("url")
@@ -748,14 +751,17 @@ class MediaInfo:
                 self.backdrop_path = info.get("background")
         # 简介
         if not self.overview:
-            self.overview = info.get("short_description") or info.get("about_the_game") or info.get("detailed_description") or ""
+            self.overview = info.get("short_description") or info.get("about_the_game") or info.get(
+                "detailed_description") or ""
         # 导演和演员
         if not self.directors:
             self.directors = []
             if info.get("developers"):
-                self.directors.extend([{"id": developer, "job": "开发商", "name": developer} for developer in info.get("developers")])
+                self.directors.extend(
+                    [{"id": developer, "job": "开发商", "name": developer} for developer in info.get("developers")])
             if info.get("publishers"):
-                self.directors.extend([{"id": publisher, "job": "发行商", "name": publisher} for publisher in info.get("publishers")])
+                self.directors.extend(
+                    [{"id": publisher, "job": "发行商", "name": publisher} for publisher in info.get("publishers")])
         # # 别名
         # if not self.names:
         #     akas = info.get("aka")
@@ -763,10 +769,12 @@ class MediaInfo:
         #         self.names = [re.sub(r'\([港台豆友译名]+\)', "", aka) for aka in akas]
         # 风格
         if not self.genres:
-            self.genres = [{"id": genre.get("id"), "name": genre.get("description")} for genre in info.get("genres") or []]
+            self.genres = [{"id": genre.get("id"), "name": genre.get("description")} for genre in
+                           info.get("genres") or []]
         # 国家
         if not self.production_countries:
-            self.production_countries = [{"id": language, "name": language} for language in info.get("supported_languages", "").split(", ")]
+            self.production_countries = [{"id": language, "name": language} for language in
+                                         info.get("supported_languages", "").split(", ")]
         # 剩余属性赋值
         for key, value in info.items():
             if not hasattr(self, key):
