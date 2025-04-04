@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from app.db import DbOper
 from app.db.models import SiteIcon
@@ -127,7 +127,8 @@ class SiteOper(DbOper):
         siteuserdatas = SiteUserData.get_by_domain(self._db, domain=domain, workdate=current_day)
         if siteuserdatas:
             # 存在则更新
-            siteuserdatas[0].update(self._db, payload)
+            if not payload.get("err_msg"):
+                siteuserdatas[0].update(self._db, payload)
         else:
             # 不存在则插入
             SiteUserData(**payload).create(self._db)
@@ -139,7 +140,7 @@ class SiteOper(DbOper):
         """
         return SiteUserData.list(self._db)
 
-    def get_userdata_by_domain(self, domain: str, workdate: str = None) -> List[SiteUserData]:
+    def get_userdata_by_domain(self, domain: str, workdate: Optional[str] = None) -> List[SiteUserData]:
         """
         获取站点用户数据
         """
@@ -178,7 +179,7 @@ class SiteOper(DbOper):
             })
         return True
 
-    def success(self, domain: str, seconds: int = None):
+    def success(self, domain: str, seconds: Optional[int] = None):
         """
         站点访问成功
         """

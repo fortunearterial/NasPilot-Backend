@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 
 from sqlalchemy import Column, Integer, String, Sequence, JSON, Text
 from sqlalchemy.orm import Session
@@ -53,6 +54,8 @@ class DownloadHistory(Base):
     note = Column(JSON)
     # 自定义媒体类别
     media_category = Column(String(255))
+    # 剧集组
+    episode_group = Column(String(255))
 
     @staticmethod
     @db_query
@@ -69,7 +72,7 @@ class DownloadHistory(Base):
 
     @staticmethod
     @db_query
-    def list_by_page(db: Session, page: int = 1, count: int = 30):
+    def list_by_page(db: Session, page: Optional[int] = 1, count: Optional[int] = 30):
         result = db.query(DownloadHistory).offset((page - 1) * count).limit(count).all()
         return list(result)
 
@@ -80,8 +83,9 @@ class DownloadHistory(Base):
 
     @staticmethod
     @db_query
-    def get_last_by(db: Session, mtype: str = None, title: str = None, year: int = None, season: str = None,
-                    episode: str = None, tmdbid: int = None):
+    def get_last_by(db: Session, mtype: Optional[str] = None, title: Optional[str] = None,
+                    year: Optional[str] = None, season: Optional[str] = None,
+                    episode: Optional[str] = None, tmdbid: Optional[int] = None):
         """
         据tmdbid、season、season_episode查询转移记录
         """
@@ -125,7 +129,7 @@ class DownloadHistory(Base):
 
     @staticmethod
     @db_query
-    def list_by_user_date(db: Session, date: str, username: str = None):
+    def list_by_user_date(db: Session, date: str, username: Optional[str] = None):
         """
         查询某用户某时间之后的下载历史
         """
@@ -140,7 +144,7 @@ class DownloadHistory(Base):
 
     @staticmethod
     @db_query
-    def list_by_date(db: Session, date: str, type: str, tmdbid: str, seasons: str = None):
+    def list_by_date(db: Session, date: str, type: str, tmdbid: str, seasons: Optional[str] = None):
         """
         查询某时间之后的下载历史
         """
@@ -189,7 +193,7 @@ class DownloadFiles(Base):
 
     @staticmethod
     @db_query
-    def get_by_hash(db: Session, download_hash: str, state: int = None):
+    def get_by_hash(db: Session, download_hash: str, state: Optional[int] = None):
         if state:
             result = db.query(DownloadFiles).filter(DownloadFiles.download_hash == download_hash,
                                                     DownloadFiles.state == state).all()

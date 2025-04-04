@@ -110,7 +110,7 @@ class MediaInfo(BaseModel):
     # 海报图片
     poster_path: Optional[str] = None
     # 评分
-    vote_average: Optional[float] = 0
+    vote_average: Optional[float] = 0.0
     # 描述
     overview: Optional[str] = None
     # 二级分类
@@ -174,6 +174,10 @@ class MediaInfo(BaseModel):
     runtime: Optional[int] = None
     # 下一集
     next_episode_to_air: Optional[dict] = Field(default_factory=dict)
+    # 全部剧集组
+    episode_groups: Optional[list] = Field(default_factory=list)
+    # 剧集组
+    episode_group: Optional[str] = None
 
 
 class TorrentInfo(BaseModel):
@@ -205,7 +209,7 @@ class TorrentInfo(BaseModel):
     # 详情页面
     page_url: Optional[str] = None
     # 种子大小
-    size: Optional[float] = 0
+    size: Optional[float] = 0.0
     # 做种者
     seeders: Optional[int] = 0
     # 下载者

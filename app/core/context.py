@@ -2,7 +2,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 from pyquery import PyQuery
 
@@ -43,7 +43,7 @@ class TorrentInfo:
     # 详情页面
     page_url: str = None
     # 种子大小
-    size: float = 0
+    size: float = 0.0
     # 做种者
     seeders: int = 0
     # 下载者
@@ -203,7 +203,7 @@ class MediaInfo:
     # LOGO
     logo_path: str = None
     # 评分
-    vote_average: float = 0
+    vote_average: float = 0.0
     # 描述
     overview: str = None
     # 风格ID
@@ -278,6 +278,10 @@ class MediaInfo:
     next_episode_to_air: dict = field(default_factory=dict)
     # 内容分级
     content_rating: str = None
+    # 全部剧集组
+    episode_groups: List[dict] = field(default_factory=list)
+    # 剧集组
+    episode_group: str = None
 
     def __post_init__(self):
         # 设置媒体信息
@@ -472,6 +476,10 @@ class MediaInfo:
                     air_date = seainfo.get("air_date")
                     if air_date:
                         self.season_years[season] = air_date[:4]
+            # 剧集组
+            if info.get("episode_groups"):
+                self.episode_groups = info.pop("episode_groups").get("results") or []
+
         # 海报
         if info.get('poster_path'):
             self.poster_path = f"https://{settings.TMDB_IMAGE_DOMAIN}/t/p/original{info.get('poster_path')}"
@@ -912,7 +920,7 @@ class MediaInfo:
                 return self.backdrop_path
         return default or ""
 
-    def get_message_image(self, default: bool = None):
+    def get_message_image(self, default: Optional[bool] = None):
         """
         返回消息图片地址
         """
@@ -923,7 +931,7 @@ class MediaInfo:
                 return self.backdrop_path
         return self.get_poster_image(default=default)
 
-    def get_poster_image(self, default: bool = None):
+    def get_poster_image(self, default: Optional[bool] = None):
         """
         返回海报图片地址
         """
@@ -934,7 +942,7 @@ class MediaInfo:
                 return self.poster_path
         return default or ""
 
-    def get_overview_string(self, max_len: int = 140):
+    def get_overview_string(self, max_len: Optional[int] = 140):
         """
         返回带限定长度的简介信息
         :param max_len: 内容长度
@@ -978,6 +986,7 @@ class MediaInfo:
         self.spoken_languages = []
         self.networks = []
         self.next_episode_to_air = {}
+        self.episode_groups = []
 
 
 @dataclass

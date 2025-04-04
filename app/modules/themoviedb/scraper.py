@@ -18,7 +18,7 @@ class TmdbScraper:
         self.tmdb = tmdb
 
     def get_metadata_nfo(self, meta: MetaBase, mediainfo: MediaInfo,
-                         season: int = None, episode: int = None) -> Optional[str]:
+                         season: Optional[int] = None, episode: Optional[int] = None) -> Optional[str]:
         """
         获取NFO文件内容文本
         :param meta: 元数据
@@ -32,7 +32,10 @@ class TmdbScraper:
         else:
             if season is not None:
                 # 查询季信息
-                seasoninfo = self.tmdb.get_tv_season_detail(mediainfo.tmdb_id, season)
+                if mediainfo.episode_group:
+                    seasoninfo = self.tmdb.get_tv_group_detail(mediainfo.episode_group, season=season)
+                else:
+                    seasoninfo = self.tmdb.get_tv_season_detail(mediainfo.tmdb_id, season=season)
                 if episode:
                     # 集元数据文件
                     episodeinfo = self.__get_episode_detail(seasoninfo, meta.begin_episode)
@@ -49,7 +52,7 @@ class TmdbScraper:
 
         return None
 
-    def get_metadata_img(self, mediainfo: MediaInfo, season: int = None, episode: int = None) -> dict:
+    def get_metadata_img(self, mediainfo: MediaInfo, season: Optional[int] = None, episode: Optional[int] = None) -> dict:
         """
         获取图片名称和url
         :param mediainfo: 媒体信息
@@ -61,7 +64,10 @@ class TmdbScraper:
             # 只需要集的图片
             if episode:
                 # 集的图片
-                seasoninfo = self.tmdb.get_tv_season_detail(mediainfo.tmdb_id, season)
+                if mediainfo.episode_group:
+                    seasoninfo = self.tmdb.get_tv_group_seasons(mediainfo.episode_group)
+                else:
+                    seasoninfo = self.tmdb.get_tv_season_detail(mediainfo.tmdb_id, season)
                 if seasoninfo:
                     episodeinfo = self.__get_episode_detail(seasoninfo, episode)
                     if episodeinfo and episodeinfo.get("still_path"):

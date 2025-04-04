@@ -56,19 +56,20 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
 
     def add(self, title: str, year: str,
             mtype: MediaType = None,
-            tmdbid: int = None,
-            doubanid: str = None,
-            bangumiid: int = None,
-            steamid: int = None,
-            javdbid: str = None,
-            mediaid: str = None,
-            season: int = None,
+            tmdbid: Optional[int] = None,
+            doubanid: Optional[str] = None,
+            steamid: Optional[int] = None,
+            javdbid: Optional[str] = None,
+            bangumiid: Optional[int] = None,
+            mediaid: Optional[str] = None,
+            episode_group: Optional[str] = None,
+            season: Optional[int] = None,
             channel: MessageChannel = None,
-            source: str = None,
-            userid: str = None,
-            username: str = None,
-            message: bool = True,
-            exist_ok: bool = False,
+            source: Optional[str] = None,
+            userid: Optional[str] = None,
+            username: Optional[str] = None,
+            message: Optional[bool] = True,
+            exist_ok: Optional[bool] = False,
             **kwargs) -> Tuple[Optional[int], str]:
         """
         识别媒体信息并添加订阅
@@ -129,7 +130,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                         mediainfo = __get_event_meida(mediaid, metainfo)
                 else:
                     # 使用TMDBID识别
-                    mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, tmdbid=tmdbid, cache=False)
+                    mediainfo = self.recognize_media(meta=metainfo, mtype=mtype, tmdbid=tmdbid,
+                                                     episode_group=episode_group, cache=False)
             else:
                 if doubanid:
                     # 豆瓣识别模式，不使用缓存
@@ -146,7 +148,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
 
         # 使用名称识别兜底
         if not mediainfo:
-            mediainfo = self.recognize_media(meta=metainfo)
+            mediainfo = self.recognize_media(meta=metainfo, episode_group=episode_group)
 
         # 识别失败
         if not mediainfo:
@@ -165,6 +167,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                                                      tmdbid=mediainfo.tmdb_id,
                                                      doubanid=mediainfo.douban_id,
                                                      bangumiid=mediainfo.bangumi_id,
+                                                     episode_group=episode_group,
                                                      cache=False)
                     if not mediainfo:
                         logger.error(f"媒体信息识别失败！")
@@ -193,12 +196,12 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         # 合并信息
         if doubanid:
             mediainfo.douban_id = doubanid
-        if bangumiid:
-            mediainfo.bangumi_id = bangumiid
         if steamid:
             mediainfo.steam_id = steamid
         if javdbid:
             mediainfo.javdb_id = javdbid
+        if bangumiid:
+            mediainfo.bangumi_id = bangumiid
 
         # 添加订阅
         kwargs.update({
@@ -223,7 +226,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             'save_path': self.__get_default_subscribe_config(mediainfo.type, "save_path") if not kwargs.get(
                 "save_path") else kwargs.get("save_path"),
             'filter_groups': self.__get_default_subscribe_config(mediainfo.type, "filter_groups") if not kwargs.get(
-                "filter_groups") else kwargs.get("filter_groups"),
+                "filter_groups") else kwargs.get("filter_groups")
         })
         sid, err_msg = self.subscribeoper.add(mediainfo=mediainfo, season=season, username=username, **kwargs)
         if not sid:
@@ -291,7 +294,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             return True
         return False
 
-    def search(self, sid: int = None, state: str = 'N', manual: bool = False):
+    def search(self, sid: Optional[int] = None, state: Optional[str] = 'N', manual: Optional[bool] = False):
         """
         订阅搜索
         :param sid: 订阅ID，有值时只处理该订阅
@@ -339,6 +342,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                                 tmdbid=subscribe.tmdbid,
                                                                 doubanid=subscribe.doubanid,
+                                                                episode_group=subscribe.episode_group,
                                                                 cache=False)
                     if not mediainfo:
                         logger.warn(
@@ -346,7 +350,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                         continue
 
                     # 如果媒体已存在或已下载完毕，跳过当前订阅处理
-                    exist_flag, no_exists = self.check_and_handle_existing_media(subscribe=subscribe, meta=meta,
+                    exist_flag, no_exists = self.check_and_handle_existing_media(subscribe=subscribe,
+                                                                                 meta=meta,
                                                                                  mediainfo=mediainfo,
                                                                                  mediakey=mediakey)
                     if exist_flag:
@@ -398,6 +403,11 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                                 logger.info(
                                     f'{subscribe.name} 正在洗版，{torrent_info.title} 优先级低于或等于已下载优先级')
                                 continue
+                        # 更新订阅自定义属性
+                        if subscribe.media_category:
+                            torrent_mediainfo.category = subscribe.media_category
+                        if subscribe.episode_group:
+                            torrent_mediainfo.episode_group = subscribe.episode_group
                         matched_contexts.append(context)
 
                     if not matched_contexts:
@@ -413,7 +423,6 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                         userid=subscribe.username,
                         username=subscribe.username,
                         save_path=subscribe.save_path,
-                        media_category=subscribe.media_category,
                         downloader=subscribe.downloader,
                         source=self.get_subscribe_source_keyword(subscribe)
                     )
@@ -442,7 +451,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             logger.debug(f"search Lock released at {datetime.now()}")
 
     def update_subscribe_priority(self, subscribe: Subscribe, meta: MetaBase,
-                                  mediainfo: MediaInfo, downloads: List[Context]):
+                                  mediainfo: MediaInfo, downloads: Optional[List[Context]]):
         """
         更新订阅已下载资源的优先级
         """
@@ -467,7 +476,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
     def finish_subscribe_or_not(self, subscribe: Subscribe, meta: MetaBase, mediainfo: MediaInfo,
                                 downloads: List[Context] = None,
                                 lefts: Dict[Union[int | str], Dict[int, schemas.NotExistMediaInfo]] = None,
-                                force: bool = False):
+                                force: Optional[bool] = False):
         """
         判断是否应完成订阅
         """
@@ -589,6 +598,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                 mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                             tmdbid=subscribe.tmdbid,
                                                             doubanid=subscribe.doubanid,
+                                                            episode_group=subscribe.episode_group,
                                                             cache=False)
                 if not mediainfo:
                     logger.warn(
@@ -618,9 +628,10 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     logger.debug(f'开始匹配站点：{domain}，共缓存了 {len(contexts)} 个种子...')
                     for context in contexts:
                         # 提取信息
-                        torrent_meta = copy.deepcopy(context.meta_info)
-                        torrent_mediainfo = copy.deepcopy(context.media_info)
-                        torrent_info = context.torrent_info
+                        _context = copy.deepcopy(context)
+                        torrent_meta = _context.meta_info
+                        torrent_mediainfo = _context.media_info
+                        torrent_info = _context.torrent_info
 
                         # 不在订阅站点范围的不处理
                         sub_sites = self.get_sub_sites(subscribe)
@@ -648,7 +659,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                         if not torrent_mediainfo \
                                 or (not torrent_mediainfo.tmdb_id and not torrent_mediainfo.douban_id):
                             # 重新识别媒体信息
-                            torrent_mediainfo = self.recognize_media(meta=torrent_meta)
+                            torrent_mediainfo = self.recognize_media(meta=torrent_meta,
+                                                                     episode_group=subscribe.episode_group)
                             if torrent_mediainfo:
                                 # 更新种子缓存
                                 context.media_info = torrent_mediainfo
@@ -751,7 +763,12 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
 
                         # 匹配成功
                         logger.info(f'{mediainfo.title_year} 匹配成功：{torrent_info.title}')
-                        _match_context.append(context)
+                        # 自定义属性
+                        if subscribe.media_category:
+                            torrent_mediainfo.category = subscribe.media_category
+                        if subscribe.episode_group:
+                            torrent_mediainfo.episode_group = subscribe.episode_group
+                        _match_context.append(_context)
 
                 if not _match_context:
                     # 未匹配到资源
@@ -767,7 +784,6 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                                                                      userid=subscribe.username,
                                                                      username=subscribe.username,
                                                                      save_path=subscribe.save_path,
-                                                                     media_category=subscribe.media_category,
                                                                      downloader=subscribe.downloader,
                                                                      source=self.get_subscribe_source_keyword(subscribe)
                                                                      )
@@ -809,6 +825,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                         tmdbid=subscribe.tmdbid,
                                                         doubanid=subscribe.doubanid,
+                                                        episode_group=subscribe.episode_group,
                                                         cache=False)
             if not mediainfo:
                 logger.warn(
@@ -901,7 +918,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     logger.error(f'follow用户分享订阅 {title} 添加失败：{message}')
         logger.info(f'follow用户分享订阅刷新完成，共添加 {success_count} 个订阅')
 
-    def __update_subscribe_note(self, subscribe: Subscribe, downloads: List[Context]):
+    def __update_subscribe_note(self, subscribe: Subscribe, downloads: Optional[List[Context]]):
         """
         更新已下载信息到note字段
         """
@@ -960,7 +977,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
     def __update_lack_episodes(self, lefts: Dict[Union[int, str], Dict[int, schemas.NotExistMediaInfo]],
                                subscribe: Subscribe,
                                mediainfo: MediaInfo,
-                               update_date: bool = False):
+                               update_date: Optional[bool] = False):
         """
         更新订阅剩余集数及时间
         """
@@ -1030,7 +1047,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         })
 
     def remote_list(self, channel: MessageChannel,
-                    userid: Union[str, int] = None, source: str = None):
+                    userid: Union[str, int] = None, source: Optional[str] = None):
         """
         查询订阅并发送消息
         """
@@ -1058,7 +1075,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                                                title=title, text='\n'.join(messages), userid=userid))
 
     def remote_delete(self, arg_str: str, channel: MessageChannel,
-                      userid: Union[str, int] = None, source: str = None):
+                      userid: Union[str, int] = None, source: Optional[str] = None):
         """
         删除订阅
         """
@@ -1093,8 +1110,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                                  no_exists: Dict[Union[int, str], Dict[int, schemas.NotExistMediaInfo]],
                                  mediakey: Union[str, int],
                                  begin_season: int,
-                                 total_episode: int,
-                                 start_episode: int,
+                                 total_episode: Optional[int],
+                                 start_episode: Optional[int],
                                  downloaded_episodes: List[int] = None
                                  ) -> Tuple[bool, Dict[Union[int, str], Dict[int, schemas.NotExistMediaInfo]]]:
         """
@@ -1294,7 +1311,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             # 查询TMDB中的集信息
             tmdb_episodes = self.tmdbchain.tmdb_episodes(
                 tmdbid=subscribe.tmdbid,
-                season=subscribe.season
+                season=subscribe.season,
+                episode_group=subscribe.episode_group
             )
             if tmdb_episodes:
                 for episode in tmdb_episodes:
@@ -1356,6 +1374,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         mediainfo: MediaInfo = self.recognize_media(meta=meta, mtype=meta.type,
                                                     tmdbid=subscribe.tmdbid,
                                                     doubanid=subscribe.doubanid,
+                                                    episode_group=subscribe.episode_group,
                                                     cache=False)
         if not mediainfo:
             logger.warn(
@@ -1389,7 +1408,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         return subscribe_info
 
     def check_and_handle_existing_media(self, subscribe: Subscribe, meta: MetaBase,
-                                        mediainfo: MediaInfo, mediakey: str):
+                                        mediainfo: MediaInfo, mediakey: Union[str, int]):
         """
         检查媒体是否已经存在，并根据情况执行相应的操作
         1. 查询缺失的媒体信息

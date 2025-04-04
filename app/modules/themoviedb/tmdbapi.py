@@ -1,3 +1,4 @@
+import re
 import traceback
 from typing import Optional, List
 from urllib.parse import quote
@@ -41,8 +42,8 @@ class TmdbApi:
         self.search = Search()
         self.movie = Movie()
         self.tv = TV()
-        self.season = Season()
-        self.episode = Episode()
+        self.season_obj = Season()
+        self.episode_obj = Episode()
         self.discover = Discover()
         self.trending = Trending()
         self.person = Person()
@@ -185,9 +186,10 @@ class TmdbApi:
 
     def match(self, name: str,
               mtype: MediaType,
-              year: str = None,
-              season_year: str = None,
-              season_number: int = None) -> Optional[dict]:
+              year: Optional[str] = None,
+              season_year: Optional[str] = None,
+              season_number: Optional[int] = None,
+              group_seasons: Optional[List[dict]] = None) -> Optional[dict]:
         """
         搜索tmdb中的媒体信息，匹配返回一条尽可能正确的信息
         :param name: 检索的名称
@@ -195,6 +197,7 @@ class TmdbApi:
         :param year: 年份，如要是季集需要是首播年份(first_air_date)
         :param season_year: 当前季集年份
         :param season_number: 季集，整数
+        :param group_seasons: 集数组信息
         :return: TMDB的INFO，同时会将mtype赋值到media_type中
         """
         if not self.search:
@@ -222,7 +225,8 @@ class TmdbApi:
                     f"正在识别{mtype.value}：{name}, 季集={season_number}, 季集年份={season_year} ...")
                 info = self.__search_tv_by_season(name,
                                                   season_year,
-                                                  season_number)
+                                                  season_number,
+                                                  group_seasons)
             if not info:
                 year_range = [year]
                 if year:
@@ -332,12 +336,14 @@ class TmdbApi:
                     return tv
         return {}
 
-    def __search_tv_by_season(self, name: str, season_year: str, season_number: int) -> Optional[dict]:
+    def __search_tv_by_season(self, name: str, season_year: str, season_number: int,
+                              group_seasons: Optional[List[dict]] = None) -> Optional[dict]:
         """
         根据电视剧的名称和季的年份及序号匹配TMDB
         :param name: 识别的文件名或者种子名
         :param season_year: 季的年份
         :param season_number: 季序号
+        :param group_seasons: 集数组信息
         :return: 匹配的媒体信息
         """
 
@@ -345,12 +351,25 @@ class TmdbApi:
             if not tv_info:
                 return False
             try:
-                seasons = self.__get_tv_seasons(tv_info)
-                for season, season_info in seasons.items():
-                    if season_info.get("air_date"):
-                        if season_info.get("air_date")[0:4] == str(_season_year) \
-                                and season == int(season_number):
-                            return True
+                if group_seasons:
+                    for group_season in group_seasons:
+                        season = group_season.get('order')
+                        if season != season_number:
+                            continue
+                        episodes = group_season.get('episodes')
+                        if not episodes:
+                            continue
+                        first_date = episodes[0].get("air_date")
+                        if re.match(r"^\d{4}-\d{2}-\d{2}$", first_date):
+                            if str(_season_year) == str(first_date).split("-")[0]:
+                                return True
+                else:
+                    seasons = self.__get_tv_seasons(tv_info)
+                    for season, season_info in seasons.items():
+                        if season_info.get("air_date"):
+                            if season_info.get("air_date")[0:4] == str(_season_year) \
+                                    and season == int(season_number):
+                                return True
             except Exception as e1:
                 logger.error(f"连接TMDB出错：{e1}")
                 print(traceback.format_exc())
@@ -732,7 +751,7 @@ class TmdbApi:
         更新TMDB信息中的其它语种名称
         """
 
-        def __get_tmdb_lang_title(tmdbinfo: dict, lang: str = "US") -> Optional[str]:
+        def __get_tmdb_lang_title(tmdbinfo: dict, lang: Optional[str] = "US") -> Optional[str]:
             """
             从译名中获取其它语种标题
             """
@@ -767,12 +786,12 @@ class TmdbApi:
 
     def __get_movie_detail(self,
                            tmdbid: int,
-                           append_to_response: str = "images,"
-                                                     "credits,"
-                                                     "alternative_titles,"
-                                                     "translations,"
-                                                     "release_dates,"
-                                                     "external_ids") -> Optional[dict]:
+                           append_to_response: Optional[str] = "images,"
+                                                               "credits,"
+                                                               "alternative_titles,"
+                                                               "translations,"
+                                                               "release_dates,"
+                                                               "external_ids") -> Optional[dict]:
         """
         获取电影的详情
         :param tmdbid: TMDB ID
@@ -880,12 +899,13 @@ class TmdbApi:
 
     def __get_tv_detail(self,
                         tmdbid: int,
-                        append_to_response: str = "images,"
-                                                  "credits,"
-                                                  "alternative_titles,"
-                                                  "translations,"
-                                                  "content_ratings,"
-                                                  "external_ids") -> Optional[dict]:
+                        append_to_response: Optional[str] = "images,"
+                                                            "credits,"
+                                                            "alternative_titles,"
+                                                            "translations,"
+                                                            "content_ratings,"
+                                                            "external_ids,"
+                                                            "episode_groups") -> Optional[dict]:
         """
         获取电视剧的详情
         :param tmdbid: TMDB ID
@@ -1126,11 +1146,11 @@ class TmdbApi:
           "season_number": 1
         }
         """
-        if self.season is None:
+        if self.season_obj is None:
             return {}
         try:
             logger.debug("正在查询TMDB电视剧：%s，季：%s ..." % (tmdbid, season))
-            tmdbinfo = self.season.details(tv_id=tmdbid, season_num=season)
+            tmdbinfo = self.season_obj.details(tv_id=tmdbid, season_num=season)
             return tmdbinfo or {}
         except Exception as e:
             logger.error(str(e))
@@ -1143,11 +1163,11 @@ class TmdbApi:
         :param season: 季，数字
         :param episode: 集，数字
         """
-        if not self.episode:
+        if not self.episode_obj:
             return {}
         try:
             logger.debug("正在查询TMDB集详情：%s，季：%s，集：%s ..." % (tmdbid, season, episode))
-            tmdbinfo = self.episode.details(tv_id=tmdbid, season_num=season, episode_num=episode)
+            tmdbinfo = self.episode_obj.details(tv_id=tmdbid, season_num=season, episode_num=episode)
             return tmdbinfo or {}
         except Exception as e:
             logger.error(str(e))
@@ -1191,7 +1211,7 @@ class TmdbApi:
             logger.error(str(e))
             return []
 
-    def discover_trending(self, page: int = 1) -> List[dict]:
+    def discover_trending(self, page: Optional[int] = 1) -> List[dict]:
         """
         流行趋势
         """
@@ -1282,7 +1302,7 @@ class TmdbApi:
             logger.error(str(e))
             return []
 
-    def get_movie_credits(self, tmdbid: int, page: int = 1, count: int = 24) -> List[dict]:
+    def get_movie_credits(self, tmdbid: int, page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
         """
         获取电影的演职员列表
         """
@@ -1299,7 +1319,7 @@ class TmdbApi:
             logger.error(str(e))
             return []
 
-    def get_tv_credits(self, tmdbid: int, page: int = 1, count: int = 24) -> List[dict]:
+    def get_tv_credits(self, tmdbid: int, page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
         """
         获取电视剧的演职员列表
         """
@@ -1315,6 +1335,33 @@ class TmdbApi:
         except Exception as e:
             logger.error(str(e))
             return []
+
+    def get_tv_group_seasons(self, group_id: str) -> List[dict]:
+        """
+        获取电视剧剧集组季集列表
+        """
+        if not self.tv:
+            return []
+        try:
+            logger.debug(f"正在获取剧集组：{group_id}...")
+            return self.tv.group_episodes(group_id) or []
+        except Exception as e:
+            logger.error(str(e))
+            return []
+
+    def get_tv_group_detail(self, group_id: str, season: int) -> dict:
+        """
+        获取剧集组某个季的信息
+        """
+        group_seasons = self.get_tv_group_seasons(group_id)
+        if not group_seasons:
+            return {}
+        for group_season in group_seasons:
+            if group_season.get('order') == season:
+                return group_season
+        return {}
+
+
 
     def get_person_detail(self, person_id: int) -> dict:
         """
@@ -1349,7 +1396,7 @@ class TmdbApi:
             logger.error(str(e))
             return {}
 
-    def get_person_credits(self, person_id: int, page: int = 1, count: int = 24) -> List[dict]:
+    def get_person_credits(self, person_id: int, page: Optional[int] = 1, count: Optional[int] = 24) -> List[dict]:
         """
         获取人物参演作品
         """
@@ -1375,38 +1422,6 @@ class TmdbApi:
         清除缓存
         """
         self.tmdb.cache_clear()
-
-    def get_tv_episode_years(self, tv_id: int) -> dict:
-        """
-        查询剧集组年份
-        """
-        try:
-            episode_groups = self.tv.episode_groups(tv_id)
-            if not episode_groups:
-                return {}
-            episode_years = {}
-            for episode_group in episode_groups:
-                logger.debug(f"正在获取剧集组年份：{episode_group.get('id')}...")
-                if episode_group.get('type') != 6:
-                    # 只处理剧集部分
-                    continue
-                group_episodes = self.tv.group_episodes(episode_group.get('id'))
-                if not group_episodes:
-                    continue
-                for group_episode in group_episodes:
-                    order = group_episode.get('order')
-                    episodes = group_episode.get('episodes')
-                    if not episodes:
-                        continue
-                    # 当前季第一季时间
-                    first_date = episodes[0].get("air_date")
-                    if not first_date and str(first_date).split("-") != 3:
-                        continue
-                    episode_years[order] = str(first_date).split("-")[0]
-            return episode_years
-        except Exception as e:
-            logger.error(str(e))
-            return {}
 
     def close(self):
         """

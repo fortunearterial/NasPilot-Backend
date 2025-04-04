@@ -224,6 +224,8 @@ class MediaServerType(Enum):
     Jellyfin = "Jellyfin"
     # Plex
     Plex = "Plex"
+    # 飞牛影视
+    TrimeMedia = "TrimeMedia"
 
 
 # 识别器类型

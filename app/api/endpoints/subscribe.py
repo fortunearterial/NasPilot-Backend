@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Annotated, Optional
 
 import cn2an
 from fastapi import APIRouter, Request, BackgroundTasks, Depends, HTTPException, Header
@@ -45,7 +45,7 @@ def read_subscribes(
 
 
 @router.get("/list", summary="查询所有订阅（API_TOKEN）", response_model=List[schemas.Subscribe])
-def list_subscribes(_: str = Depends(verify_apitoken)) -> Any:
+def list_subscribes(_: Annotated[str, Depends(verify_apitoken)]) -> Any:
     """
     查询所有订阅 API_TOKEN认证（?token=xxx）
     """
@@ -86,6 +86,7 @@ def create_subscribe(
                                         steamid=subscribe_in.steamid,
                                         javdbid=subscribe_in.javdbid,
                                         mediaid=subscribe_in.mediaid,
+                                        episode_group=subscribe_in.episode_group,
                                         username=current_user.name,
                                         best_version=subscribe_in.best_version,
                                         save_path=subscribe_in.save_path,
@@ -168,8 +169,8 @@ def update_subscribe_status(
 @router.get("/media/{mediaid}", summary="查询订阅", response_model=schemas.Subscribe)
 def subscribe_mediaid(
         mediaid: str,
-        season: int = None,
-        title: str = None,
+        season: Optional[int] = None,
+        title: Optional[str] = None,
         db: Session = Depends(get_db),
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
@@ -308,7 +309,7 @@ def search_subscribe(
 @router.delete("/media/{mediaid}", summary="删除订阅", response_model=schemas.Response)
 def delete_subscribe_by_mediaid(
         mediaid: str,
-        season: int = None,
+        season: Optional[int] = None,
         db: Session = Depends(get_db),
         _: schemas.TokenPayload = Depends(verify_token)
 ) -> Any:
@@ -359,7 +360,7 @@ def delete_subscribe_by_mediaid(
 
 @router.post("/seerr", summary="OverSeerr/JellySeerr通知订阅", response_model=schemas.Response)
 async def seerr_subscribe(request: Request, background_tasks: BackgroundTasks,
-                          authorization: str = Header(None)) -> Any:
+                          authorization: Annotated[str | None, Header()] = None) -> Any:
     """
     Jellyseerr/Overseerr网络勾子通知订阅
     """
@@ -413,8 +414,8 @@ async def seerr_subscribe(request: Request, background_tasks: BackgroundTasks,
 @router.get("/history/{mtype}", summary="查询订阅历史", response_model=List[schemas.Subscribe])
 def subscribe_history(
         mtype: str,
-        page: int = 1,
-        count: int = 30,
+        page: Optional[int] = 1,
+        count: Optional[int] = 30,
         db: Session = Depends(get_db),
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
@@ -439,9 +440,9 @@ def delete_subscribe(
 @router.get("/popular", summary="热门订阅（基于用户共享数据）", response_model=List[schemas.MediaInfo])
 def popular_subscribes(
         stype: str,
-        page: int = 1,
-        count: int = 30,
-        min_sub: int = None,
+        page: Optional[int] = 1,
+        count: Optional[int] = 30,
+        min_sub: Optional[int] = None,
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     查询热门订阅
@@ -560,7 +561,7 @@ def followed_subscribers(_: schemas.TokenPayload = Depends(verify_token)) -> Any
 
 @router.post("/follow", summary="Follow订阅分享人", response_model=schemas.Response)
 def follow_subscriber(
-        share_uid: str = None,
+        share_uid: Optional[str] = None,
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     Follow订阅分享人
@@ -574,7 +575,7 @@ def follow_subscriber(
 
 @router.delete("/follow", summary="取消Follow订阅分享人", response_model=schemas.Response)
 def unfollow_subscriber(
-        share_uid: str = None,
+        share_uid: Optional[str] = None,
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     取消Follow订阅分享人
@@ -588,9 +589,9 @@ def unfollow_subscriber(
 
 @router.get("/shares", summary="查询分享的订阅", response_model=List[schemas.SubscribeShare])
 def popular_subscribes(
-        name: str = None,
-        page: int = 1,
-        count: int = 30,
+        name: Optional[str] = None,
+        page: Optional[int] = 1,
+        count: Optional[int] = 30,
         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
     """
     查询分享的订阅

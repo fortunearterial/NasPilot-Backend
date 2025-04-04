@@ -1,7 +1,7 @@
 import re
 import traceback
 import xml.dom.minidom
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 from urllib.parse import urljoin
 
 import chardet
@@ -225,7 +225,7 @@ class RssHelper:
     }
 
     @staticmethod
-    def parse(url, proxy: bool = False, timeout: int = 15, headers: dict = None) -> Union[List[dict], None, bool]:
+    def parse(url, proxy: bool = False, timeout: Optional[int] = 15, headers: dict = None) -> Union[List[dict], None, bool]:
         """
         解析RSS订阅URL，获取RSS中的种子信息
         :param url: RSS地址
@@ -301,6 +301,8 @@ class RssHelper:
                         if pubdate:
                             # 转换为时间
                             pubdate = StringUtils.get_time(pubdate)
+                        # 获取豆瓣昵称
+                        nickname = DomUtils.tag_value(item, "dc:createor", default="")
                         # FIX：补全属性
                         author = DomUtils.tag_value(item, "author", default="")
                         category = DomUtils.tag_value(item, "category", default="")
@@ -313,6 +315,9 @@ class RssHelper:
                                     'pubdate': pubdate,
                                     'author': author,
                                     'category': SiteCategoryHelper().get_media_type(domain, category)}
+                        # 如果豆瓣昵称不为空，返回数据增加豆瓣昵称，供doubansync插件获取
+                        if nickname:
+                            tmp_dict['nickname'] = nickname
                         ret_array.append(tmp_dict)
                     except Exception as e1:
                         logger.debug(f"解析RSS失败：{str(e1)} - {traceback.format_exc()}")

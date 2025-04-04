@@ -41,8 +41,8 @@ class DownloadChain(ChainBase):
         self.messagehelper = MessageHelper()
 
     def post_download_message(self, meta: MetaBase, mediainfo: MediaInfo, torrent: TorrentInfo,
-                              channel: MessageChannel = None, username: str = None,
-                              download_episodes: str = None):
+                              channel: MessageChannel = None, username: Optional[str] = None,
+                              download_episodes: Optional[str] = None):
         """
         发送添加下载的消息，根据消息场景开关决定发给谁
         :param meta: 元数据
@@ -99,7 +99,7 @@ class DownloadChain(ChainBase):
 
     def download_torrent(self, torrent: TorrentInfo,
                          channel: MessageChannel = None,
-                         source: str = None,
+                         source: Optional[str] = None,
                          userid: Union[str, int] = None
                          ) -> Tuple[Optional[Union[Path, str]], str, list]:
         """
@@ -107,7 +107,7 @@ class DownloadChain(ChainBase):
         :return: 种子路径，种子目录名，种子文件清单
         """
 
-        def __get_redict_url(url: str, ua: str = None, cookie: str = None) -> Optional[str]:
+        def __get_redict_url(url: str, ua: Optional[str] = None, cookie: Optional[str] = None) -> Optional[str]:
             """
             获取下载链接， url格式：[base64]url
             """
@@ -210,13 +210,12 @@ class DownloadChain(ChainBase):
     def download_single(self, context: Context, torrent_file: Path = None,
                         episodes: Set[int] = None,
                         channel: MessageChannel = None,
-                        source: str = None,
-                        downloader: str = None,
-                        save_path: str = None,
+                        source: Optional[str] = None,
+                        downloader: Optional[str] = None,
+                        save_path: Optional[str] = None,
                         userid: Union[str, int] = None,
-                        username: str = None,
-                        media_category: str = None,
-                        label: str = None) -> Optional[str]:
+                        username: Optional[str] = None,
+                        label: Optional[str] = None) -> Optional[str]:
         """
         下载及发送通知
         :param context: 资源上下文
@@ -228,9 +227,13 @@ class DownloadChain(ChainBase):
         :param save_path: 保存路径
         :param userid: 用户ID
         :param username: 调用下载的用户名/插件名
-        :param media_category: 自定义媒体类别
         :param label: 自定义标签
         """
+        _torrent = context.torrent_info
+        _media = context.media_info
+        _meta = context.meta_info
+        _site_downloader = _torrent.site_downloader
+
         # 发送资源下载事件，允许外部拦截下载
         event_data = ResourceDownloadEventData(
             context=context,
@@ -242,7 +245,7 @@ class DownloadChain(ChainBase):
                 "save_path": save_path,
                 "userid": userid,
                 "username": username,
-                "media_category": media_category
+                "media_category": _media.category
             }
         )
         # 触发资源下载事件
@@ -256,15 +259,11 @@ class DownloadChain(ChainBase):
                     f"Reason: {event_data.reason}")
                 return None
 
-        _torrent = context.torrent_info
-        _media = context.media_info
-        _meta = context.meta_info
-        _site_downloader = _torrent.site_downloader
-
         # 补充完整的media数据
         if not _media.genre_ids:
             new_media = self.recognize_media(mtype=_media.type, tmdbid=_media.tmdb_id,
-                                             doubanid=_media.douban_id, bangumiid=_media.bangumi_id)
+                                             doubanid=_media.douban_id, bangumiid=_media.bangumi_id,
+                                             episode_group=_media.episode_group)
             if new_media:
                 _media = new_media
 
@@ -363,7 +362,8 @@ class DownloadChain(ChainBase):
                 username=username,
                 channel=channel.value if channel else None,
                 date=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                media_category=media_category,
+                media_category=_media.category,
+                episode_group=_media.episode_group,
                 note={"source": source}
             )
 
@@ -426,13 +426,12 @@ class DownloadChain(ChainBase):
     def batch_download(self,
                        contexts: List[Context],
                        no_exists: Dict[Union[int, str], Dict[int, NotExistMediaInfo]] = None,
-                       save_path: str = None,
+                       save_path: Optional[str] = None,
                        channel: MessageChannel = None,
-                       source: str = None,
-                       userid: str = None,
-                       username: str = None,
-                       media_category: str = None,
-                       downloader: str = None
+                       source: Optional[str] = None,
+                       userid: Optional[str] = None,
+                       username: Optional[str] = None,
+                       downloader: Optional[str] = None
                        ) -> Tuple[List[Context], Dict[Union[int, str], Dict[int, NotExistMediaInfo]]]:
         """
         根据缺失数据，自动种子列表中组合择优下载
@@ -443,7 +442,6 @@ class DownloadChain(ChainBase):
         :param source:  来源（消息通知、订阅、手工下载等）
         :param userid:  用户ID
         :param username: 调用下载的用户名/插件名
-        :param media_category: 自定义媒体类别
         :param downloader: 下载器
         :return: 已经下载的资源列表、剩余未下载到的剧集 no_exists[tmdb_id/douban_id] = {season: NotExistMediaInfo}
         """
@@ -534,7 +532,7 @@ class DownloadChain(ChainBase):
                 logger.info(f"开始下载{context.media_info.type} {context.torrent_info.title} ...")
                 if self.download_single(context, save_path=save_path, channel=channel,
                                         source=source, userid=userid, username=username,
-                                        media_category=media_category, downloader=downloader):
+                                        downloader=downloader):
                     # 下载成功
                     logger.info(f"{context.torrent_info.title} 添加下载成功")
                     downloaded_list.append(context)
@@ -622,8 +620,7 @@ class DownloadChain(ChainBase):
                                         source=source,
                                         userid=userid,
                                         username=username,
-                                        media_category=media_category,
-                                        downloader=downloader,
+                                        downloader=downloader
                                     )
                             else:
                                 # 下载
@@ -631,7 +628,6 @@ class DownloadChain(ChainBase):
                                 download_id = self.download_single(context, save_path=save_path,
                                                                    channel=channel, source=source,
                                                                    userid=userid, username=username,
-                                                                   media_category=media_category,
                                                                    downloader=downloader)
 
                             if download_id:
@@ -703,7 +699,6 @@ class DownloadChain(ChainBase):
                                 download_id = self.download_single(context, save_path=save_path,
                                                                    channel=channel, source=source,
                                                                    userid=userid, username=username,
-                                                                   media_category=media_category,
                                                                    downloader=downloader)
                                 if download_id:
                                     # 下载成功
@@ -793,7 +788,6 @@ class DownloadChain(ChainBase):
                                 source=source,
                                 userid=userid,
                                 username=username,
-                                media_category=media_category,
                                 downloader=downloader
                             )
                             if not download_id:
@@ -883,7 +877,8 @@ class DownloadChain(ChainBase):
                 # 补充媒体信息
                 mediainfo: MediaInfo = self.recognize_media(mtype=mediainfo.type,
                                                             tmdbid=mediainfo.tmdb_id,
-                                                            doubanid=mediainfo.douban_id)
+                                                            doubanid=mediainfo.douban_id,
+                                                            episode_group=mediainfo.episode_group)
                 if not mediainfo:
                     logger.error(f"媒体信息识别失败！")
                     return False, {}
@@ -968,7 +963,7 @@ class DownloadChain(ChainBase):
             # 全部存在
             return True, no_exists
 
-    def remote_downloading(self, channel: MessageChannel, userid: Union[str, int] = None, source: str = None):
+    def remote_downloading(self, channel: MessageChannel, userid: Union[str, int] = None, source: Optional[str] = None):
         """
         查询正在下载的任务，并发送消息
         """
@@ -1002,7 +997,7 @@ class DownloadChain(ChainBase):
             link=settings.MP_DOMAIN('#/downloading')
         ))
 
-    def downloading(self, name: str = None) -> List[DownloadingTorrent]:
+    def downloading(self, name: Optional[str] = None) -> List[DownloadingTorrent]:
         """
         查询正在下载的任务
         """

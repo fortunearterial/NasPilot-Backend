@@ -25,7 +25,7 @@ class MessageQueueManager(metaclass=SingletonClass):
     def __init__(
             self,
             send_callback: Optional[Callable] = None,
-            check_interval: int = 10
+            check_interval: Optional[int] = 10
     ) -> None:
         """
         消息队列管理器初始化
@@ -63,6 +63,8 @@ class MessageQueueManager(metaclass=SingletonClass):
             periods = [periods]
         for period in periods:
             if not period:
+                continue
+            if not period.get('start') or not period.get('end'):
                 continue
             start_h, start_m = map(int, period['start'].split(':'))
             end_h, end_m = map(int, period['end'].split(':'))

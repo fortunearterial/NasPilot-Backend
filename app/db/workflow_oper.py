@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from app.db import DbOper
 from app.db.models.workflow import Workflow
@@ -43,7 +43,7 @@ class WorkflowOper(DbOper):
         """
         return Workflow.start(self._db, wid)
 
-    def success(self, wid: int, result: str = None) -> bool:
+    def success(self, wid: int, result: Optional[str] = None) -> bool:
         """
         成功
         """
@@ -61,8 +61,8 @@ class WorkflowOper(DbOper):
         """
         return Workflow.update_current_action(self._db, wid, action_id, context)
 
-    def reset(self, wid: int) -> bool:
+    def reset(self, wid: int, reset_count: bool = False) -> bool:
         """
         重置
         """
-        return Workflow.reset(self._db, wid)
+        return Workflow.reset(self._db, wid, reset_count=reset_count)

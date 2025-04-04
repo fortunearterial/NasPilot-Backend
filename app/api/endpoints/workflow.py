@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Any
+from typing import List, Any, Optional
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -96,7 +96,7 @@ def delete_workflow(workflow_id: int,
 
 @router.post("/{workflow_id}/run", summary="执行工作流", response_model=schemas.Response)
 def run_workflow(workflow_id: int,
-                 from_begin: bool = True,
+                 from_begin: Optional[bool] = True,
                  _: schemas.TokenPayload = Depends(get_current_active_user)) -> Any:
     """
     执行工作流
@@ -156,7 +156,7 @@ def reset_workflow(workflow_id: int,
     # 停止工作流
     global_vars.stop_workflow(workflow_id)
     # 重置工作流
-    workflow.reset(db, workflow_id)
+    workflow.reset(db, workflow_id, reset_count=True)
     # 删除缓存
     SystemConfigOper().delete(f"WorkflowCache-{workflow_id}")
     return schemas.Response(success=True)

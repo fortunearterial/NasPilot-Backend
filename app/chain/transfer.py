@@ -53,14 +53,14 @@ class JobManager:
         self._season_episodes = {}
 
     @staticmethod
-    def __get_meta_id(meta: MetaBase = None, season: int = None) -> Tuple:
+    def __get_meta_id(meta: MetaBase = None, season: Optional[int] = None) -> Tuple:
         """
         获取元数据ID
         """
         return meta.name, season
 
     @staticmethod
-    def __get_media_id(media: MediaInfo = None, season: int = None) -> Tuple:
+    def __get_media_id(media: MediaInfo = None, season: Optional[int] = None) -> Tuple:
         """
         获取媒体ID
         """
@@ -104,7 +104,7 @@ class JobManager:
         """
         return schemas.MetaInfo(**task.meta.to_dict())
 
-    def add_task(self, task: TransferTask, state: str = "waiting"):
+    def add_task(self, task: TransferTask, state: Optional[str] = "waiting"):
         """
         添加整理任务
         """
@@ -296,7 +296,7 @@ class JobManager:
             media_success = True
         return meta_success and media_success
 
-    def success_tasks(self, media: MediaInfo, season: int = None) -> List[TransferJobTask]:
+    def success_tasks(self, media: MediaInfo, season: Optional[int] = None) -> List[TransferJobTask]:
         """
         获取某项任务成功的任务
         """
@@ -306,7 +306,7 @@ class JobManager:
                 return []
             return [task for task in self._job_view[__mediaid__].tasks if task.state == "completed"]
 
-    def count(self, media: MediaInfo, season: int = None) -> int:
+    def count(self, media: MediaInfo, season: Optional[int] = None) -> int:
         """
         获取某项任务总数
         """
@@ -317,7 +317,7 @@ class JobManager:
                 return 0
             return len([task for task in self._job_view[__mediaid__].tasks if task.state == "completed"])
 
-    def size(self, media: MediaInfo, season: int = None) -> int:
+    def size(self, media: MediaInfo, season: Optional[int] = None) -> int:
         """
         获取某项任务总大小
         """
@@ -341,7 +341,7 @@ class JobManager:
         """
         return list(self._job_view.values())
 
-    def season_episodes(self, media: MediaInfo, season: int = None) -> List[int]:
+    def season_episodes(self, media: MediaInfo, season: Optional[int] = None) -> List[int]:
         """
         获取季集清单
         """
@@ -623,7 +623,8 @@ class TransferChain(ChainBase, metaclass=Singleton):
                         # 下载记录中已存在识别信息
                         mediainfo: Optional[MediaInfo] = self.recognize_media(mtype=MediaType(download_history.type),
                                                                               tmdbid=download_history.tmdbid,
-                                                                              doubanid=download_history.doubanid)
+                                                                              doubanid=download_history.doubanid,
+                                                                              episode_group=download_history.episode_group)
                         if mediainfo:
                             # 更新自定义媒体类别
                             if download_history.media_category:
@@ -681,7 +682,8 @@ class TransferChain(ChainBase, metaclass=Singleton):
                     season_num = 1
                 task.episodes_info = self.tmdbchain.tmdb_episodes(
                     tmdbid=task.mediainfo.tmdb_id,
-                    season=season_num
+                    season=season_num,
+                    episode_group=task.mediainfo.episode_group
                 )
 
             # 查询整理目标目录
@@ -799,9 +801,7 @@ class TransferChain(ChainBase, metaclass=Singleton):
                     mediainfo = self.recognize_media(mtype=mtype,
                                                      tmdbid=downloadhis.tmdbid,
                                                      doubanid=downloadhis.doubanid,
-                                                     bangumiid=downloadhis.bangumiid,
-                                                     steamid=downloadhis.steamid,
-                                                     javdbid=downloadhis.javdbid)
+                                                     episode_group=downloadhis.episode_group)
                     if mediainfo:
                         # 补充图片
                         self.obtain_images(mediainfo)
@@ -910,13 +910,13 @@ class TransferChain(ChainBase, metaclass=Singleton):
     def do_transfer(self, fileitem: FileItem,
                     meta: MetaBase = None, mediainfo: MediaInfo = None,
                     target_directory: TransferDirectoryConf = None,
-                    target_storage: str = None, target_path: Path = None,
-                    transfer_type: str = None, scrape: bool = None,
-                    library_type_folder: bool = None, library_category_folder: bool = None,
-                    season: int = None, epformat: EpisodeFormat = None, min_filesize: int = 0,
-                    downloader: str = None, download_hash: str = None,
-                    force: bool = False, background: bool = True,
-                    manual: bool = False, continue_callback: Callable = None) -> Tuple[bool, str]:
+                    target_storage: Optional[str] = None, target_path: Path = None,
+                    transfer_type: Optional[str] = None, scrape: Optional[bool] = None,
+                    library_type_folder: Optional[bool] = None, library_category_folder: Optional[bool] = None,
+                    season: Optional[int] = None, epformat: EpisodeFormat = None, min_filesize: Optional[int] = 0,
+                    downloader: Optional[str] = None, download_hash: Optional[str] = None,
+                    force: Optional[bool] = False, background: Optional[bool] = True,
+                    manual: Optional[bool] = False, continue_callback: Callable = None) -> Tuple[bool, str]:
         """
         执行一个复杂目录的整理操作
         :param fileitem: 文件项
@@ -1156,7 +1156,7 @@ class TransferChain(ChainBase, metaclass=Singleton):
         return all_success, "，".join(err_msgs)
 
     def remote_transfer(self, arg_str: str, channel: MessageChannel,
-                        userid: Union[str, int] = None, source: str = None):
+                        userid: Union[str, int] = None, source: Optional[str] = None):
         """
         远程重新整理，参数 历史记录ID TMDBID|类型
         """
@@ -1198,7 +1198,7 @@ class TransferChain(ChainBase, metaclass=Singleton):
             return
 
     def __re_transfer(self, logid: int, mtype: MediaType = None,
-                      mediaid: str = None) -> Tuple[bool, str]:
+                      mediaid: Optional[str] = None) -> Tuple[bool, str]:
         """
         根据历史记录，重新识别整理，只支持简单条件
         :param logid: 历史记录ID
@@ -1218,14 +1218,14 @@ class TransferChain(ChainBase, metaclass=Singleton):
         if mtype and mediaid:
             mediainfo = self.recognize_media(mtype=mtype, tmdbid=int(mediaid) if str(mediaid).isdigit() else None,
                                              doubanid=mediaid,
-                                             bangumiid=mediaid,
                                              steamid=int(mediaid) if str(mediaid).isdigit() else None,
-                                             javdbid=mediaid)
+                                             javdbid=mediaid,
+                                             episode_group=history.episode_group)
             if mediainfo:
                 # 更新媒体图片
                 self.obtain_images(mediainfo=mediainfo)
         else:
-            mediainfo = self.mediachain.recognize_by_path(str(src_path))
+            mediainfo = self.mediachain.recognize_by_path(str(src_path), episode_group=history.episode_group)
         if not mediainfo:
             return False, f"未识别到媒体信息，类型：{mtype.value}，id：{mediaid}"
         # 重新执行整理
@@ -1252,23 +1252,24 @@ class TransferChain(ChainBase, metaclass=Singleton):
 
     def manual_transfer(self,
                         fileitem: FileItem,
-                        target_storage: str = None,
+                        target_storage: Optional[str] = None,
                         target_path: Path = None,
-                        tmdbid: int = None,
-                        doubanid: str = None,
-                        bangumiid: int = None,
-                        steamid: int = None,
-                        javdbid: str = None,
+                        tmdbid: Optional[int] = None,
+                        doubanid: Optional[str] = None,
+                        steamid: Optional[int] = None,
+                        javdbid: Optional[str] = None,
+                        bangumiid: Optional[int] = None,
                         mtype: MediaType = None,
-                        season: int = None,
-                        transfer_type: str = None,
+                        season: Optional[int] = None,
+                        episode_group: Optional[str] = None,
+                        transfer_type: Optional[str] = None,
                         epformat: EpisodeFormat = None,
-                        min_filesize: int = 0,
-                        scrape: bool = None,
-                        library_type_folder: bool = None,
-                        library_category_folder: bool = None,
-                        force: bool = False,
-                        background: bool = False) -> Tuple[bool, Union[str, list]]:
+                        min_filesize: Optional[int] = 0,
+                        scrape: Optional[bool] = None,
+                        library_type_folder: Optional[bool] = None,
+                        library_category_folder: Optional[bool] = None,
+                        force: Optional[bool] = False,
+                        background: Optional[bool] = False) -> Tuple[bool, Union[str, list]]:
         """
         手动整理，支持复杂条件，带进度显示
         :param fileitem: 文件项
@@ -1278,6 +1279,7 @@ class TransferChain(ChainBase, metaclass=Singleton):
         :param doubanid: 豆瓣ID
         :param mtype: 媒体类型
         :param season: 季度
+        :param episode_group: 剧集组
         :param transfer_type: 整理类型
         :param epformat: 剧集格式
         :param min_filesize: 最小文件大小(MB)
@@ -1294,9 +1296,10 @@ class TransferChain(ChainBase, metaclass=Singleton):
             mediainfo: MediaInfo = self.mediachain.recognize_media(mtype=mtype,
                                                                    tmdbid=tmdbid,
                                                                    doubanid=doubanid,
-                                                                   bangumiid=bangumiid,
                                                                    steamid=steamid,
-                                                                   javdbid=javdbid)
+                                                                   javdbid=javdbid,
+                                                                   bangumiid=bangumiid,
+                                                                   episode_group=episode_group)
             if not mediainfo:
                 return False, f"媒体信息识别失败，tmdbid：{tmdbid}，doubanid：{doubanid}，type: {mtype.value}"
             else:
@@ -1348,7 +1351,7 @@ class TransferChain(ChainBase, metaclass=Singleton):
             return state, errmsg
 
     def send_transfer_message(self, meta: MetaBase, mediainfo: MediaInfo,
-                              transferinfo: TransferInfo, season_episode: str = None, username: str = None):
+                              transferinfo: TransferInfo, season_episode: Optional[str] = None, username: Optional[str] = None):
         """
         发送入库成功的消息
         """
