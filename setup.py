@@ -19,7 +19,7 @@ extensions = [
 ]
 
 setup(
-    name="MoviePilot",
+    name="NasPilot",
     author="jxxghp",
     ext_modules=cythonize(
         extensions,

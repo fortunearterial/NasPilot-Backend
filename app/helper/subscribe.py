@@ -139,7 +139,7 @@ class SubscribeHelper(metaclass=Singleton):
                                                 **subscribe_dict
                                             })
         if res is None:
-            return False, "连接MoviePilot服务器失败"
+            return False, "连接NasPilot服务器失败"
         if res.ok:
             # 清除 get_shares 的缓存，以便实时看到结果
             cache_backend.clear(region=self._shares_cache_region)
@@ -157,7 +157,7 @@ class SubscribeHelper(metaclass=Singleton):
                            timeout=5).delete_res(f"{self._sub_share}/{share_id}",
                                                  params={"share_uid": self.share_user_id})
         if res is None:
-            return False, "连接MoviePilot服务器失败"
+            return False, "连接NasPilot服务器失败"
         if res.ok:
             # 清除 get_shares 的缓存，以便实时看到结果
             cache_backend.clear(region=self._shares_cache_region)
@@ -175,7 +175,7 @@ class SubscribeHelper(metaclass=Singleton):
             "Content-Type": "application/json"
         }).get_res(self._sub_fork % share_id)
         if res is None:
-            return False, "连接MoviePilot服务器失败"
+            return False, "连接NasPilot服务器失败"
         if res.ok:
             return True, ""
         else:

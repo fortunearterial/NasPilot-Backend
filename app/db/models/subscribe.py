@@ -93,7 +93,8 @@ class Subscribe(Base):
 
     @staticmethod
     @db_query
-    def exists(db: Session, tmdbid: Optional[int] = None, doubanid: Optional[str] = None, steamid: Optional[int] = None, javdbid: Optional[str] = None, bangumiid: Optional[int] = None, season: Optional[int] = None):
+    def exists(db: Session, tmdbid: Optional[int] = None, doubanid: Optional[str] = None, steamid: Optional[int] = None,
+               javdbid: Optional[str] = None, bangumiid: Optional[int] = None, season: Optional[int] = None):
         if steamid:
             return db.query(Subscribe).filter(Subscribe.steamid == steamid).first()
         elif javdbid:

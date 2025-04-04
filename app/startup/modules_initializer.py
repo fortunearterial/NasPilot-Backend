@@ -102,7 +102,7 @@ def check_auth():
         CommandChain().post_message(
             Notification(
                 mtype=NotificationType.Manual,
-                title="MoviePilot用户认证",
+                title="NasPilot用户认证",
                 text=err_msg,
                 link=settings.MP_DOMAIN('#/site')
             )

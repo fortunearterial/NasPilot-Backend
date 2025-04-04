@@ -29,8 +29,8 @@ function download_and_unzip() {
     INFO "正在下载 ${url}..."
     while [ $retries -lt $max_retries ]; do
         if curl ${CURL_OPTIONS} "${url}" ${CURL_HEADERS} | busybox unzip -d ${TMP_PATH} - > /dev/null; then
-            if [ -e ${TMP_PATH}/MoviePilot-* ]; then
-                mv ${TMP_PATH}/MoviePilot-* ${TMP_PATH}/"${target_dir}"
+            if [ -e ${TMP_PATH}/NasPilot-* ]; then
+                mv ${TMP_PATH}/NasPilot-* ${TMP_PATH}/"${target_dir}"
             fi
             break
         else
@@ -49,7 +49,7 @@ function download_and_unzip() {
 # 下载程序资源，$1: 后端版本路径
 function install_backend_and_download_resources() {
     # 更新后端程序
-    if ! download_and_unzip "${GITHUB_PROXY}https://github.com/jxxghp/MoviePilot/archive/refs/${1}" "App"; then
+    if ! download_and_unzip "${GITHUB_PROXY}https://github.com/fortunearterial/NasPilot/archive/refs/${1}" "App"; then
         WARN "后端程序下载失败，继续使用旧的程序来启动..."
         return 1
     fi
@@ -68,7 +68,7 @@ function install_backend_and_download_resources() {
     if [[ "${1}" == "heads/v2.zip" ]]; then
         INFO "正在获取前端最新版本号..."
         # 获取所有发布的版本列表，并筛选出以v2开头的版本号
-        releases=$(curl ${CURL_OPTIONS} "https://api.github.com/repos/jxxghp/MoviePilot-Frontend/releases" ${CURL_HEADERS} | jq -r '.[].tag_name' | grep "^v2\.")
+        releases=$(curl ${CURL_OPTIONS} "https://api.github.com/repos/fortunearterial/NasPilot-Frontend/releases" ${CURL_HEADERS} | jq -r '.[].tag_name' | grep "^v2\.")
         if [ -z "$releases" ]; then
             WARN "未找到任何v2前端版本，继续启动..."
             return 1
@@ -88,7 +88,7 @@ function install_backend_and_download_resources() {
         INFO "前端版本号：${frontend_version}"
     fi
     # 更新前端程序
-    if ! download_and_unzip "${GITHUB_PROXY}https://github.com/jxxghp/MoviePilot-Frontend/releases/download/${frontend_version}/dist.zip" "dist"; then
+    if ! download_and_unzip "${GITHUB_PROXY}https://github.com/fortunearterial/NasPilot-Frontend/releases/download/${frontend_version}/dist.zip" "dist"; then
         WARN "前端程序下载失败，继续使用旧的程序来启动..."
         return 1
     fi
@@ -119,7 +119,7 @@ function install_backend_and_download_resources() {
     cp -a /plugins/* /app/app/plugins/
     # 更新站点资源
     INFO "开始更新站点资源..."
-    if ! download_and_unzip "${GITHUB_PROXY}https://github.com/jxxghp/MoviePilot-Resources/archive/refs/heads/main.zip" "Resources"; then
+    if ! download_and_unzip "${GITHUB_PROXY}https://github.com/fortunearterial/NasPilot-Resources/archive/refs/heads/main.zip" "Resources"; then
         cp -a /resources_bakcup/* /app/app/helper/
         rm -rf /resources_bakcup
         WARN "站点资源下载失败，继续使用旧的资源来启动..."
@@ -170,7 +170,7 @@ function test_connectivity_github() {
     case "$1" in
     0)
         if [[ -n "${GITHUB_PROXY}" ]]; then
-            if curl -sL "${GITHUB_PROXY}https://raw.githubusercontent.com/jxxghp/MoviePilot/main/README.md" > /dev/null 2>&1; then
+            if curl -sL "${GITHUB_PROXY}https://raw.githubusercontent.com/fortunearterial/NasPilot/main/README.md" > /dev/null 2>&1; then
                 GITHUB_LOG="镜像代理模式"
                 return 0
             fi
@@ -179,7 +179,7 @@ function test_connectivity_github() {
         ;;
     1)
         if [[ -n "${PROXY_HOST}" ]]; then
-            if curl -sL -x ${PROXY_HOST} https://raw.githubusercontent.com/jxxghp/MoviePilot/main/README.md > /dev/null 2>&1; then
+            if curl -sL -x ${PROXY_HOST} https://raw.githubusercontent.com/fortunearterial/NasPilot/main/README.md > /dev/null 2>&1; then
                 CURL_OPTIONS="-sL -x ${PROXY_HOST}"
                 GITHUB_LOG="全局代理模式"
                 return 0
@@ -264,7 +264,7 @@ function get_priority() {
     fi
 }
 
-if [[ "${MOVIEPILOT_AUTO_UPDATE}" = "true" ]] || [[ "${MOVIEPILOT_AUTO_UPDATE}" = "release" ]] || [[ "${MOVIEPILOT_AUTO_UPDATE}" = "dev" ]]; then
+if [[ "${NASPILOT_AUTO_UPDATE}" = "true" ]] || [[ "${NASPILOT_AUTO_UPDATE}" = "release" ]] || [[ "${NASPILOT_AUTO_UPDATE}" = "dev" ]]; then
     TMP_PATH=$(mktemp -d)
     if [ ! -d "${TMP_PATH}" ]; then
         # 如果自动生成 tmp 文件夹失败则手动指定，避免出现数据丢失等情况
@@ -299,7 +299,7 @@ if [[ "${MOVIEPILOT_AUTO_UPDATE}" = "true" ]] || [[ "${MOVIEPILOT_AUTO_UPDATE}" 
     else
         CURL_HEADERS=""
     fi
-    if [ "${MOVIEPILOT_AUTO_UPDATE}" = "dev" ]; then
+    if [ "${NASPILOT_AUTO_UPDATE}" = "dev" ]; then
         INFO "Dev 更新模式"
         install_backend_and_download_resources "heads/v2.zip"
     else
@@ -309,7 +309,7 @@ if [[ "${MOVIEPILOT_AUTO_UPDATE}" = "true" ]] || [[ "${MOVIEPILOT_AUTO_UPDATE}" 
             current_version=$(echo "${old_version}" | sed -rn "s/APP_VERSION\s*=\s*['\"](.*)['\"]/\1/gp")
             INFO "当前版本号：${current_version}"
             # 获取所有发布的版本列表，并筛选出以v2开头的版本号
-            releases=$(curl ${CURL_OPTIONS} "https://api.github.com/repos/jxxghp/MoviePilot/releases" ${CURL_HEADERS} | jq -r '.[].tag_name' | grep "^v2\.")
+            releases=$(curl ${CURL_OPTIONS} "https://api.github.com/repos/fortunearterial/NasPilot/releases" ${CURL_HEADERS} | jq -r '.[].tag_name' | grep "^v2\.")
             if [ -z "$releases" ]; then
                 WARN "未找到任何v2后端版本，继续启动..."
             else
@@ -326,8 +326,8 @@ if [[ "${MOVIEPILOT_AUTO_UPDATE}" = "true" ]] || [[ "${MOVIEPILOT_AUTO_UPDATE}" 
     if [ -d "${TMP_PATH}" ]; then
         rm -rf "${TMP_PATH}"
     fi
-elif [[ "${MOVIEPILOT_AUTO_UPDATE}" = "false" ]]; then
-    INFO "程序自动升级已关闭，如需自动升级请在创建容器时设置环境变量：MOVIEPILOT_AUTO_UPDATE=release"
+elif [[ "${NASPILOT_AUTO_UPDATE}" = "false" ]]; then
+    INFO "程序自动升级已关闭，如需自动升级请在创建容器时设置环境变量：NASPILOT_AUTO_UPDATE=release"
 else
-    INFO "MOVIEPILOT_AUTO_UPDATE 变量设置错误"
+    INFO "NASPILOT_AUTO_UPDATE 变量设置错误"
 fi

@@ -10,7 +10,7 @@ ENV LANG="C.UTF-8" \
     UMASK=000 \
     PORT=3001 \
     NGINX_PORT=3000 \
-    MOVIEPILOT_AUTO_UPDATE=release
+    NASPILOT_AUTO_UPDATE=release
 WORKDIR "/app"
 RUN apt-get update -y \
     && apt-get upgrade -y \
@@ -69,22 +69,22 @@ RUN cp -f /app/nginx.conf /etc/nginx/nginx.template.conf \
     && cp -f /app/docker_http_proxy.conf /etc/nginx/docker_http_proxy.conf \
     && chmod +x /entrypoint /usr/local/bin/mp_update \
     && mkdir -p ${HOME} \
-    && groupadd -r moviepilot -g 918 \
-    && useradd -r moviepilot -g moviepilot -d ${HOME} -s /bin/bash -u 918 \
+    && groupadd -r naspilot -g 918 \
+    && useradd -r naspilot -g naspilot -d ${HOME} -s /bin/bash -u 918 \
     && python_ver=$(python3 -V | awk '{print $2}') \
     && echo "/app/" > /usr/local/lib/python${python_ver%.*}/site-packages/app.pth \
     && echo 'fs.inotify.max_user_watches=5242880' >> /etc/sysctl.conf \
     && echo 'fs.inotify.max_user_instances=5242880' >> /etc/sysctl.conf \
     && locale-gen zh_CN.UTF-8 \
     && FRONTEND_VERSION=$(sed -n "s/^FRONTEND_VERSION\s*=\s*'\([^']*\)'/\1/p" /app/version.py) \
-    && curl -sL "https://github.com/jxxghp/MoviePilot-Frontend/releases/download/${FRONTEND_VERSION}/dist.zip" | busybox unzip -d / - \
+    && curl -sL "https://github.com/fortunearterial/NasPilot-Frontend/releases/download/${FRONTEND_VERSION}/dist.zip" | busybox unzip -d / - \
     && mv /dist /public \
-    && curl -sL "https://github.com/jxxghp/MoviePilot-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
-    && mv -f /tmp/MoviePilot-Plugins-main/plugins.v2/* /app/app/plugins/ \
-    && cat /tmp/MoviePilot-Plugins-main/package.json | jq -r 'to_entries[] | select(.value.v2 == true) | .key' | awk '{print tolower($0)}' | \
-        while read -r i; do if [ ! -d "/app/app/plugins/$i" ]; then mv "/tmp/MoviePilot-Plugins-main/plugins/$i" "/app/app/plugins/"; else echo "跳过 $i"; fi; done \
-    && curl -sL "https://github.com/jxxghp/MoviePilot-Resources/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
-    && mv -f /tmp/MoviePilot-Resources-main/resources/* /app/app/helper/ \
+    && curl -sL "https://github.com/fortunearterial/NasPilot-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
+    && mv -f /tmp/NasPilot-Plugins-main/plugins.v2/* /app/app/plugins/ \
+    && cat /tmp/NasPilot-Plugins-main/package.json | jq -r 'to_entries[] | select(.value.v2 == true) | .key' | awk '{print tolower($0)}' | \
+        while read -r i; do if [ ! -d "/app/app/plugins/$i" ]; then mv "/tmp/NasPilot-Plugins-main/plugins/$i" "/app/app/plugins/"; else echo "跳过 $i"; fi; done \
+    && curl -sL "https://github.com/fortunearterial/NasPilot-Resources/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
+    && mv -f /tmp/NasPilot-Resources-main/resources/* /app/app/helper/ \
     && rm -rf /tmp/*
 EXPOSE 3000
 VOLUME [ "/config" ]

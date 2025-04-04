@@ -106,7 +106,7 @@ class SystemChain(ChainBase, metaclass=Singleton):
             response = RequestUtils(
                 proxies=settings.PROXY,
                 headers=settings.GITHUB_HEADERS
-            ).get_res("https://api.github.com/repos/jxxghp/MoviePilot/releases")
+            ).get_res("https://api.github.com/repos/fortunearterial/NasPilot/releases")
             if response:
                 releases = [release['tag_name'] for release in response.json()]
                 v2_releases = [tag for tag in releases if re.match(r"^v2\.", tag)]
@@ -133,7 +133,7 @@ class SystemChain(ChainBase, metaclass=Singleton):
             response = RequestUtils(
                 proxies=settings.PROXY,
                 headers=settings.GITHUB_HEADERS
-            ).get_res("https://api.github.com/repos/jxxghp/MoviePilot-Frontend/releases")
+            ).get_res("https://api.github.com/repos/fortunearterial/NasPilot-Frontend/releases")
             if response:
                 releases = [release['tag_name'] for release in response.json()]
                 v2_releases = [tag for tag in releases if re.match(r"^v2\.", tag)]

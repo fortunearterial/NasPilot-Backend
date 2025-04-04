@@ -1,12 +1,12 @@
 # NasPilot
 
-![GitHub Repo stars](https://img.shields.io/github/stars/jxxghp/MoviePilot?style=for-the-badge)
-![GitHub forks](https://img.shields.io/github/forks/jxxghp/MoviePilot?style=for-the-badge)
-![GitHub contributors](https://img.shields.io/github/contributors/jxxghp/MoviePilot?style=for-the-badge)
-![GitHub repo size](https://img.shields.io/github/repo-size/jxxghp/MoviePilot?style=for-the-badge)
-![GitHub issues](https://img.shields.io/github/issues/jxxghp/MoviePilot?style=for-the-badge)
-![Docker Pulls](https://img.shields.io/docker/pulls/jxxghp/moviepilot?style=for-the-badge)
-![Docker Pulls V2](https://img.shields.io/docker/pulls/jxxghp/moviepilot-v2?style=for-the-badge)
+![GitHub Repo stars](https://img.shields.io/github/stars/fortunearterial/NasPilot?style=for-the-badge)
+![GitHub forks](https://img.shields.io/github/forks/fortunearterial/NasPilot?style=for-the-badge)
+![GitHub contributors](https://img.shields.io/github/contributors/fortunearterial/NasPilot?style=for-the-badge)
+![GitHub repo size](https://img.shields.io/github/repo-size/fortunearterial/NasPilot?style=for-the-badge)
+![GitHub issues](https://img.shields.io/github/issues/fortunearterial/NasPilot?style=for-the-badge)
+![Docker Pulls](https://img.shields.io/docker/pulls/jxxghp/naspilot?style=for-the-badge)
+![Docker Pulls V2](https://img.shields.io/docker/pulls/jxxghp/naspilot-v2?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Synology-blue?style=for-the-badge)
 
 
@@ -30,22 +30,22 @@
 
 需要 `Python 3.11`、`Node JS v20.12.1`
 
-- 克隆主项目 [MoviePilot](https://github.com/jxxghp/MoviePilot) 
+- 克隆主项目 [NasPilot](https://github.com/fortunearterial/NasPilot) 
 ```shell
-git clone https://github.com/jxxghp/MoviePilot
+git clone https://github.com/fortunearterial/NasPilot
 ```
-- 克隆资源项目 [MoviePilot-Resources](https://github.com/jxxghp/MoviePilot-Resources) ，将 `resources` 目录下对应平台及版本的库 `.so`/`.pyd`/`.bin` 文件复制到 `app/helper` 目录
+- 克隆资源项目 [NasPilot-Resources](https://github.com/fortunearterial/NasPilot-Resources) ，将 `resources` 目录下对应平台及版本的库 `.so`/`.pyd`/`.bin` 文件复制到 `app/helper` 目录
 ```shell
-git clone https://github.com/jxxghp/MoviePilot-Resources
+git clone https://github.com/fortunearterial/NasPilot-Resources
 ```
 - 安装后端依赖，设置`app`为源代码根目录，运行 `main.py` 启动后端服务，默认监听端口：`3001`，API文档地址：`http://localhost:3001/docs`
 ```shell
 pip install -r requirements.txt
 python3 main.py
 ```
-- 克隆前端项目 [MoviePilot-Frontend](https://github.com/jxxghp/MoviePilot-Frontend)
+- 克隆前端项目 [NasPilot-Frontend](https://github.com/fortunearterial/NasPilot-Frontend)
 ```shell
-git clone https://github.com/jxxghp/MoviePilot-Frontend
+git clone https://github.com/fortunearterial/NasPilot-Frontend
 ```
 - 安装前端依赖，运行前端项目，访问：`http://localhost:5173`
 ```shell

@@ -674,7 +674,7 @@ class Scheduler(metaclass=Singleton):
             SchedulerChain().post_message(
                 Notification(
                     mtype=NotificationType.Manual,
-                    title="MoviePilot用户认证成功",
+                    title="NasPilot用户认证成功",
                     text=f"使用站点：{msg}",
                     link=settings.MP_DOMAIN('#/site')
                 )

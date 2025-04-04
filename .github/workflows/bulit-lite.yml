@@ -1,4 +1,4 @@
-name: MoviePilot Builder v2 Lite
+name: NasPilot Builder v2 Lite
 on:
   workflow_dispatch:
   push:
@@ -25,7 +25,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKER_USERNAME }}/moviepilot-v2
+          images: ${{ secrets.DOCKER_USERNAME }}/naspilot-v2
           tags: |
             type=raw,value=lite-latest
 
