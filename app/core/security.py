@@ -12,8 +12,9 @@ import jwt
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 from cryptography.fernet import Fernet
-from fastapi import HTTPException, status, Security, Request, Response
-from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, APIKeyQuery, APIKeyCookie
+from fastapi import HTTPException, status, Security, Request, Response, WebSocket
+from fastapi.security import OAuth2PasswordBearer, APIKeyHeader, APIKeyQuery, APIKeyCookie, \
+    OAuth2AuthorizationCodeBearer
 from passlib.context import CryptContext
 
 from app import schemas
@@ -24,8 +25,15 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
 
 # OAuth2PasswordBearer 用于 JWT Token 认证
-oauth2_scheme = OAuth2PasswordBearer(
+oauth2_scheme_password = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
+)
+
+# OAuth2AuthorizationCodeBearer 用于 JWT Token 认证
+oauth2_scheme_code = OAuth2AuthorizationCodeBearer(
+    authorizationUrl=f"{settings.API_V1_STR}/oauth2/authorize",  # 授权页面URL
+    tokenUrl=f"{settings.API_V1_STR}/oauth2/token",  # 令牌端点URL
+    scopes={"read": "读取权限", "write": "写入权限"}
 )
 
 # RESOURCE TOKEN 通过 Cookie 认证
@@ -103,7 +111,8 @@ def __set_or_refresh_resource_token_cookie(request: Request, response: Response,
             decoded_token = jwt.decode(resource_token, settings.RESOURCE_SECRET_KEY, algorithms=[ALGORITHM])
             exp = decoded_token.get("exp")
             if exp:
-                remaining_time = datetime.datetime.fromtimestamp(exp, tz=datetime.UTC) - datetime.datetime.now(datetime.UTC)
+                remaining_time = datetime.datetime.fromtimestamp(exp, tz=datetime.UTC) - datetime.datetime.now(
+                    datetime.UTC)
                 # 根据剩余时长提前刷新令牌
                 if remaining_time < timedelta(seconds=(settings.RESOURCE_ACCESS_TOKEN_EXPIRE_SECONDS / 3)):
                     raise jwt.ExpiredSignatureError
@@ -176,7 +185,7 @@ def __verify_token(token: str, purpose: str = "authentication") -> schemas.Token
 def verify_token(
         request: Request,
         response: Response,
-        token: str = Security(oauth2_scheme)
+        token: str = Security(oauth2_scheme_password)
 ) -> schemas.TokenPayload:
     """
     验证 JWT 令牌并自动处理 resource_token 写入
@@ -191,6 +200,22 @@ def verify_token(
 
     # 如果没有 resource_token，生成并写入到 Cookie
     __set_or_refresh_resource_token_cookie(request, response, payload)
+
+    return payload
+
+
+def verify_websocket_token(
+        webSocket: WebSocket
+) -> schemas.TokenPayload:
+    """
+    验证 JWT 令牌并自动处理 resource_token 写入
+    :param webSocket: WebSocket对象，用于访问 Cookie 和请求信息
+    :return: 解析后的 TokenPayload
+    :raises HTTPException: 如果令牌无效或用途不匹配
+    """
+    # 验证并解析 JWT 认证令牌
+    token = webSocket.headers.get("Authorization").replace("Bearer ", "")
+    payload = __verify_token(token=token, purpose="authentication")
 
     return payload
 

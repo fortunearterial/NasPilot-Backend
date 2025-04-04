@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, JSON
+from sqlalchemy import Column, Integer, String, Sequence, JSON, Date
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, Base
@@ -39,7 +39,7 @@ class MediaServerItem(Base):
     # 备注
     note = Column(JSON)
     # 同步时间
-    lst_mod_date = Column(String(255), default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    lst_mod_date = Column(Date, default=datetime.now())
 
     @staticmethod
     @db_query

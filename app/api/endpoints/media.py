@@ -158,7 +158,7 @@ def seasons(mediaid: str = None,
             meta.year = year
         mediainfo = MediaChain().recognize_media(meta, mtype=MediaType.TV)
         if mediainfo:
-            if settings.RECOGNIZE_SOURCE == "themoviedb":
+            if "themoviedb" in settings.RECOGNIZE_SOURCE:
                 seasons_info = TmdbChain().tmdb_seasons(tmdbid=mediainfo.tmdb_id)
                 if seasons_info:
                     if season:

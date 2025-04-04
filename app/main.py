@@ -4,6 +4,7 @@ import sys
 import threading
 import asyncio
 
+import ray
 import uvicorn as uvicorn
 from PIL import Image
 from uvicorn import Config
@@ -21,7 +22,7 @@ from app.db.init import init_db, update_db
 
 # uvicorn服务
 Server = uvicorn.Server(Config(app, host=settings.HOST, port=settings.PORT,
-                               reload=settings.DEV, workers=multiprocessing.cpu_count(),
+                               reload=settings.DEV, log_level="debug" if settings.DEBUG else None, workers=multiprocessing.cpu_count(),
                                timeout_graceful_shutdown=5))
 
 
@@ -70,7 +71,6 @@ def start_tray():
     # 启动托盘图标
     threading.Thread(target=TrayIcon.run, daemon=True).start()
 
-
 if __name__ == '__main__':
     # 启动托盘
     start_tray()
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # 更新数据库
     update_db()
     # 启动API服务
-    if settings.DEV:
+    if settings.DEBUG:
         asyncio.run(Server.serve())
     else:
         Server.run()

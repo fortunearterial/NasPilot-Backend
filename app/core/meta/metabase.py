@@ -1,3 +1,4 @@
+import math
 import traceback
 from dataclasses import dataclass
 from typing import Union, Optional, List, Self
@@ -206,10 +207,10 @@ class MetaBase(object):
                     self.total_episode = 1
                 if self.begin_episode is not None \
                         and self.end_episode is None \
-                        and isinstance(end_episode, int) \
+                        and isinstance(end_episode, float) \
                         and end_episode != self.begin_episode:
                     self.end_episode = end_episode
-                    self.total_episode = (self.end_episode - self.begin_episode) + 1
+                    self.total_episode = (math.ceil(self.end_episode) - math.floor(self.begin_episode)) + 1
                 self.type = MediaType.TV
                 self._subtitle_flag = True
                 return
@@ -336,14 +337,14 @@ class MetaBase(object):
             return ""
 
     @property
-    def episode_list(self) -> List[int]:
+    def episode_list(self) -> List[float]:
         """
         返回集的数组
         """
         if self.begin_episode is None:
             return []
         elif self.end_episode is not None:
-            return [float(episode) for episode in range(math.floor(self.begin_episode), math.ceil(self.end_episode) + 1)]
+            return [float(episode) for episode in range(math.ceil(self.begin_episode), math.floor(self.end_episode))]
         else:
             return [self.begin_episode]
 

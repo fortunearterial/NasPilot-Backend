@@ -22,7 +22,7 @@ class SiteStatistic(Base):
     # 最后一次访问状态 0-成功 1-失败
     lst_state = Column(Integer)
     # 最后访问时间
-    lst_mod_date = Column(Date, default=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    lst_mod_date = Column(Date, default=datetime.now())
     # 耗时记录 Json
     note = Column(JSON)
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, Any, Union, Dict, List
 
 from pydantic import BaseModel, Field
@@ -78,7 +79,7 @@ class SiteStatistic(BaseModel):
     # 最后状态
     lst_state: Optional[int] = 0
     # 最后修改时间
-    lst_mod_date: Optional[str] = None
+    lst_mod_date: Optional[datetime] = None
     # 备注
     note: Optional[Any] = None
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence, JSON, Text, Date
+from sqlalchemy import Column, Integer, String, Sequence, JSON, Text, DateTime
 from sqlalchemy.orm import Session
 
 from app.db import db_query, Base
@@ -26,7 +26,7 @@ class Message(Base):
     # 用户ID
     userid = Column(String(255))
     # 登记时间
-    reg_time = Column(Date, index=True)
+    reg_time = Column(DateTime, index=True)
     # 消息方向：0-接收息，1-发送消息
     action = Column(Integer)
     # 附件json

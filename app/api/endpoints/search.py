@@ -40,6 +40,8 @@ def search_by_id(mediaid: str,
         mtype = MediaType(mtype)
     if season:
         season = int(season)
+    else:
+        season = None
     if sites:
         site_list = [int(site) for site in sites.split(",") if site]
     else:
@@ -128,7 +130,7 @@ def search_by_id(mediaid: str,
                 meta.begin_season = season
             mediainfo = MediaChain().recognize_media(meta=meta)
             if mediainfo:
-                if settings.RECOGNIZE_SOURCE == "themoviedb":
+                if "themoviedb" in settings.RECOGNIZE_SOURCE:
                     torrents = SearchChain().search_by_id(tmdbid=mediainfo.tmdb_id,
                                                           mtype=mtype, area=area, season=season)
                 else:

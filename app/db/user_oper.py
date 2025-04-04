@@ -4,7 +4,7 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import schemas
-from app.core.security import verify_token
+from app.core.security import verify_token, verify_websocket_token
 from app.db import DbOper, get_db
 from app.db.models.user import User
 
@@ -12,6 +12,18 @@ from app.db.models.user import User
 def get_current_user(
         db: Session = Depends(get_db),
         token_data: schemas.TokenPayload = Depends(verify_token)
+) -> User:
+    """
+    获取当前用户
+    """
+    user = User.get(db, rid=token_data.sub)
+    if not user:
+        raise HTTPException(status_code=403, detail="用户不存在")
+    return user
+
+def get_current_websocket_user(
+        db: Session = Depends(get_db),
+        token_data: str = Depends(verify_websocket_token)
 ) -> User:
     """
     获取当前用户

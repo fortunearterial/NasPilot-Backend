@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Union, List, Any
 
@@ -120,7 +121,7 @@ class MediaServerItem(BaseModel):
     # 备注
     note: Optional[Any] = None
     # 同步时间
-    lst_mod_date: Optional[str] = None
+    lst_mod_date: Optional[datetime] = None
     user_state: Optional[MediaServerItemUserState] = None
 
     class Config:

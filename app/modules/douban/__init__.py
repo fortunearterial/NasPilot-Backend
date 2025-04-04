@@ -90,7 +90,7 @@ class DoubanModule(_ModuleBase):
             return None
 
         if meta and not doubanid \
-                and "douban" in settings.RECOGNIZE_SOURCE:
+                and not "douban" in settings.RECOGNIZE_SOURCE:
             return None
 
         if not meta:

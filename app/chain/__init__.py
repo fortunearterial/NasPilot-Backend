@@ -1,11 +1,16 @@
+import asyncio
 import copy
 import gc
+import inspect
+import json
 import pickle
+import sys
 import traceback
 from abc import ABCMeta
 from pathlib import Path
-from typing import Optional, Any, Tuple, List, Set, Union, Dict
+from typing import Optional, Any, Tuple, List, Set, Union, Dict, get_origin, get_args, Type
 
+import ray
 from qbittorrentapi import TorrentFilesList
 from transmission_rpc import File
 
@@ -23,6 +28,16 @@ from app.schemas import TransferInfo, TransferTorrent, ExistMediaInfo, Downloadi
     WebhookEventInfo, TmdbEpisode, MediaPerson, FileItem, TransferDirectoryConf
 from app.schemas.types import TorrentStatus, MediaType, MediaImageType, EventType
 from app.utils.object import ObjectUtils
+from app.db.userjob_oper import UserJobOper
+
+
+@ray.remote
+class WorkerNode:
+    def __init__(self, node_id):
+        self.node_id = node_id
+
+    def process(self, method, args):
+        return f"Processed on {self.node_id}: {method}({args})"
 
 
 class ChainBase(metaclass=ABCMeta):
@@ -42,6 +57,7 @@ class ChainBase(metaclass=ABCMeta):
             send_callback=self.run_module
         )
         self.useroper = UserOper()
+        self.userjoboper = UserJobOper()
 
     @staticmethod
     def load_cache(filename: str) -> Any:
@@ -64,7 +80,7 @@ class ChainBase(metaclass=ABCMeta):
         """
         try:
             with open(settings.TEMP_PATH / filename, 'wb') as f:
-                pickle.dump(cache, f) # noqa
+                pickle.dump(cache, f)  # noqa
         except Exception as err:
             logger.error(f"保存缓存 {filename} 出错：{str(err)}")
         finally:
@@ -81,7 +97,7 @@ class ChainBase(metaclass=ABCMeta):
         if cache_path.exists():
             cache_path.unlink()
 
-    def run_module(self, method: str, *args, **kwargs) -> Any:
+    def run_module(self, method: str, user_id: int = None, *args, **kwargs) -> Any:
         """
         运行包含该方法的所有模块，然后返回结果
         当kwargs包含命名参数raise_exception时，如模块方法抛出异常且raise_exception为True，则同步抛出异常
@@ -96,53 +112,111 @@ class ChainBase(metaclass=ABCMeta):
             else:
                 return result is None
 
+        def extract_inner_type(annotation):
+            origin = get_origin(annotation)
+            args = get_args(annotation)
+
+            # 递归解析嵌套类型
+            if origin is Union:  # Optional 实际是 Union[T, None]
+                inner_type = next((arg for arg in args if arg is not type(None)), None)
+                return extract_inner_type(inner_type)
+            elif origin is list or origin is List:  # List[T]
+                return extract_inner_type(args[0])
+            else:
+                return annotation
+
+        def get_method_return_annotation():
+            """
+            获取方法的参数名和默认值
+            """
+            # 获取当前堆栈帧的上一级帧（即调用者）
+            caller_frame = sys._getframe(2)
+            # 获取调用者的函数对象
+            caller_func_name = caller_frame.f_code.co_name
+            # 尝试从实例中获取方法（若调用者是类方法）
+            instance = caller_frame.f_locals.get('self', None)
+            if instance:
+                caller_func_obj = getattr(instance.__class__, caller_func_name, None)
+            else:
+                caller_func_obj = caller_frame.f_globals.get(caller_func_name, None)
+            return_annotation = caller_func_obj.__annotations__.get('return', None)
+            print(f"调用者的返回类型注解: {return_annotation}")
+            return extract_inner_type(return_annotation)
+
+        def json_to_obj(data: dict, cls: Type) -> object:
+            return cls(**data)
+
         logger.debug(f"请求模块执行：{method} ...")
         result = None
-        modules = self.modulemanager.get_running_modules(method)
-        # 按优先级排序
-        modules = sorted(modules, key=lambda x: x.get_priority())
-        for module in modules:
-            module_id = module.__class__.__name__
-            try:
-                module_name = module.get_name()
-            except Exception as err:
-                logger.debug(f"获取模块名称出错：{str(err)}")
-                module_name = module_id
-            try:
-                func = getattr(module, method)
-                if is_result_empty(result):
-                    # 返回None，第一次执行或者需继续执行下一模块
-                    result = func(*args, **kwargs)
-                elif ObjectUtils.check_signature(func, result):
-                    # 返回结果与方法签名一致，将结果传入（不能多个模块同时运行的需要通过开关控制）
-                    result = func(result)
-                elif isinstance(result, list):
-                    # 返回为列表，有多个模块运行结果时进行合并（不能多个模块同时运行的需要通过开关控制）
-                    temp = func(*args, **kwargs)
-                    if isinstance(temp, list):
-                        result.extend(temp)
-                else:
-                    # 中止继续执行
-                    break
-            except Exception as err:
-                if kwargs.get("raise_exception"):
-                    raise
-                logger.error(
-                    f"运行模块 {module_id}.{method} 出错：{str(err)}\n{traceback.format_exc()}")
-                self.messagehelper.put(title=f"{module_name}发生了错误",
-                                       message=str(err),
-                                       role="system")
-                self.eventmanager.send_event(
-                    EventType.SystemError,
-                    {
-                        "type": "module",
-                        "module_id": module_id,
-                        "module_name": module_name,
-                        "module_method": method,
-                        "error": str(err),
-                        "traceback": traceback.format_exc()
-                    }
-                )
+        if method in ["tmdb_discover", "tmdb_trending",
+                      "bangumi_calendar",
+                      "douban_discover",
+                      "movie_showing", "movie_top250", "tv_weekly_chinese", "tv_weekly_global", "tv_animation",
+                      "movie_hot", "tv_hot"
+                      ]:
+            # 实时模式，交由websocket广播处理
+            from app.api.websockets import ConnectionManager
+            asyncio.run(ConnectionManager().broadcast({"method": method, "args": args}))
+        elif method in ["downloader_info"]:
+            # 实时模式，交由websocket单点处理
+            from app.api.websockets import ConnectionManager
+            # 获取调用者的返回类型注解
+            return_annotation = get_method_return_annotation()
+
+            results = asyncio.run(ConnectionManager().send(user_id, {"method": method, "args": args}))
+            if not results:
+                return None
+            return [json_to_obj(result, return_annotation) for result in results]
+        if method in ["mediaserver_librarys"]:
+            # 延迟模式，由用户消费
+            self.userjoboper.publish(user_id, method, args)
+        else:
+            # 服务器模式，直接执行
+            modules = self.modulemanager.get_running_modules(method)
+            # 按优先级排序
+            modules = sorted(modules, key=lambda x: x.get_priority())
+            for module in modules:
+                module_id = module.__class__.__name__
+                try:
+                    module_name = module.get_name()
+                except Exception as err:
+                    logger.debug(f"获取模块名称出错：{str(err)}")
+                    module_name = module_id
+                try:
+                    func = getattr(module, method)
+                    if is_result_empty(result):
+                        # 返回None，第一次执行或者需继续执行下一模块
+                        result = func(*args, **kwargs)
+                    elif ObjectUtils.check_signature(func, result):
+                        # 返回结果与方法签名一致，将结果传入（不能多个模块同时运行的需要通过开关控制）
+                        result = func(result)
+                    elif isinstance(result, list):
+                        # 返回为列表，有多个模块运行结果时进行合并（不能多个模块同时运行的需要通过开关控制）
+                        temp = func(*args, **kwargs)
+                        if isinstance(temp, list):
+                            result.extend(temp)
+                    else:
+                        # 中止继续执行
+                        break
+                except Exception as err:
+                    if kwargs.get("raise_exception"):
+                        raise
+                    logger.error(
+                        f"运行模块 {module_id}.{method} 出错：{str(err)}\n{traceback.format_exc()}")
+                    self.messagehelper.put(title=f"{module_name}发生了错误",
+                                           message=str(err),
+                                           role="system")
+                    self.eventmanager.send_event(
+                        EventType.SystemError,
+                        {
+                            "type": "module",
+                            "module_id": module_id,
+                            "module_name": module_name,
+                            "module_method": method,
+                            "error": str(err),
+                            "traceback": traceback.format_exc()
+                        }
+                    )
         return result
 
     def recognize_media(self, meta: MetaBase = None,
@@ -184,7 +258,8 @@ class ChainBase(metaclass=ABCMeta):
             bangumiid = None
         # TODO: self.run_module("recognize_media_id", media_info=media_info, cache=cache)
         return self.run_module("recognize_media", meta=meta, mtype=mtype,
-                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, steamid=steamid, javdbid=javdbid, cache=cache)
+                               tmdbid=tmdbid, doubanid=doubanid, bangumiid=bangumiid, steamid=steamid, javdbid=javdbid,
+                               cache=cache)
 
     def match_doubaninfo(self, name: str, imdbid: str = None,
                          mtype: MediaType = None, year: str = None, season: int = None,

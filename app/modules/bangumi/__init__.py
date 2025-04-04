@@ -7,7 +7,7 @@ from app.core.meta import MetaBase
 from app.log import logger
 from app.modules import _ModuleBase
 from app.modules.bangumi.bangumi import BangumiApi
-from app.schemas.types import ModuleType, MediaRecognizeType
+from app.schemas.types import ModuleType, MediaRecognizeType, MediaType
 from app.utils.http import RequestUtils
 
 
@@ -59,16 +59,21 @@ class BangumiModule(_ModuleBase):
         """
         return 3
 
-    def recognize_media(self, bangumiid: int = None,
+    def recognize_media(self, meta: MetaBase = None,
+                        mtype: MediaType = None,
+                        bangumiid: int = None,
+                        cache: bool = True,
                         **kwargs) -> Optional[MediaInfo]:
         """
         识别媒体信息
         :param bangumiid: 识别的Bangumi ID
         :return: 识别的媒体信息，包括剧集信息
         """
-        if settings.RECOGNIZE_SOURCE and not "bangumi" in settings.RECOGNIZE_SOURCE:
+        if not bangumiid and not meta:
             return None
-        if not bangumiid:
+
+        if meta and not bangumiid \
+                and not "bangumi" in settings.RECOGNIZE_SOURCE:
             return None
 
         # 直接查询详情

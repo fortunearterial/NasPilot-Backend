@@ -13,6 +13,7 @@ from app.db.models.transferhistory import TransferHistory
 from app.helper.directory import DirectoryHelper
 from app.scheduler import Scheduler
 from app.utils.system import SystemUtils
+from db.user_oper import get_current_user
 
 router = APIRouter()
 
@@ -82,7 +83,7 @@ def processes(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
 
 
 @router.get("/downloader", summary="下载器信息", response_model=schemas.DownloaderInfo)
-def downloader(name: str = None, _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+def downloader(name: str = None, current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     查询下载器信息
     """
@@ -91,7 +92,7 @@ def downloader(name: str = None, _: schemas.TokenPayload = Depends(verify_token)
     _, free_space = SystemUtils.space_usage([Path(d.download_path) for d in download_dirs])
     # 下载器信息
     downloader_info = schemas.DownloaderInfo()
-    transfer_infos = DashboardChain().downloader_info(name)
+    transfer_infos = DashboardChain().downloader_info(current_user.id, name)
     if transfer_infos:
         for transfer_info in transfer_infos:
             downloader_info.download_speed += transfer_info.download_speed

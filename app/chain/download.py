@@ -19,10 +19,12 @@ from app.helper.directory import DirectoryHelper
 from app.helper.message import MessageHelper
 from app.helper.torrent import TorrentHelper
 from app.log import logger
-from app.schemas import ExistMediaInfo, NotExistMediaInfo, DownloadingTorrent, Notification, ResourceSelectionEventData, ResourceDownloadEventData
+from app.schemas import ExistMediaInfo, NotExistMediaInfo, DownloadingTorrent, Notification, ResourceSelectionEventData, \
+    ResourceDownloadEventData
 from app.schemas.types import MediaType, TorrentStatus, EventType, MessageChannel, NotificationType, ChainEventType
 from app.utils.http import RequestUtils
 from app.utils.string import StringUtils
+from helper.sites import PageSpider
 
 
 class DownloadChain(ChainBase):
@@ -171,6 +173,10 @@ class DownloadChain(ChainBase):
                                            cookie=site_cookie)
             # 涉及解析地址的不使用Cookie下载种子，否则MT会出错
             site_cookie = None
+        elif torrent.enclosure.startswith("@:"):
+            selector, url = re.findall(r'【(.*?)】', torrent.enclosure)
+            _spider = PageSpider(url=url)
+            torrent_url = _spider.parse(json.loads(selector))
         else:
             torrent_url = torrent.enclosure
         if not torrent_url:
@@ -523,8 +529,8 @@ class DownloadChain(ChainBase):
             if global_vars.is_system_stopped:
                 break
             if context.media_info.type == MediaType.MOVIE \
-                or context.media_info.type == MediaType.GAME \
-                or context.media_info.type == MediaType.JAV:
+                    or context.media_info.type == MediaType.GAME \
+                    or context.media_info.type == MediaType.JAV:
                 logger.info(f"开始下载{context.media_info.type} {context.torrent_info.title} ...")
                 if self.download_single(context, save_path=save_path, channel=channel,
                                         source=source, userid=userid, username=username,
@@ -906,7 +912,8 @@ class DownloadChain(ChainBase):
                                        _total=total_ep, _start=min(episodes))
                     # 如果是ANIME，且为第0季，增加其他季的SP
                     if season == 0 and mediainfo.bangumi_id:
-                        bangumi_info = self.recognize_media(mtype=mediainfo.type, bangumiid=mediainfo.bangumi_id, only_ova_episodes=True)
+                        bangumi_info = self.recognize_media(mtype=mediainfo.type, bangumiid=mediainfo.bangumi_id,
+                                                            only_ova_episodes=True)
                         for _season, _episodes in bangumi_info.seasons.items():
                             if _season != season:
                                 __append_no_exists(_season=_season, _episodes=_episodes,
@@ -929,7 +936,9 @@ class DownloadChain(ChainBase):
                         # 已存在取差集
                         if totals.get(season):
                             # 按总集数计算缺失集（开始集为TMDB中的最小集）
-                            lack_episodes = list(set([float(ep) for ep in range(min(episodes), season_total + min(episodes))]).difference(set(exist_episodes)))
+                            lack_episodes = list(set([float(ep) for ep in
+                                                      range(min(episodes), season_total + min(episodes))]).difference(
+                                set(exist_episodes)))
                         else:
                             # 按TMDB集数计算缺失集
                             lack_episodes = list(set([float(ep) for ep in episodes]).difference(set(exist_episodes)))
@@ -946,7 +955,8 @@ class DownloadChain(ChainBase):
 
                     # 如果是ANIME，且为第0季，增加其他季的SP
                     if season == 0 and mediainfo.bangumi_id:
-                        bangumi_info = self.recognize_media(mtype=mediainfo.type, bangumiid=mediainfo.bangumi_id, only_ova_episodes=True)
+                        bangumi_info = self.recognize_media(mtype=mediainfo.type, bangumiid=mediainfo.bangumi_id,
+                                                            only_ova_episodes=True)
                         for _season, _episodes in bangumi_info.seasons.items():
                             if _season != season:
                                 __append_no_exists(_season=_season, _episodes=_episodes,

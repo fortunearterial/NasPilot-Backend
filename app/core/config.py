@@ -95,7 +95,7 @@ class ConfigModel(BaseModel):
     # 媒体搜索来源 themoviedb/douban/bangumi/steam/javdb，多个用,分隔
     SEARCH_SOURCE: str = "themoviedb,douban,bangumi"
     # 媒体识别来源 themoviedb/douban/steam/javdb
-    RECOGNIZE_SOURCE: str = "themoviedb"
+    RECOGNIZE_SOURCE: list = ["themoviedb"]
     # 刮削来源 themoviedb/douban/steam/javdb
     SCRAP_SOURCE: str = "themoviedb"
     # 新增已入库媒体是否跟随TMDB信息变化
