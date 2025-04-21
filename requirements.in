@@ -1,7 +1,7 @@
 Cython~=3.0.12
 pydantic~=1.10.13
 SQLAlchemy~=2.0.15
-uvicorn[standard]~=0.22.0
+uvicorn~=0.22.0
 fastapi~=0.96.0
 passlib~=1.7.4
 PyJWT~=2.7.0
@@ -23,8 +23,8 @@ APScheduler~=3.10.1
 cryptography~=43.0.0
 pytz~=2023.3
 pycryptodome~=3.20.0
-qbittorrent-api==2024.11.69
-plexapi~=4.15.16
+qbittorrent-api==2024.11.70
+plexapi~=4.16.0
 transmission-rpc~=4.3.0
 Jinja2~=3.1.4
 pyparsing~=3.0.9
@@ -34,7 +34,7 @@ beautifulsoup4~=4.12.2
 pillow~=10.4.0
 pillow-avif-plugin~=1.4.6
 pyTelegramBotAPI~=4.12.0
-playwright~=1.37.0
+playwright~=1.49.1
 cf-clearance~=0.31.0
 torrentool~=1.2.0
 slack-bolt~=1.18.0
@@ -59,8 +59,6 @@ pystray~=0.19.5
 pyotp~=2.9.0
 Pinyin2Hanzi~=0.1.1
 pywebpush~=2.0.0
-# python-115==0.0.9.8.8.4
-# p115client @ git+https://github.com/ChenyangGao/p115client.git@366b34ea7a362011aad75bbd77c84d764ac76592
 python-cookietools==0.0.2.1
 aiofiles~=24.1.0
 jieba~=0.42.1
@@ -71,7 +69,7 @@ packaging~=24.2
 cf_clearance~=0.31.0
 oss2~=2.19.1
 tqdm~=4.67.1
-setuptools~=65.5.0
+setuptools~=78.1.0
 PyMySQL~=1.1.0
 websockets~=15.0.1
 # browser-use~=0.1.40
