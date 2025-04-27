@@ -245,6 +245,7 @@ class ConfigModel(BaseModel):
     SECURITY_IMAGE_DOMAINS: List[str] = Field(
         default_factory=lambda: ["image.tmdb.org",
                                  "static-mdb.v.geilijiasu.com",
+                                 "bing.com",
                                  "doubanio.com",
                                  "lain.bgm.tv",
                                  "raw.githubusercontent.com",
