@@ -79,11 +79,11 @@ RUN cp -f /app/docker/nginx.common.conf /etc/nginx/common.conf \
     && FRONTEND_VERSION=$(sed -n "s/^FRONTEND_VERSION\s*=\s*'\([^']*\)'/\1/p" /app/version.py) \
     && curl -sL "https://github.com/fortunearterial/NasPilot-Frontend/releases/download/${FRONTEND_VERSION}/dist.zip" | busybox unzip -d / - \
     && mv /dist /public \
-    && curl -sL "https://github.com/fortunearterial/NasPilot-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
+    && curl -sL "https://github.com/jxxghp/MoviePilot-Plugins/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
     && mv -f /tmp/NasPilot-Plugins-main/plugins.v2/* /app/app/plugins/ \
     && cat /tmp/NasPilot-Plugins-main/package.json | jq -r 'to_entries[] | select(.value.v2 == true) | .key' | awk '{print tolower($0)}' | \
         while read -r i; do if [ ! -d "/app/app/plugins/$i" ]; then mv "/tmp/NasPilot-Plugins-main/plugins/$i" "/app/app/plugins/"; else echo "跳过 $i"; fi; done \
-    && curl -sL "https://github.com/fortunearterial/NasPilot-Resources/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
+    && curl -sL "https://github.com/jxxghp/MoviePilot-Resources/archive/refs/heads/main.zip" | busybox unzip -d /tmp - \
     && mv -f /tmp/NasPilot-Resources-main/resources/* /app/app/helper/ \
     && rm -rf /tmp/*
 EXPOSE 3000
