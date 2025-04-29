@@ -298,54 +298,6 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
             if not app_env_path.exists():
                 SystemUtils.copy(self.INNER_CONFIG_PATH / "app.env", app_env_path)
 
-        # 加载持久化的密钥
-        self._init_secret_keys()
-
-    def _init_secret_keys(self):
-        """
-        初始化SECRET_KEY和RESOURCE_SECRET_KEY，从数据库加载或创建新的
-        """
-        # 设置默认值，避免未初始化的情况
-        if not self.SECRET_KEY:
-            self.SECRET_KEY = secrets.token_urlsafe(32)
-        if not self.RESOURCE_SECRET_KEY:
-            self.RESOURCE_SECRET_KEY = secrets.token_urlsafe(32)
-
-        # 启动后延迟导入并保存密钥，避免循环导入
-        # 通过线程方式延迟执行，避免阻塞启动过程
-        def init_keys_from_db():
-            try:
-                # 导入放在函数内部，避免循环导入
-                import time
-                # 延迟一小段时间，确保数据库连接已经准备好
-                time.sleep(2)
-
-                from app.db.systemconfig_oper import SystemConfigOper
-                systemconfigoper = SystemConfigOper()
-
-                # 处理SECRET_KEY
-                db_secret_key = systemconfigoper.get("CONFIG.SECRET_KEY")
-                if not db_secret_key:
-                    db_secret_key = self.SECRET_KEY
-                    systemconfigoper.set("CONFIG.SECRET_KEY", db_secret_key)
-                else:
-                    self.SECRET_KEY = db_secret_key
-
-                # 处理RESOURCE_SECRET_KEY
-                db_resource_key = systemconfigoper.get("CONFIG.RESOURCE_SECRET_KEY")
-                if not db_resource_key:
-                    db_resource_key = self.RESOURCE_SECRET_KEY
-                    systemconfigoper.set("CONFIG.RESOURCE_SECRET_KEY", db_resource_key)
-                else:
-                    self.RESOURCE_SECRET_KEY = db_resource_key
-
-                logger.info("从数据库加载密钥成功")
-            except Exception as e:
-                logger.warning(f"从数据库加载密钥失败: {str(e)}")
-
-        # 启动线程
-        threading.Thread(target=init_keys_from_db, daemon=True).start()
-
     @staticmethod
     def validate_api_token(value: Any, original_value: Any) -> Tuple[Any, bool]:
         """
