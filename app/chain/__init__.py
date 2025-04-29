@@ -10,7 +10,6 @@ from abc import ABCMeta
 from pathlib import Path
 from typing import Optional, Any, Tuple, List, Set, Union, Dict, get_origin, get_args, Type
 
-import ray
 from qbittorrentapi import TorrentFilesList
 from transmission_rpc import File
 
@@ -29,15 +28,6 @@ from app.schemas import TransferInfo, TransferTorrent, ExistMediaInfo, Downloadi
 from app.schemas.types import TorrentStatus, MediaType, MediaImageType, EventType
 from app.utils.object import ObjectUtils
 from app.db.userjob_oper import UserJobOper
-
-
-@ray.remote
-class WorkerNode:
-    def __init__(self, node_id):
-        self.node_id = node_id
-
-    def process(self, method, args):
-        return f"Processed on {self.node_id}: {method}({args})"
 
 
 class ChainBase(metaclass=ABCMeta):

@@ -4,7 +4,6 @@ import sys
 import threading
 import asyncio
 
-import ray
 import uvicorn as uvicorn
 from PIL import Image
 from uvicorn import Config
