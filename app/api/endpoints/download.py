@@ -50,7 +50,7 @@ def download(
         media_info=mediainfo,
         torrent_info=torrentinfo
     )
-    did = DownloadChain().download_single(context=context, username=current_user.name,
+    did = DownloadChain().download_single(user_id=current_user.id, context=context, username=current_user.name,
                                           downloader=downloader, save_path=save_path, source="Manual")
     if not did:
         return schemas.Response(success=False, message="任务添加失败")
@@ -83,7 +83,7 @@ def add(
         media_info=mediainfo,
         torrent_info=torrentinfo
     )
-    did = DownloadChain().download_single(context=context, username=current_user.name,
+    did = DownloadChain().download_single(user_id=current_user.id, context=context, username=current_user.name,
                                           downloader=downloader, save_path=save_path, source="Manual")
     if not did:
         return schemas.Response(success=False, message="任务添加失败")

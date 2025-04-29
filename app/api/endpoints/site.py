@@ -11,7 +11,7 @@ from app.core.event import EventManager
 from app.core.plugin import PluginManager
 from app.core.security import verify_token
 from app.db import get_db
-from app.db.models import User
+from app.db.models.user import User
 from app.db.models.site import Site
 from app.db.models.siteicon import SiteIcon
 from app.db.models.sitestatistic import SiteStatistic

@@ -13,7 +13,7 @@ from app.core.event import eventmanager
 from app.core.metainfo import MetaInfo
 from app.core.security import verify_token, verify_apitoken
 from app.db import get_db
-from app.db.models.subscribe import Subscribe
+from app.db.models.subscribe import Subscribe, UserSubscribe
 from app.db.models.subscribehistory import SubscribeHistory
 from app.db.models.user import User
 from app.db.systemconfig_oper import SystemConfigOper
@@ -37,11 +37,11 @@ def start_subscribe_add(title: str, year: str,
 @router.get("/", summary="查询所有订阅", response_model=List[schemas.Subscribe])
 def read_subscribes(
         db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: User = Depends(get_current_active_user)) -> Any:
     """
     查询所有订阅
     """
-    return Subscribe.list(db)
+    return Subscribe.list_by_userid(db, current_user.id)
 
 
 @router.get("/list", summary="查询所有订阅（API_TOKEN）", response_model=List[schemas.Subscribe])
@@ -92,16 +92,19 @@ def update_subscribe(
         *,
         subscribe_in: schemas.Subscribe,
         db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)
+        current_user: User = Depends(get_current_active_user)
 ) -> Any:
     """
     更新订阅信息
     """
     subscribe = Subscribe.get(db, subscribe_in.id)
-    if not subscribe:
+    user_subscribe = UserSubscribe.get(db, subscribe.id, current_user.id)
+    if not subscribe or not user_subscribe:
         return schemas.Response(success=False, message="订阅不存在")
     # 避免更新缺失集数
     old_subscribe_dict = subscribe.to_dict()
+    old_subscribe_dict.update(**user_subscribe.to_dict())
+
     subscribe_dict = subscribe_in.dict()
     if not subscribe_in.lack_episode:
         # 没有缺失集数时，缺失集数清空，避免更新为0
@@ -116,11 +119,14 @@ def update_subscribe(
     if subscribe_in.total_episode != subscribe.total_episode:
         subscribe_dict["manual_total_episode"] = 1
     subscribe.update(db, subscribe_dict)
+    user_subscribe.update(db, subscribe_dict)
     # 发送订阅调整事件
+    new_subscribe_dict = subscribe.to_dict()
+    new_subscribe_dict.update(**user_subscribe.to_dict())
     eventmanager.send_event(EventType.SubscribeModified, {
-        "subscribe_id": subscribe.id,
+        "subscribe_id": user_subscribe.id,
         "old_subscribe_info": old_subscribe_dict,
-        "subscribe_info": subscribe.to_dict(),
+        "subscribe_info": new_subscribe_dict,
     })
     return schemas.Response(success=True)
 
@@ -469,15 +475,14 @@ def popular_subscribes(
     return []
 
 
-@router.get("/user/{username}", summary="用户订阅", response_model=List[schemas.Subscribe])
+@router.get("/user", summary="用户订阅", response_model=List[schemas.Subscribe])
 def user_subscribes(
-        username: str,
         db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: User = Depends(get_current_active_user)) -> Any:
     """
     查询用户订阅
     """
-    return Subscribe.list_by_username(db, username)
+    return Subscribe.list_by_userid(db, current_user.id)
 
 
 @router.get("/files/{subscribe_id}", summary="订阅相关文件信息", response_model=schemas.SubscrbieInfo)

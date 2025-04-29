@@ -1,14 +1,14 @@
-from sqlalchemy import Column, Integer, String, Sequence, JSON
+from sqlalchemy import Column, Integer, String, Sequence, JSON, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, Base
+from app.db import db_query, db_update, db_id, Base
 
 
 class SystemConfig(Base):
     """
     配置表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 主键
     key = Column(String(255), index=True)
     # 值

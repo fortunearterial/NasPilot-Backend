@@ -1,17 +1,17 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, func, or_
+from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, func, or_, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, Base
+from app.db import db_query, db_id, Base
 
 
 class SiteUserData(Base):
     """
     站点数据表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 站点域名
     domain = Column(String(255), index=True)
     # 站点名称

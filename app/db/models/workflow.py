@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, JSON, Sequence, String, and_
+from sqlalchemy import Column, Integer, JSON, Sequence, String, and_, BigInteger
 
-from app.db import Base, db_query, db_update
+from app.db import db_query, db_update, db_id, Base
 
 
 class Workflow(Base):
@@ -11,7 +11,7 @@ class Workflow(Base):
     工作流表
     """
     # ID
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 名称
     name = Column(String(255), index=True, nullable=False)
     # 描述

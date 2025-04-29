@@ -3,8 +3,9 @@ from typing import Tuple, List, Optional
 
 from app.core.context import MediaInfo
 from app.db import DbOper
-from app.db.models.subscribe import Subscribe
+from app.db.models.subscribe import Subscribe, UserSubscribe
 from app.db.models.subscribehistory import SubscribeHistory
+from app.db.models.user import User
 
 
 class SubscribeOper(DbOper):
@@ -12,7 +13,7 @@ class SubscribeOper(DbOper):
     订阅管理
     """
 
-    def add(self, mediainfo: MediaInfo, **kwargs) -> Tuple[int, str]:
+    def add(self, mediainfo: MediaInfo, current_user: Optional[User] = None, **kwargs) -> Tuple[int, str]:
         """
         新增订阅
         """
@@ -52,11 +53,30 @@ class SubscribeOper(DbOper):
                                          javdbid=mediainfo.javdb_id,
                                          bangumiid=mediainfo.bangumi_id,
                                          season=kwargs.get('season'))
+            self._add_user_subscribe(subscribe.id, current_user, **kwargs)
             return subscribe.id, "新增订阅成功"
         else:
+            self._add_user_subscribe(subscribe.id, current_user, **kwargs)
             return subscribe.id, "订阅已存在"
 
-    def exists(self, tmdbid: Optional[int] = None, doubanid: Optional[str] = None, steamid: Optional[str] = None, javdbid: Optional[str] = None, season: Optional[int] = None) -> bool:
+    def _add_user_subscribe(self, subscribe_id: int, current_user: User, **kwargs):
+        """
+        新增用户订阅
+        """
+        user_subscribe = UserSubscribe.exists(self._db,
+                                              subscribe_id=subscribe_id,
+                                              user_id=current_user.id)
+        if not user_subscribe:
+            user_subscribe = UserSubscribe(subscribe_id=subscribe_id,
+                                           user_id=current_user.id,
+                                           **UserSubscribe.to_kwargs(**kwargs))
+            user_subscribe.create(self._db)
+            return user_subscribe.id, "新增用户订阅成功"
+        else:
+            return user_subscribe.id, "用户订阅已存在"
+
+    def exists(self, tmdbid: Optional[int] = None, doubanid: Optional[str] = None, steamid: Optional[str] = None,
+               javdbid: Optional[str] = None, season: Optional[int] = None) -> bool:
         """
         判断是否存在
         """
@@ -108,7 +128,8 @@ class SubscribeOper(DbOper):
         """
         return Subscribe.get_by_tmdbid(self._db, tmdbid=tmdbid, season=season)
 
-    def list_by_username(self, username: str, state: Optional[str] = None, mtype: Optional[str] = None) -> List[Subscribe]:
+    def list_by_username(self, username: str, state: Optional[str] = None, mtype: Optional[str] = None) -> List[
+        Subscribe]:
         """
         获取指定用户的订阅
         """
@@ -146,3 +167,15 @@ class SubscribeOper(DbOper):
         elif doubanid:
             return True if SubscribeHistory.exists(self._db, doubanid=doubanid) else False
         return False
+
+
+class UserSubscribeOper(DbOper):
+    """
+    用户订阅管理
+    """
+
+    def list_by_subscribeid(self, subscribe_id: int) -> List[UserSubscribe]:
+        """
+        获取指定用户的订阅
+        """
+        return UserSubscribe.list_by_subscribeid(self._db, subscribe_id=subscribe_id)

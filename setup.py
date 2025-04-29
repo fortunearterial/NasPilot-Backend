@@ -2,11 +2,13 @@ from setuptools import setup, Extension
 from Cython.Build import cythonize
 import glob
 
+from app.utils.system import SystemUtils
+
 # 递归获取所有.py文件
 sources = glob.glob("app/**/*.py", recursive=True)
 
 # 移除不需要编译的文件
-sources.remove("app/main.py")
+sources.remove("app\\main.py" if SystemUtils.is_windows() else "app/main.py")
 
 # 配置编译参数（可选优化选项）
 extensions = [
@@ -20,7 +22,7 @@ extensions = [
 
 setup(
     name="NasPilot",
-    author="jxxghp",
+    author="fortunearterial",
     ext_modules=cythonize(
         extensions,
         build_dir="build",

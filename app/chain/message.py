@@ -59,9 +59,9 @@ class MessageChain(ChainBase):
                 # 补充媒体信息
                 _mediainfo = self.mediachain.recognize_media(mtype=_mediainfo.type,
                                                              tmdbid=_mediainfo.tmdb_id,
-                                                             doubanid=_mediainfo.douban_id, 
-                                                             bangumiid=_mediainfo.bangumi_id, 
-                                                             steamid=_mediainfo.steam_id, 
+                                                             doubanid=_mediainfo.douban_id,
+                                                             bangumiid=_mediainfo.bangumi_id,
+                                                             steamid=_mediainfo.steam_id,
                                                              javdbid=_mediainfo.javdb_id,
                                                              cache=False)
                 if not _mediainfo:
@@ -323,7 +323,7 @@ class MessageChain(ChainBase):
                     # 下载种子
                     context: Context = cache_list[_choice]
                     # 下载
-                    self.downloadchain.download_single(context, channel=channel, source=source,
+                    self.downloadchain.download_single(user_id=userid, context=context, channel=channel, source=source,
                                                        userid=userid, username=username)
 
         elif text.lower() == "p":

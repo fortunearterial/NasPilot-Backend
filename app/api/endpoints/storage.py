@@ -11,7 +11,7 @@ from app.chain.transfer import TransferChain
 from app.core.config import settings
 from app.core.metainfo import MetaInfoPath
 from app.core.security import verify_token
-from app.db.models import User
+from app.db.models.user import User
 from app.db.user_oper import get_current_active_superuser
 from app.helper.progress import ProgressHelper
 from app.schemas.types import ProgressKey
@@ -59,7 +59,7 @@ def save(name: str,
 @router.post("/list", summary="所有目录和文件", response_model=List[schemas.FileItem])
 def list_files(fileitem: schemas.FileItem,
                sort: Optional[str] = 'updated_at',
-               _: User = Depends(get_current_active_superuser)) -> Any:
+               current_user: User = Depends(get_current_active_superuser)) -> Any:
     """
     查询当前目录下所有目录和文件
     :param fileitem: 文件项
@@ -67,7 +67,7 @@ def list_files(fileitem: schemas.FileItem,
     :param _: token
     :return: 所有目录和文件
     """
-    file_list = StorageChain().list_files(fileitem)
+    file_list = StorageChain().list_files(fileitem, user_id=current_user.id)
     if file_list:
         if sort == "name":
             file_list.sort(key=lambda x: x.name or "")

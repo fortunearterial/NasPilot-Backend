@@ -1,14 +1,14 @@
-from sqlalchemy import Column, Integer, String, Sequence
+from sqlalchemy import Column, Integer, String, Sequence, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, Base
+from app.db import db_query, db_id, Base
 
 
 class SiteIcon(Base):
     """
     站点图标表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 站点名称
     name = Column(String(255), nullable=False)
     # 域名Key

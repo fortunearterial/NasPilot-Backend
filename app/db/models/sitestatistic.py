@@ -1,16 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Sequence, JSON, Date
+from sqlalchemy import Column, Integer, String, Sequence, JSON, DateTime, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, Base
+from app.db import db_query, db_update, db_id, Base
 
 
 class SiteStatistic(Base):
     """
     站点统计表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 域名Key
     domain = Column(String(255), index=True)
     # 成功次数
@@ -22,7 +22,7 @@ class SiteStatistic(Base):
     # 最后一次访问状态 0-成功 1-失败
     lst_state = Column(Integer)
     # 最后访问时间
-    lst_mod_date = Column(Date, default=datetime.now())
+    lst_mod_date = Column(DateTime, onupdate=datetime.now, default=datetime.now)
     # 耗时记录 Json
     note = Column(JSON)
 

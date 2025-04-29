@@ -2,6 +2,7 @@ from typing import Any, Generator, List, Optional, Self, Tuple
 
 from sqlalchemy import NullPool, QueuePool, and_, create_engine, inspect, text
 from sqlalchemy.orm import Session, as_declarative, declared_attr, scoped_session, sessionmaker
+from snowflake import SnowflakeGenerator
 
 from app.core.config import settings
 
@@ -42,6 +43,9 @@ SessionFactory = sessionmaker(bind=Engine)
 
 # 多线程全局使用的数据库会话
 ScopedSession = scoped_session(SessionFactory)
+
+# ID生成器
+IDGenerator = SnowflakeGenerator(instance=settings.SERVER_ID)
 
 
 def get_db() -> Generator:
@@ -187,10 +191,22 @@ def db_query(func):
     return wrapper
 
 
+def db_id():
+    """
+    生成雪花算法ID
+    """
+    return next(IDGenerator)
+
+
 @as_declarative()
 class Base:
     id: Any
     __name__: str
+
+    @classmethod
+    def to_kwargs(cls, **kwargs) -> dict:
+        valid_keys = cls.__table__.columns.keys()
+        return {k: v for k, v in kwargs.items() if k in valid_keys}
 
     @db_update
     def create(self, db: Session):
@@ -226,7 +242,7 @@ class Base:
         return list(result)
 
     def to_dict(self):
-        return {c.name: getattr(self, c.name, None) for c in self.__table__.columns} # noqa
+        return {c.name: getattr(self, c.name, None) for c in self.__table__.columns}  # noqa
 
     @declared_attr
     def __tablename__(self) -> str:

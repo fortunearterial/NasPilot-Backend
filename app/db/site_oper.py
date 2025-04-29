@@ -183,7 +183,7 @@ class SiteOper(DbOper):
         """
         站点访问成功
         """
-        lst_date = datetime.now()
+        lst_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         sta = SiteStatistic.get_by_domain(self._db, domain)
         if sta:
             avg_seconds, note = None, {}
@@ -198,7 +198,6 @@ class SiteOper(DbOper):
                 "success": sta.success + 1,
                 "seconds": avg_seconds or sta.seconds,
                 "lst_state": 0,
-                "lst_mod_date": lst_date,
                 "note": note or sta.note
             })
         else:
@@ -213,7 +212,6 @@ class SiteOper(DbOper):
                 fail=0,
                 seconds=seconds or 1,
                 lst_state=0,
-                lst_mod_date=lst_date,
                 note=note
             ).create(self._db)
 
@@ -227,7 +225,6 @@ class SiteOper(DbOper):
             sta.update(self._db, {
                 "fail": sta.fail + 1,
                 "lst_state": 1,
-                "lst_mod_date": lst_date
             })
         else:
             SiteStatistic(
@@ -235,5 +232,4 @@ class SiteOper(DbOper):
                 success=0,
                 fail=1,
                 lst_state=1,
-                lst_mod_date=lst_date
             ).create(self._db)

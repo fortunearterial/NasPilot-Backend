@@ -1,16 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON, Text, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON, Text, DateTime, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, Base
+from app.db import db_query, db_update, db_id, Base
 
 
 class Site(Base):
     """
     站点表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 站点名
     name = Column(String(255), nullable=False)
     # 域名Key
@@ -66,7 +66,7 @@ class Site(Base):
     # 是否启用
     is_active = Column(Boolean, default=True)
     # 创建时间
-    lst_mod_date = Column(DateTime, default=datetime.now())
+    lst_mod_date = Column(DateTime, default=datetime.now)
     # 下载器
     downloader = Column(String(20))
 

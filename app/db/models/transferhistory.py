@@ -1,17 +1,17 @@
 import time
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, Boolean, func, or_, JSON
+from sqlalchemy import Column, Integer, String, Sequence, Boolean, func, or_, JSON, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, Base
+from app.db import db_query, db_update, db_id, Base
 
 
 class TransferHistory(Base):
     """
     整理记录
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 源路径
     src = Column(String(255), index=True)
     # 源存储
@@ -57,7 +57,7 @@ class TransferHistory(Base):
     # 文件清单，以JSON存储
     files = Column(JSON, default=list)
     # 剧集组
-    episode_group = Column(String)
+    episode_group = Column(String(255))
 
     @staticmethod
     @db_query

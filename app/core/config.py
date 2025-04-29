@@ -24,6 +24,8 @@ class ConfigModel(BaseModel):
     class Config:
         extra = "ignore"  # 忽略未定义的配置项
 
+    # 服务器ID
+    SERVER_ID: int = 255
     # 项目名称
     PROJECT_NAME = "NasPilot"
     # 域名 格式；https://movie-pilot.org
@@ -517,6 +519,10 @@ class Settings(BaseSettings, ConfigModel, LogConfigModel):
         版本标识，用来区分重大版本，为空则为v1，不允许外部修改
         """
         return "v2"
+
+    @property
+    def APP_PATH(self):
+        return self.ROOT_PATH / "app"
 
     @property
     def INNER_CONFIG_PATH(self):

@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, Sequence, Float
+from sqlalchemy import Column, Integer, String, Sequence, Float, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, Base
+from app.db import db_query, db_id, Base
 
 
 class UserRequest(Base):
@@ -9,7 +9,7 @@ class UserRequest(Base):
     用户请求表
     """
     # ID
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 申请用户
     req_user = Column(String(255), index=True, nullable=False)
     # 申请时间

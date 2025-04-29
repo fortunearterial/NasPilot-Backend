@@ -25,7 +25,7 @@ if [ "${ENABLE_SSL}" = "true" ] && \
 
     # 创建证书目录
     mkdir -p /config/certs/"${SSL_DOMAIN}"
-    chown moviepilot:moviepilot /config/certs -R
+    chown naspilot:naspilot /config/certs -R
 
     # 安装acme.sh（使用官方安装脚本）
     if [ ! -d "/config/acme.sh" ]; then

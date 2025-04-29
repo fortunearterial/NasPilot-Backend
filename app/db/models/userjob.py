@@ -1,14 +1,14 @@
-from sqlalchemy import Column, Integer, String, Sequence, UniqueConstraint, Index, JSON
+from sqlalchemy import Column, Integer, String, Sequence, UniqueConstraint, Index, JSON, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, Base
+from app.db import db_query, db_update, db_id, Base
 
 
 class UserJob(Base):
     """
     用户任务表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 需求用户名
     request_userid = Column(String(255), index=True)
     # 响应用户名
@@ -17,10 +17,6 @@ class UserJob(Base):
     job_name = Column(String(255))
     # 值
     job_args = Column(JSON)
-
-    __table_args__ = (
-        Index('ix_userjob_request_userid', 'request_userid'),
-    )
 
     @staticmethod
     @db_query

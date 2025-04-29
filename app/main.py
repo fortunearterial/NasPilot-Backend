@@ -22,7 +22,8 @@ from app.db.init import init_db, update_db
 
 # uvicorn服务
 Server = uvicorn.Server(Config(app, host=settings.HOST, port=settings.PORT,
-                               reload=settings.DEV, log_level="debug" if settings.DEBUG else None, workers=multiprocessing.cpu_count(),
+                               reload=settings.DEBUG, reload_dirs=[settings.APP_PATH],
+                               log_level="debug" if settings.DEBUG else None, workers=multiprocessing.cpu_count(),
                                timeout_graceful_shutdown=5))
 
 

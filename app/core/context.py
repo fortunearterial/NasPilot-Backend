@@ -714,7 +714,7 @@ class MediaInfo:
         # 本体
         self.steam_info = info
         # STEAM ID
-        self.steam_id = str(info.get("steam_appid"))
+        self.steam_id = info.get("steam_appid")
         # 类型
         if not self.type:
             if isinstance(info.get('media_type'), MediaType):

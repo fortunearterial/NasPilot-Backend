@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.event import eventmanager
 from app.core.security import verify_token
 from app.db import get_db
-from app.db.models import User
+from app.db.models.user import User
 from app.db.models.downloadhistory import DownloadHistory
 from app.db.models.transferhistory import TransferHistory
 from app.db.user_oper import get_current_active_superuser

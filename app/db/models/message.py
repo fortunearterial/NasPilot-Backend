@@ -1,16 +1,16 @@
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, JSON, Text, DateTime
+from sqlalchemy import Column, Integer, String, Sequence, JSON, Text, DateTime, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, Base
+from app.db import db_query, db_id, Base
 
 
 class Message(Base):
     """
     消息表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 消息渠道
     channel = Column(String(255))
     # 消息来源

@@ -3,7 +3,7 @@ from .mediaserver import MediaServerItem
 from .plugindata import PluginData
 from .site import Site
 from .siteicon import SiteIcon
-from .subscribe import Subscribe
+from .subscribe import Subscribe, UserSubscribe
 from .systemconfig import SystemConfig
 from .transferhistory import TransferHistory
 from .user import User

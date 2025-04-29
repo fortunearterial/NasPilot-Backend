@@ -97,10 +97,12 @@ class DownloadChain(ChainBase):
             link=settings.MP_DOMAIN('/#/downloading'),
             username=username))
 
-    def download_torrent(self, torrent: TorrentInfo,
+    def download_torrent(self,
+                         torrent: TorrentInfo,
+                         user_id: int,
                          channel: MessageChannel = None,
                          source: Optional[str] = None,
-                         userid: Union[str, int] = None
+                         userid: Union[str, int] = None,
                          ) -> Tuple[Optional[Union[Path, str]], str, list]:
         """
         下载种子文件，如果是磁力链，会返回磁力链接本身
@@ -207,7 +209,10 @@ class DownloadChain(ChainBase):
         # 返回 种子文件路径，种子目录名，种子文件清单
         return torrent_file, download_folder, files
 
-    def download_single(self, context: Context, torrent_file: Path = None,
+    def download_single(self,
+                        context: Context,
+                        user_id: int,
+                        torrent_file: Path = None,
                         episodes: Set[int] = None,
                         channel: MessageChannel = None,
                         source: Optional[str] = None,
@@ -272,7 +277,8 @@ class DownloadChain(ChainBase):
         _folder_name = ""
         if not torrent_file:
             # 下载种子文件，得到的可能是文件也可能是磁力链
-            content, _folder_name, _file_list = self.download_torrent(_torrent,
+            content, _folder_name, _file_list = self.download_torrent(torrent=_torrent,
+                                                                      user_id=user_id,
                                                                       channel=channel,
                                                                       source=source,
                                                                       userid=userid)
@@ -423,7 +429,7 @@ class DownloadChain(ChainBase):
                 userid=userid))
         return _hash
 
-    def batch_download(self,
+    def batch_download(self, user_id: int,
                        contexts: List[Context],
                        no_exists: Dict[Union[int, str], Dict[int, NotExistMediaInfo]] = None,
                        save_path: Optional[str] = None,
@@ -530,7 +536,7 @@ class DownloadChain(ChainBase):
                     or context.media_info.type == MediaType.GAME \
                     or context.media_info.type == MediaType.JAV:
                 logger.info(f"开始下载{context.media_info.type} {context.torrent_info.title} ...")
-                if self.download_single(context, save_path=save_path, channel=channel,
+                if self.download_single(context=context, user_id=user_id, save_path=save_path, channel=channel,
                                         source=source, userid=userid, username=username,
                                         downloader=downloader):
                     # 下载成功
@@ -588,7 +594,7 @@ class DownloadChain(ChainBase):
                             if len(torrent_season) == 1:
                                 # 只有一季的可能是命名错误，需要打开种子鉴别，只有实际集数大于等于总集数才下载
                                 logger.info(f"开始下载种子 {torrent.title} ...")
-                                content, _, torrent_files = self.download_torrent(torrent)
+                                content, _, torrent_files = self.download_torrent(torrent=torrent, user_id=user_id)
                                 if not content:
                                     logger.warn(f"{torrent.title} 种子下载失败！")
                                     continue
@@ -614,6 +620,7 @@ class DownloadChain(ChainBase):
                                     logger.info(f"开始下载 {torrent.title} ...")
                                     download_id = self.download_single(
                                         context=context,
+                                        user_id=user_id,
                                         torrent_file=content if isinstance(content, Path) else None,
                                         save_path=save_path,
                                         channel=channel,
@@ -625,7 +632,8 @@ class DownloadChain(ChainBase):
                             else:
                                 # 下载
                                 logger.info(f"开始下载 {torrent.title} ...")
-                                download_id = self.download_single(context, save_path=save_path,
+                                download_id = self.download_single(context=context, user_id=user_id,
+                                                                   save_path=save_path,
                                                                    channel=channel, source=source,
                                                                    userid=userid, username=username,
                                                                    downloader=downloader)
@@ -696,7 +704,8 @@ class DownloadChain(ChainBase):
                             if torrent_episodes.intersection(set(need_episodes)):
                                 # 下载
                                 logger.info(f"开始下载 {meta.title} ...")
-                                download_id = self.download_single(context, save_path=save_path,
+                                download_id = self.download_single(context=context, user_id=user_id,
+                                                                   save_path=save_path,
                                                                    channel=channel, source=source,
                                                                    userid=userid, username=username,
                                                                    downloader=downloader)
@@ -781,6 +790,7 @@ class DownloadChain(ChainBase):
                             logger.info(f"开始下载 {torrent.title} ...")
                             download_id = self.download_single(
                                 context=context,
+                                user_id=user_id,
                                 torrent_file=content if isinstance(content, Path) else None,
                                 episodes=selected_episodes,
                                 save_path=save_path,

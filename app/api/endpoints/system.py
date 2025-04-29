@@ -20,7 +20,7 @@ from app.core.config import global_vars, settings
 from app.core.metainfo import MetaInfo
 from app.core.module import ModuleManager
 from app.core.security import verify_apitoken, verify_resource_token, verify_token
-from app.db.models import User
+from app.db.models.user import User
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import get_current_active_superuser
 from app.helper.mediaserver import MediaServerHelper

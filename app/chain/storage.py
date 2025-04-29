@@ -8,7 +8,6 @@ from app.helper.directory import DirectoryHelper
 from app.log import logger
 from app.schemas import MediaType
 
-
 class StorageChain(ChainBase):
     """
     存储处理链
@@ -36,11 +35,11 @@ class StorageChain(ChainBase):
         """
         return self.run_module("check_login", storage=storage, **kwargs)
 
-    def list_files(self, fileitem: schemas.FileItem, recursion: bool = False) -> Optional[List[schemas.FileItem]]:
+    def list_files(self, fileitem: schemas.FileItem, user_id: int, recursion: bool = False) -> Optional[List[schemas.FileItem]]:
         """
         查询当前目录下所有目录和文件
         """
-        return self.run_module("list_files", fileitem=fileitem, recursion=recursion)
+        return self.run_module("list_files", fileitem=fileitem, user_id=user_id, recursion=recursion)
 
     def any_files(self, fileitem: schemas.FileItem, extensions: list = None) -> Optional[bool]:
         """

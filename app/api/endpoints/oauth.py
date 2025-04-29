@@ -1,4 +1,7 @@
 import secrets
+
+import json
+
 import schemas
 import jwt
 
@@ -15,7 +18,7 @@ from app.db.user_oper import get_current_user
 from app.schemas import User, OAuth2TokenRequestForm, OAuth2AuthorizeRequestQuery
 from app.core.cache import cache_backend
 from chain.user import UserChain
-from db.user_oper import UserOper
+from db.user_oper import UserOper, get_current_active_user
 
 SECRET_KEY = "your-secret-key-32bytes"
 ALGORITHM = "HS256"
@@ -31,7 +34,7 @@ async def authorize(
         redirect_uri: str,
         state: str = None,
         # request: OAuth2AuthorizeRequestQuery,
-        current_user: User = Depends(get_current_user),
+        current_user: User = Depends(get_current_active_user),
 ):
     # 验证客户端
     # client = clients_db.get(client_id)
@@ -40,12 +43,12 @@ async def authorize(
 
     # 生成授权码（实际应存储并与用户会话关联）
     auth_code = secrets.token_urlsafe(32)
-    cache_backend.set(auth_code, {
+    cache_backend.set(auth_code, json.dumps({
         "response_type": response_type,
         "client_id": client_id,
         "state": state,
         "user_name": current_user.name,
-    }, ttl=300)
+    }), ttl=300)
 
     # 重定向到客户端回调地址
     # return RedirectResponse(f"{redirect_uri}?code={auth_code}&state={state}")
@@ -68,10 +71,10 @@ async def token(
     #     raise HTTPException(status_code=401, detail="Invalid client credentials")
 
     # 验证授权码（此处简化，实际需验证code有效性）
-    authorize_request = cache_backend.get(code)
+    authorize_request = json.loads(cache_backend.get(code))
+    cache_backend.delete(code)
     if not authorize_request:
         raise HTTPException(status_code=400, detail="Invalid authorization code")
-    cache_backend.delete(code)
 
     # success, user_or_message = UserChain().user_authenticate(
     #     code=code,

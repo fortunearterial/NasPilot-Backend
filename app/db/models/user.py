@@ -1,7 +1,7 @@
-from sqlalchemy import Boolean, Column, Integer, JSON, Sequence, String
+from sqlalchemy import Boolean, Column, Integer, JSON, Sequence, String, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import Base, db_query, db_update
+from app.db import db_query, db_update,  db_id, Base
 
 
 class User(Base):
@@ -9,11 +9,13 @@ class User(Base):
     用户表
     """
     # ID
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 用户名，唯一值
     name = Column(String(255), index=True, nullable=False)
     # 邮箱
     email = Column(String(255))
+    # 手机号
+    phone = Column(String(20))
     # 加密后密码
     hashed_password = Column(String(255))
     # 是否启用
@@ -30,6 +32,10 @@ class User(Base):
     permissions = Column(JSON, default=dict)
     # 用户个性化设置 json
     settings = Column(JSON, default=dict)
+    # 推荐码
+    recommend_code = Column(String(10), default=None)
+    # 邀请码
+    invite_code = Column(String(10), default=None)
 
     @staticmethod
     @db_query

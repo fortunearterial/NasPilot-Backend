@@ -1,16 +1,16 @@
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, Text, Date
+from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, Text, Date, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, Base
+from app.db import db_query, db_id, Base
 
 
 class SubscribeHistory(Base):
     """
     订阅历史表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 标题
     name = Column(String(255), nullable=False, index=True)
     # 年份
@@ -72,7 +72,7 @@ class SubscribeHistory(Base):
     # 过滤规则组
     filter_groups = Column(JSON, default=list)
     # 剧集组
-    episode_group = Column(String)
+    episode_group = Column(String(255))
 
     @staticmethod
     @db_query

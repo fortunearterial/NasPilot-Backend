@@ -1,17 +1,17 @@
 import time
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, Text
+from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, Text, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, Base
+from app.db import db_query, db_update, db_id, Base
 
 
 class Subscribe(Base):
     """
     订阅表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 标题
     name = Column(String(255), nullable=False, index=True)
     # 年份
@@ -56,26 +56,18 @@ class Subscribe(Base):
     start_episode = Column(Integer)
     # 缺失集数
     lack_episode = Column(Integer)
-    # 附加信息
-    note = Column(JSON)
     # 状态：N-新建 R-订阅中 P-待定 S-暂停
     state = Column(String(255), nullable=False, index=True, default='N')
     # 最后更新时间
     last_update = Column(String(255))
     # 创建时间
     date = Column(String(255))
-    # 订阅用户
-    username = Column(String(255))
     # 订阅站点
     sites = Column(JSON, default=list)
-    # 下载器
-    downloader = Column(String(255))
     # 是否洗版
     best_version = Column(Integer, default=0)
     # 当前优先级
     current_priority = Column(Integer)
-    # 保存路径
-    save_path = Column(String(2000))
     # 是否使用 imdbid 搜索
     search_imdbid = Column(Integer, default=0)
     # 是否手动修改过总集数 0否 1是
@@ -87,7 +79,7 @@ class Subscribe(Base):
     # 过滤规则组
     filter_groups = Column(JSON, default=list)
     # 选择的剧集组
-    episode_group = Column(String)
+    episode_group = Column(String(255))
 
     @staticmethod
     @db_query
@@ -188,21 +180,22 @@ class Subscribe(Base):
 
     @staticmethod
     @db_query
-    def list_by_username(db: Session, username: str, state: Optional[str] = None, mtype: Optional[str] = None):
+    def list_by_userid(db: Session, user_id: int, state: Optional[str] = None, mtype: Optional[str] = None):
+        subscribe_ids = [us.subscribe_id for us in UserSubscribe.list_by_userid(db, user_id)]
         if mtype:
             if state:
                 result = db.query(Subscribe).filter(Subscribe.state == state,
-                                                    Subscribe.username == username,
+                                                    Subscribe.id.in_(subscribe_ids),
                                                     Subscribe.type == mtype).all()
             else:
-                result = db.query(Subscribe).filter(Subscribe.username == username,
+                result = db.query(Subscribe).filter(Subscribe.id.in_(subscribe_ids),
                                                     Subscribe.type == mtype).all()
         else:
             if state:
                 result = db.query(Subscribe).filter(Subscribe.state == state,
-                                                    Subscribe.username == username).all()
+                                                    Subscribe.id.in_(subscribe_ids), ).all()
             else:
-                result = db.query(Subscribe).filter(Subscribe.username == username).all()
+                result = db.query(Subscribe).filter(Subscribe.id.in_(subscribe_ids), ).all()
         return list(result)
 
     @staticmethod
@@ -228,3 +221,48 @@ class Subscribe(Base):
         if subscribe:
             subscribe.delete(db, subscribe.id)
         return True
+
+
+class UserSubscribe(Base):
+    """
+    用户订阅表
+    """
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
+    # 订阅ID
+    subscribe_id = Column(BigInteger, index=True)
+    # 订阅用户
+    user_id = Column(BigInteger)
+    # 下载器
+    downloader = Column(String(255))
+    # 是否洗版
+    best_version = Column(Integer, default=0)
+    # 当前优先级
+    current_priority = Column(Integer)
+    # 保存路径
+    save_path = Column(String(2000))
+    # 附加信息
+    note = Column(JSON)
+
+    @staticmethod
+    @db_query
+    def exists(db: Session, subscribe_id: Optional[int] = None, user_id: Optional[int] = None):
+        return db.query(UserSubscribe).filter(
+            UserSubscribe.subscribe_id == subscribe_id and UserSubscribe.user_id == user_id).first()
+
+    @staticmethod
+    @db_query
+    def get(db: Session, subscribe_id: Optional[int] = None, user_id: Optional[int] = None):
+        return db.query(UserSubscribe).filter(
+            UserSubscribe.subscribe_id == subscribe_id and UserSubscribe.user_id == user_id).first()
+
+    @staticmethod
+    @db_query
+    def list_by_userid(db: Session, user_id: int):
+        return db.query(UserSubscribe).filter(
+            UserSubscribe.user_id == user_id).all()
+
+    @staticmethod
+    @db_query
+    def list_by_subscribeid(db: Session, subscribe_id: int):
+        return db.query(UserSubscribe).filter(
+            UserSubscribe.subscribe_id == subscribe_id).all()

@@ -130,7 +130,10 @@ class ChainBase(metaclass=ABCMeta):
             获取方法的参数名和默认值
             """
             # 获取当前堆栈帧的上一级帧（即调用者）
-            caller_frame = sys._getframe(2)
+            for i in range(1, 50):
+                if sys._getframe(i).f_code.co_name == "run_module":
+                    caller_frame = sys._getframe(i + 1)
+                    break
             # 获取调用者的函数对象
             caller_func_name = caller_frame.f_code.co_name
             # 尝试从实例中获取方法（若调用者是类方法）
@@ -140,37 +143,61 @@ class ChainBase(metaclass=ABCMeta):
             else:
                 caller_func_obj = caller_frame.f_globals.get(caller_func_name, None)
             return_annotation = caller_func_obj.__annotations__.get('return', None)
-            print(f"调用者的返回类型注解: {return_annotation}")
             return extract_inner_type(return_annotation)
 
-        def json_to_obj(data: dict, cls: Type) -> object:
-            return cls(**data)
+        def broadcast_to_clients(method: str, timeout: int = 5, *args, **kwargs):
+            """
+            广播消息给所有客户端
+            """
+            logger.debug(f"请求[广播]模块执行：{method}(args={args}, kwargs={kwargs}) ...")
 
-        result = None
-        logger.debug(f"请求模块执行：{method} ...")
-        if method in ["tmdb_discover", "tmdb_trending",
-                      "bangumi_calendar",
-                      "douban_discover",
-                      "movie_showing", "movie_top250", "tv_weekly_chinese", "tv_weekly_global", "tv_animation",
-                      "movie_hot", "tv_hot"
-                      ]:
-            # 实时模式，交由websocket广播处理
+            # 模式，交由websocket广播处理
             from app.api.websockets import ConnectionManager
-            asyncio.run(ConnectionManager().broadcast({"method": method, "args": args}))
-        elif method in ["downloader_info"]:
+            # 获取调用者的返回类型注解
+            return_annotation = get_method_return_annotation()
+
+            try:
+                results = asyncio.run(ConnectionManager().broadcast(
+                    request_data={"method": method, "args": args, "kwargs": kwargs},
+                    timeout=timeout
+                ))
+                if not results:
+                    return None
+                return [return_annotation(**result) for result in results]
+            except BaseException as ex:
+                logger.error(f"执行[广播]模块 {method} 出错，转由服务端执行：{str(ex)}")
+                return run_on_server(method=method, *args, **kwargs)
+
+        def send_to_client(user_id: int, method: str, timeout: int = 5, *args, **kwargs):
+            """
+            发送消息给指定客户端
+            """
+            logger.debug(f"请求[单机]模块执行：{method}(args={args}, kwargs={kwargs}) ...")
+            if not user_id:
+                raise Exception("user_id is required")
+
             # 实时模式，交由websocket单点处理
             from app.api.websockets import ConnectionManager
             # 获取调用者的返回类型注解
             return_annotation = get_method_return_annotation()
 
-            results = asyncio.run(ConnectionManager().send(user_id, {"method": method, "args": args}))
-            if not results:
+            try:
+                results = asyncio.run(
+                    ConnectionManager().send(user_id=user_id,
+                                             request_data={"method": method, "args": args, "kwargs": kwargs},
+                                             timeout=timeout)
+                )
+                if not results:
+                    return None
+                return [return_annotation(**result) for result in results]
+            except BaseException as ex:
+                logger.error(f"执行[单机]模块 {method} 出错：{str(ex)}")
                 return None
-            return [json_to_obj(result, return_annotation) for result in results]
-        if method in ["mediaserver_librarys"]:
-            # 延迟模式，由用户消费
-            self.userjoboper.publish(user_id, method, args)
-        else:
+
+        def run_on_server(method: str, *args, **kwargs):
+            logger.debug(f"请求[服务端]模块执行：{method} ...")
+
+            result = None
             modules = self.modulemanager.get_running_modules(method)
             # 按优先级排序
             modules = sorted(modules, key=lambda x: x.get_priority())
@@ -179,7 +206,7 @@ class ChainBase(metaclass=ABCMeta):
                 try:
                     module_name = module.get_name()
                 except Exception as err:
-                    logger.debug(f"获取模块名称出错：{str(err)}")
+                    logger.debug(f"获取[服务端]模块名称出错：{str(err)}")
                     module_name = module_id
                 try:
                     func = getattr(module, method)
@@ -201,7 +228,7 @@ class ChainBase(metaclass=ABCMeta):
                     if kwargs.get("raise_exception"):
                         raise
                     logger.error(
-                        f"运行模块 {module_id}.{method} 出错：{str(err)}\n{traceback.format_exc()}")
+                        f"运行[服务端]模块 {module_id}.{method} 出错：{str(err)}\n{traceback.format_exc()}")
                     self.messagehelper.put(title=f"{module_name}发生了错误",
                                            message=str(err),
                                            role="system")
@@ -216,7 +243,25 @@ class ChainBase(metaclass=ABCMeta):
                             "traceback": traceback.format_exc()
                         }
                     )
-        return result
+            return result
+
+        if method in [
+            "tmdb_discover", "tmdb_trending",
+            "bangumi_calendar",
+            "douban_discover",
+            "movie_showing", "movie_top250", "tv_weekly_chinese", "tv_weekly_global", "tv_animation",
+            "movie_hot", "tv_hot",
+            "recognize_media", "refresh_torrents"
+        ]:
+            return broadcast_to_clients(method=method, timeout=60, *args, **kwargs)
+        elif method in ["downloader_info", "list_files", "download"]:
+            return send_to_client(user_id=user_id, method=method, *args, **kwargs)
+        if method in ["mediaserver_librarys"]:
+            # 延迟模式，由用户消费
+            self.userjoboper.publish(user_id=user_id, method=method, *args, **kwargs)
+            return None
+        else:
+            return run_on_server(method=method, *args, **kwargs)
 
     def recognize_media(self, meta: MetaBase = None,
                         mtype: Optional[MediaType] = None,

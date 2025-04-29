@@ -29,7 +29,7 @@ if [ "${ENABLE_SSL}" = "true" ]; then
 
         listen 443 ssl;
         listen [::]:443 ssl;
-        server_name ${SSL_DOMAIN:-moviepilot};
+        server_name ${SSL_DOMAIN:-naspilot};
 
         # SSL证书路径
         ssl_certificate /config/certs/latest/fullchain.pem;
@@ -58,23 +58,23 @@ envsubst '${NGINX_PORT}${PORT}${NGINX_CLIENT_MAX_BODY_SIZE}${ENABLE_SSL}${HTTPS_
 cd /
 source /usr/local/bin/mp_update.sh
 cd /app || exit
-# 更改 moviepilot userid 和 groupid
-groupmod -o -g "${PGID}" moviepilot
-usermod -o -u "${PUID}" moviepilot
+# 更改 naspilot userid 和 groupid
+groupmod -o -g "${PGID}" naspilot
+usermod -o -u "${PUID}" naspilot
 # 更改文件权限
-chown -R moviepilot:moviepilot \
+chown -R naspilot:naspilot \
     "${HOME}" \
     /app \
     /public \
     /config \
     /var/lib/nginx \
     /var/log/nginx
-chown moviepilot:moviepilot /etc/hosts /tmp
+chown naspilot:naspilot /etc/hosts /tmp
 # 下载浏览器内核
 if [[ "$HTTPS_PROXY" =~ ^https?:// ]] || [[ "$HTTPS_PROXY" =~ ^https?:// ]] || [[ "$PROXY_HOST" =~ ^https?:// ]]; then
-  HTTPS_PROXY="${HTTPS_PROXY:-${https_proxy:-$PROXY_HOST}}" gosu moviepilot:moviepilot playwright install chromium
+  HTTPS_PROXY="${HTTPS_PROXY:-${https_proxy:-$PROXY_HOST}}" gosu naspilot:naspilot playwright install chromium
 else
-  gosu moviepilot:moviepilot playwright install chromium
+  gosu naspilot:naspilot playwright install chromium
 fi
 # 证书管理
 source /app/docker/cert.sh
@@ -86,7 +86,7 @@ if [ -S "/var/run/docker.sock" ]; then
     INFO "→ 启动 Docker Proxy..."
     nginx -c /etc/nginx/docker_http_proxy.conf
     # 上面nginx是通过root启动的，会将目录权限改成root，所以需要重新再设置一遍权限
-    chown -R moviepilot:moviepilot \
+    chown -R naspilot:naspilot \
         /var/lib/nginx \
         /var/log/nginx
 fi
@@ -94,4 +94,4 @@ fi
 umask "${UMASK}"
 # 启动后端服务
 INFO "→ 启动后端服务..."
-exec dumb-init gosu moviepilot:moviepilot python3 app/main.py
+exec dumb-init gosu naspilot:naspilot python3 app/main.py

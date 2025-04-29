@@ -1,17 +1,17 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, JSON, Date
+from sqlalchemy import Column, Integer, String, Sequence, JSON, DateTime, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, Base
+from app.db import db_query, db_update, db_id, Base
 
 
 class MediaServerItem(Base):
     """
     媒体服务器媒体条目表
     """
-    id = Column(Integer, Sequence('id'), primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True, default=db_id)
     # 服务器类型
     server = Column(String(255))
     # 媒体库ID
@@ -39,7 +39,7 @@ class MediaServerItem(Base):
     # 备注
     note = Column(JSON)
     # 同步时间
-    lst_mod_date = Column(Date, default=datetime.now())
+    lst_mod_date = Column(DateTime, default=datetime.now)
 
     @staticmethod
     @db_query
