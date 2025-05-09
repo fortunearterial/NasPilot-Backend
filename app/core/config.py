@@ -274,6 +274,8 @@ class ConfigModel(BaseModel):
     TOKENIZED_SEARCH: bool = False
     # 为指定默认字幕添加.default后缀
     DEFAULT_SUB: Optional[str] = "zh-cn"
+    # 当前用户
+    CURRENT_USERID: int = 0
 
 
 class Settings(BaseSettings, ConfigModel, LogConfigModel):

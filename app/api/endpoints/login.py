@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app import schemas
+from app.chain.mediaserver import MediaServerChain
 from app.chain.tmdb import TmdbChain
 from app.chain.user import UserChain
-from app.chain.mediaserver import MediaServerChain
 from app.core import security
 from app.core.config import settings
 from app.helper.sites import SitesHelper

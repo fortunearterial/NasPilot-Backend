@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, Text, Date, BigInteger
+from sqlalchemy import Column, Integer, String, Float, JSON, Text, DateTime, BigInteger
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_id, Base
@@ -54,7 +54,7 @@ class SubscribeHistory(Base):
     # 开始集数
     start_episode = Column(Integer)
     # 订阅完成时间
-    date = Column(Date)
+    date = Column(DateTime)
     # 订阅用户
     username = Column(String(255))
     # 订阅站点

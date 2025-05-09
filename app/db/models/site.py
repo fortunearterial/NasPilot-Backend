@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, Integer, String, Sequence, JSON, Text, DateTime, BigInteger
+from sqlalchemy import Boolean, Column, Integer, String, JSON, Text, DateTime, BigInteger
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, db_id, Base

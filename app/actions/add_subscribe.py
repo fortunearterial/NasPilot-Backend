@@ -5,6 +5,7 @@ from app.core.context import MediaInfo
 from app.db.subscribe_oper import SubscribeOper
 from app.log import logger
 from app.schemas import ActionParams, ActionContext
+from app.db.workflow_oper import WorkflowOper
 
 
 class AddSubscribeParams(ActionParams):
@@ -26,6 +27,7 @@ class AddSubscribeAction(BaseAction):
         super().__init__(action_id)
         self.subscribechain = SubscribeChain()
         self.subscribeoper = SubscribeOper()
+        self.workflowoper = WorkflowOper()
         self._added_subscribes = []
         self._has_error = False
 
@@ -52,6 +54,7 @@ class AddSubscribeAction(BaseAction):
         """
         将medias中的信息添加订阅，如果订阅不存在的话
         """
+        workflow = self.workflowoper.get(workflow_id)
         _started = False
         for media in context.medias:
             if global_vars.is_workflow_stopped(workflow_id):
@@ -63,7 +66,7 @@ class AddSubscribeAction(BaseAction):
                 continue
             mediainfo = MediaInfo()
             mediainfo.from_dict(media.dict())
-            if self.subscribechain.exists(mediainfo):
+            if self.subscribechain.exists(mediainfo, workflow.user_id):
                 logger.info(f"{media.title} 已存在订阅")
                 continue
             # 添加订阅
@@ -84,7 +87,7 @@ class AddSubscribeAction(BaseAction):
         if self._added_subscribes:
             logger.info(f"已添加 {len(self._added_subscribes)} 个订阅")
             for sid in self._added_subscribes:
-                context.subscribes.append(self.subscribeoper.get(sid))
+                context.subscribes.append(self.subscribeoper.get_subscribe(sid, workflow.user_id))
         elif _started:
             self._has_error = True
 

@@ -3,11 +3,9 @@ from typing import List, Any, Annotated, Optional
 import cn2an
 from fastapi import APIRouter, Request, BackgroundTasks, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
-from datetime import datetime
 
 from app import schemas
 from app.chain.subscribe import SubscribeChain
-from app.core.config import settings
 from app.core.context import MediaInfo
 from app.core.event import eventmanager
 from app.core.metainfo import MetaInfo
@@ -16,8 +14,10 @@ from app.db import get_db
 from app.db.models.subscribe import Subscribe, UserSubscribe
 from app.db.models.subscribehistory import SubscribeHistory
 from app.db.models.user import User
+from app.db.subscribe_oper import SubscribeOper
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import get_current_active_user
+from app.db.user_oper import get_current_user, UserOper
 from app.helper.subscribe import SubscribeHelper
 from app.scheduler import Scheduler
 from app.schemas.types import MediaType, EventType, SystemConfigKey
@@ -26,12 +26,12 @@ router = APIRouter()
 
 
 def start_subscribe_add(title: str, year: str,
-                        mtype: MediaType, tmdbid: int, season: int, username: str):
+                        mtype: MediaType, tmdbid: int, season: int, current_user: User):
     """
     启动订阅任务
     """
     SubscribeChain().add(title=title, year=year,
-                         mtype=mtype, tmdbid=tmdbid, season=season, username=username)
+                         mtype=mtype, tmdbid=tmdbid, season=season, current_user=current_user)
 
 
 @router.get("/", summary="查询所有订阅", response_model=List[schemas.Subscribe])
@@ -41,7 +41,7 @@ def read_subscribes(
     """
     查询所有订阅
     """
-    return Subscribe.list_by_userid(db, current_user.id)
+    return SubscribeOper().list_by_userid(current_user.id)
 
 
 @router.get("/list", summary="查询所有订阅（API_TOKEN）", response_model=List[schemas.Subscribe])
@@ -77,10 +77,10 @@ def create_subscribe(
     else:
         title = None
     # 订阅用户
-    subscribe_in.username = current_user.name
     sid, message = SubscribeChain().add(mtype=mtype,
                                         title=title,
                                         exist_ok=True,
+                                        current_user=current_user,
                                         **subscribe_in.dict())
     return schemas.Response(
         success=bool(sid), message=message, data={"id": sid}
@@ -97,13 +97,13 @@ def update_subscribe(
     """
     更新订阅信息
     """
-    subscribe = Subscribe.get(db, subscribe_in.id)
-    user_subscribe = UserSubscribe.get(db, subscribe.id, current_user.id)
-    if not subscribe or not user_subscribe:
+    subscribe = Subscribe.get(db, int(subscribe_in.id))
+    usersubscribe = UserSubscribe.get(db, subscribe.id, current_user.id)
+    if not subscribe or not usersubscribe:
         return schemas.Response(success=False, message="订阅不存在")
     # 避免更新缺失集数
-    old_subscribe_dict = subscribe.to_dict()
-    old_subscribe_dict.update(**user_subscribe.to_dict())
+    old_subscribe_dict = usersubscribe.to_dict()
+    old_subscribe_dict.update(**subscribe.to_dict())
 
     subscribe_dict = subscribe_in.dict()
     if not subscribe_in.lack_episode:
@@ -112,19 +112,19 @@ def update_subscribe(
     elif subscribe_in.total_episode:
         # 总集数增加时，缺失集数也要增加
         if subscribe_in.total_episode > (subscribe.total_episode or 0):
-            subscribe_dict["lack_episode"] = (subscribe.lack_episode
+            subscribe_dict["lack_episode"] = (usersubscribe.lack_episode
                                               + (subscribe_in.total_episode
                                                  - (subscribe.total_episode or 0)))
     # 是否手动修改过总集数
     if subscribe_in.total_episode != subscribe.total_episode:
         subscribe_dict["manual_total_episode"] = 1
     subscribe.update(db, subscribe_dict)
-    user_subscribe.update(db, subscribe_dict)
+    usersubscribe.update(db, subscribe_dict)
     # 发送订阅调整事件
-    new_subscribe_dict = subscribe.to_dict()
-    new_subscribe_dict.update(**user_subscribe.to_dict())
+    new_subscribe_dict = usersubscribe.to_dict()
+    new_subscribe_dict.update(**subscribe.to_dict())
     eventmanager.send_event(EventType.SubscribeModified, {
-        "subscribe_id": user_subscribe.id,
+        "subscribe_id": subscribe.id,
         "old_subscribe_info": old_subscribe_dict,
         "subscribe_info": new_subscribe_dict,
     })
@@ -136,18 +136,20 @@ def update_subscribe_status(
         subid: int,
         state: str,
         db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: schemas.TokenPayload = Depends(get_current_user)) -> Any:
     """
     更新订阅状态
     """
     subscribe = Subscribe.get(db, subid)
-    if not subscribe:
+    usersubscribe = UserSubscribe.get(db, current_user.id, subid)
+    if not usersubscribe:
         return schemas.Response(success=False, message="订阅不存在")
     valid_states = ["R", "P", "S"]
     if state not in valid_states:
         return schemas.Response(success=False, message="无效的订阅状态")
     old_subscribe_dict = subscribe.to_dict()
-    subscribe.update(db, {
+    old_subscribe_dict.update(usersubscribe.to_dict())
+    usersubscribe.update(db, {
         "state": state
     })
     # 发送订阅调整事件
@@ -228,14 +230,16 @@ def refresh_subscribes(
 def reset_subscribes(
         subid: int,
         db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     重置订阅
     """
     subscribe = Subscribe.get(db, subid)
-    if subscribe:
-        old_subscribe_dict = subscribe.to_dict()
-        subscribe.update(db, {
+    usersubscribe = UserSubscribe.get(db, current_user.id, subid)
+    if usersubscribe:
+        old_usersubscribe_dict = subscribe.to_dict()
+        old_usersubscribe_dict.update(usersubscribe.to_dict())
+        usersubscribe.update(db, {
             "note": [],
             "lack_episode": subscribe.total_episode,
             "state": "R"
@@ -243,7 +247,7 @@ def reset_subscribes(
         # 发送订阅调整事件
         eventmanager.send_event(EventType.SubscribeModified, {
             "subscribe_id": subscribe.id,
-            "old_subscribe_info": old_subscribe_dict,
+            "old_subscribe_info": old_usersubscribe_dict,
             "subscribe_info": subscribe.to_dict(),
         })
         return schemas.Response(success=True)
@@ -263,7 +267,7 @@ def check_subscribes(
 @router.get("/search", summary="搜索所有订阅", response_model=schemas.Response)
 def search_subscribes(
         background_tasks: BackgroundTasks,
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     搜索所有订阅
     """
@@ -283,7 +287,7 @@ def search_subscribes(
 def search_subscribe(
         subscribe_id: int,
         background_tasks: BackgroundTasks,
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     根据订阅编号搜索订阅
     """
@@ -304,7 +308,7 @@ def delete_subscribe_by_mediaid(
         mediaid: str,
         season: Optional[int] = None,
         db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)
+        current_user: schemas.User = Depends(get_current_user)
 ) -> Any:
     """
     根据TMDBID或豆瓣ID删除订阅 tmdb:/douban:/steam:
@@ -342,7 +346,7 @@ def delete_subscribe_by_mediaid(
         if subscribe:
             delete_subscribes.append(subscribe)
     for subscribe in delete_subscribes:
-        Subscribe().delete(db, subscribe.id)
+        UserSubscribe().delete_by_subscribeid(db, current_user.id, subscribe.id)
         # 发送事件
         eventmanager.send_event(EventType.SubscribeDeleted, {
             "subscribe_id": subscribe.id,
@@ -357,7 +361,8 @@ async def seerr_subscribe(request: Request, background_tasks: BackgroundTasks,
     """
     Jellyseerr/Overseerr网络勾子通知订阅
     """
-    if not authorization or authorization != settings.API_TOKEN:
+    user = UserOper().get_by_setting(api_token=authorization)
+    if not user:
         raise HTTPException(
             status_code=400,
             detail="授权失败",
@@ -385,7 +390,7 @@ async def seerr_subscribe(request: Request, background_tasks: BackgroundTasks,
                                   title=subject,
                                   year="",
                                   season=0,
-                                  username=user_name)
+                                  current_user=user)
     else:
         seasons = []
         for extra in req_json.get("extra", []):
@@ -399,7 +404,7 @@ async def seerr_subscribe(request: Request, background_tasks: BackgroundTasks,
                                       title=subject,
                                       year="",
                                       season=season,
-                                      username=user_name)
+                                      current_user=user)
 
     return schemas.Response(success=True)
 
@@ -482,7 +487,7 @@ def user_subscribes(
     """
     查询用户订阅
     """
-    return Subscribe.list_by_userid(db, current_user.id)
+    return SubscribeOper().list_by_userid(current_user.id)
 
 
 @router.get("/files/{subscribe_id}", summary="订阅相关文件信息", response_model=schemas.SubscrbieInfo)
@@ -608,14 +613,15 @@ def read_subscribe(
 def delete_subscribe(
         subscribe_id: int,
         db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)
+        current_user: schemas.User = Depends(get_current_user)
 ) -> Any:
     """
     删除订阅信息
     """
     subscribe = Subscribe.get(db, subscribe_id)
-    if subscribe:
-        subscribe.delete(db, subscribe_id)
+    usersubscribe = UserSubscribe.get(db, current_user.id, subscribe_id)
+    if subscribe and usersubscribe:
+        usersubscribe.delete(db, subscribe_id)
         # 发送事件
         eventmanager.send_event(EventType.SubscribeDeleted, {
             "subscribe_id": subscribe_id,

@@ -5,7 +5,7 @@ import threading
 import time
 from datetime import datetime
 from functools import reduce
-from typing import Dict, List, Optional, Union, Tuple, Iterable
+from typing import Dict, List, Optional, Union, Tuple
 
 from app import schemas
 from app.chain import ChainBase
@@ -22,6 +22,7 @@ from app.core.meta.words import WordsMatcher
 from app.core.metainfo import MetaInfo
 from app.db.downloadhistory_oper import DownloadHistoryOper
 from app.db.models.subscribe import Subscribe, UserSubscribe
+from app.db.models.user import User
 from app.db.site_oper import SiteOper
 from app.db.subscribe_oper import SubscribeOper, UserSubscribeOper
 from app.db.systemconfig_oper import SystemConfigOper
@@ -32,7 +33,6 @@ from app.log import logger
 from app.schemas import MediaRecognizeConvertEventData
 from app.schemas.types import MediaType, SystemConfigKey, MessageChannel, NotificationType, EventType, ChainEventType
 from app.utils.singleton import Singleton
-from app.db.models.user import User
 
 
 class SubscribeChain(ChainBase, metaclass=Singleton):
@@ -58,6 +58,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         self.siteoper = SiteOper()
 
     def add(self, title: str, year: str,
+            current_user: User,
             mtype: MediaType = None,
             tmdbid: Optional[int] = None,
             doubanid: Optional[str] = None,
@@ -71,7 +72,6 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             source: Optional[str] = None,
             message: Optional[bool] = True,
             exist_ok: Optional[bool] = False,
-            current_user: Optional[User] = None,
             **kwargs) -> Tuple[Optional[int], str]:
         """
         识别媒体信息并添加订阅
@@ -231,7 +231,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                 "filter_groups") else kwargs.get("filter_groups")
         })
         # 操作数据库
-        sid, err_msg = self.subscribeoper.add(mediainfo=mediainfo, season=season, current_user=current_user, **kwargs)
+        sid, err_msg = self.subscribeoper.add(mediainfo=mediainfo, season=season, user_id=current_user.id, **kwargs)
         if not sid:
             logger.error(f'{mediainfo.title_year} {err_msg}')
             if not exist_ok and message:
@@ -291,11 +291,12 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         # 返回结果
         return sid, ""
 
-    def exists(self, mediainfo: MediaInfo, meta: MetaBase = None):
+    def exists(self, mediainfo: MediaInfo, user_id: int, meta: MetaBase = None):
         """
         判断订阅是否已存在
         """
-        if self.subscribeoper.exists(tmdbid=mediainfo.tmdb_id,
+        if self.subscribeoper.exists(user_id=user_id,
+                                     tmdbid=mediainfo.tmdb_id,
                                      doubanid=mediainfo.douban_id,
                                      season=meta.begin_season if meta else None):
             return True
@@ -315,20 +316,15 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                 subscribe = self.subscribeoper.get(sid)
                 subscribes = [subscribe] if subscribe else []
             else:
-                subscribes = self.subscribeoper.list(self.get_states_for_search(state))
+                subscribes = self.subscribeoper.list_all()
             # 遍历订阅
             for subscribe in subscribes:
                 if global_vars.is_system_stopped:
                     break
+                # 遍历用户订阅
+                usersubscribes = self.usersubscribeoper.list_by_subscribeid(int(subscribe.id))
                 mediakey = subscribe.tmdbid or subscribe.doubanid
                 custom_word_list = subscribe.custom_words.split("\n") if subscribe.custom_words else None
-                # 校验当前时间减订阅创建时间是否大于1分钟，否则跳过先，留出编辑订阅的时间
-                if subscribe.date:
-                    now = datetime.now()
-                    subscribe_time = datetime.strptime(subscribe.date, '%Y-%m-%d %H:%M:%S')
-                    if (now - subscribe_time).total_seconds() < 60:
-                        logger.debug(f"订阅标题：{subscribe.name} 新增小于1分钟，暂不搜索...")
-                        continue
                 # 随机休眠1-5分钟
                 if not sid and state in ['R', 'P']:
                     sleep_time = random.randint(60, 300)
@@ -368,7 +364,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     sites = self.get_sub_sites(subscribe)
 
                     # 优先级过滤规则
-                    if subscribe.best_version:
+                    if self.subscribeoper.is_best_version(int(subscribe.id)):
                         rule_groups = subscribe.filter_groups \
                                       or self.systemconfig.get(SystemConfigKey.BestVersionFilterRuleGroups) or []
                     else:
@@ -384,73 +380,88 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                                                         area="imdbid" if subscribe.search_imdbid else "title",
                                                         custom_words=custom_word_list,
                                                         filter_params=self.get_params(subscribe))
+
                     if not contexts:
                         logger.warn(f'订阅 {subscribe.keyword or subscribe.name} 未搜索到资源')
-                        self.finish_subscribe_or_not(subscribe=subscribe, meta=meta,
-                                                     mediainfo=mediainfo, lefts=no_exists)
+                        for usersubscribe in usersubscribes:
+                            self.finish_subscribe_or_not(subscribe=subscribe, usersubscribe=usersubscribe,
+                                                         meta=meta,
+                                                         mediainfo=mediainfo, lefts=no_exists)
                         continue
 
-                    # 过滤搜索结果
-                    matched_contexts = []
-                    for context in contexts:
-                        torrent_meta = context.meta_info
-                        torrent_info = context.torrent_info
-                        torrent_mediainfo = context.media_info
+                    for usersubscribe in usersubscribes:
+                        # 校验用户订阅状态
+                        if not usersubscribe.state in self.get_states_for_search(state):
+                            continue
 
-                        # 洗版
-                        if subscribe.best_version:
-                            # 洗版时，非整季不要
-                            if torrent_mediainfo.type == MediaType.TV:
-                                if torrent_meta.episode_list:
-                                    logger.info(f'{subscribe.name} 正在洗版，{torrent_info.title} 不是整季')
-                                    continue
-                            # 洗版时，优先级小于等于已下载优先级的不要
-                            if subscribe.current_priority \
-                                    and torrent_info.pri_order <= subscribe.current_priority:
-                                logger.info(
-                                    f'{subscribe.name} 正在洗版，{torrent_info.title} 优先级低于或等于已下载优先级')
+                        # 校验当前时间减订阅创建时间是否大于1分钟，否则跳过先，留出编辑订阅的时间
+                        if usersubscribe.date:
+                            now = datetime.now()
+                            if (now - usersubscribe.date).total_seconds() < 60:
+                                logger.debug(f"订阅标题：{subscribe.name} 新增小于1分钟，暂不下载...")
                                 continue
-                        # 更新订阅自定义属性
-                        if subscribe.media_category:
-                            torrent_mediainfo.category = subscribe.media_category
-                        if subscribe.episode_group:
-                            torrent_mediainfo.episode_group = subscribe.episode_group
-                        matched_contexts.append(context)
 
-                    if not matched_contexts:
-                        logger.warn(f'订阅 {subscribe.name} 没有符合过滤条件的资源')
-                        self.finish_subscribe_or_not(subscribe=subscribe, meta=meta,
-                                                     mediainfo=mediainfo, lefts=no_exists)
-                        continue
+                        # 过滤搜索结果
+                        matched_contexts = []
+                        for context in contexts:
+                            torrent_meta = context.meta_info
+                            torrent_info = context.torrent_info
+                            torrent_mediainfo = context.media_info
 
-                    # 自动下载
-                    # 获取该订阅所有用户
-                    user_subscribes: list[UserSubscribe] = self.usersubscribeoper.list_by_subscribeid(subscribe.id)
-                    users = self.useroper.list()
-                    for user_subscribe in user_subscribes:
-                        user = list(filter(lambda x: x.id == user_subscribe.user_id, users))[0]
+                            # 洗版
+                            if usersubscribe.best_version:
+                                # 洗版时，非整季不要
+                                if torrent_mediainfo.type == MediaType.TV:
+                                    if torrent_meta.episode_list:
+                                        logger.info(f'{subscribe.name} 正在洗版，{torrent_info.title} 不是整季')
+                                        continue
+                                # 洗版时，优先级小于等于已下载优先级的不要
+                                if usersubscribe.current_priority \
+                                        and torrent_info.pri_order <= usersubscribe.current_priority:
+                                    logger.info(
+                                        f'{subscribe.name} 正在洗版，{torrent_info.title} 优先级低于或等于已下载优先级')
+                                    continue
+                            # 更新订阅自定义属性
+                            if subscribe.media_category:
+                                torrent_mediainfo.category = subscribe.media_category
+                            if subscribe.episode_group:
+                                torrent_mediainfo.episode_group = subscribe.episode_group
+                            matched_contexts.append(context)
+
+                        if not matched_contexts:
+                            logger.warn(f'订阅 {subscribe.name} 没有符合过滤条件的资源')
+                            self.finish_subscribe_or_not(subscribe=subscribe, usersubscribe=usersubscribe,
+                                                         meta=meta,
+                                                         mediainfo=mediainfo, lefts=no_exists)
+                            continue
+
+                        # 自动下载
+                        # 获取该订阅所有用户
+                        user = self.useroper.get(usersubscribe.user_id)
                         downloads, lefts = self.downloadchain.batch_download(
                             contexts=matched_contexts,
                             no_exists=no_exists,
-                            user_id=user_subscribe.user_id,
-                            userid=str(user_subscribe.user_id),
+                            user_id=usersubscribe.user_id,
+                            userid=str(usersubscribe.user_id),
                             username=user.name,
-                            save_path=user_subscribe.save_path,
-                            downloader=user_subscribe.downloader,
+                            save_path=usersubscribe.save_path,
+                            downloader=usersubscribe.downloader,
                             source=self.get_subscribe_source_keyword(subscribe)
                         )
 
                         # 同步外部修改，更新订阅信息
-                        subscribe = self.subscribeoper.get(subscribe.id)
+                        subscribe = self.subscribeoper.get(int(subscribe.id))
 
                         # 判断是否应完成订阅
                         if subscribe:
-                            self.finish_subscribe_or_not(subscribe=subscribe, meta=meta, mediainfo=mediainfo,
+                            self.finish_subscribe_or_not(subscribe=subscribe, usersubscribe=usersubscribe,
+                                                         meta=meta, mediainfo=mediainfo,
                                                          downloads=downloads, lefts=lefts)
                 finally:
                     # 如果状态为N则更新为R
-                    if subscribe and subscribe.state == 'N':
-                        self.subscribeoper.update(subscribe.id, {'state': 'R'})
+                    for usersubscribe in usersubscribes:
+                        if usersubscribe.state == 'N':
+                            self.subscribeoper.update(usersubscribe.id, {'state': 'R'})
 
             # 手动触发时发送系统消息
             if manual:
@@ -463,14 +474,14 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     self.message.put('没有找到订阅！', title="订阅搜索", role="system")
             logger.debug(f"search Lock released at {datetime.now()}")
 
-    def update_subscribe_priority(self, subscribe: Subscribe, meta: MetaBase,
+    def update_subscribe_priority(self, subscribe: Subscribe, usersubscribe: UserSubscribe, meta: MetaBase,
                                   mediainfo: MediaInfo, downloads: Optional[List[Context]]):
         """
         更新订阅已下载资源的优先级
         """
         if not downloads:
             return
-        if not subscribe.best_version:
+        if not self.subscribeoper.is_best_version(subscribe.id):
             return
         # 当前下载资源的优先级
         priority = max([item.torrent_info.pri_order for item in downloads])
@@ -481,7 +492,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         })
         if priority == 100:
             # 洗版完成
-            self.__finish_subscribe(subscribe=subscribe, meta=meta, mediainfo=mediainfo)
+            self.__finish_subscribe(subscribe=subscribe, usersubscribe=usersubscribe, meta=meta, mediainfo=mediainfo)
         else:
             # 正在洗版，更新资源优先级
             logger.info(f'{mediainfo.title_year} 正在洗版，更新资源优先级为 {priority}')
@@ -498,7 +509,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         # 是否有剩余集
         no_lefts = not lefts or not lefts.get(mediakey)
         # 是否完成订阅
-        if not subscribe.best_version:
+        if not usersubscribe.best_version:
             # 订阅存在待定策略，不管是否已完成，均需更新订阅信息
             # 更新订阅已下载信息
             self.__update_subscribe_note(subscribe=subscribe, usersubscribe=usersubscribe, downloads=downloads)
@@ -509,17 +520,18 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             if ((no_lefts and meta.type == MediaType.TV)
                     or (downloads and meta.type == MediaType.MOVIE)
                     or force):
-                self.__finish_subscribe(subscribe=subscribe, meta=meta, mediainfo=mediainfo)
+                self.__finish_subscribe(subscribe=subscribe, usersubscribe=usersubscribe, meta=meta,
+                                        mediainfo=mediainfo)
             else:
                 # 未下载到内容且不完整
                 logger.info(f'{mediainfo.title_year} 未下载完整，继续订阅 ...')
         elif downloads:
             # 洗版下载到了内容，更新资源优先级
-            self.update_subscribe_priority(subscribe=subscribe, meta=meta,
+            self.update_subscribe_priority(subscribe=subscribe, usersubscribe=usersubscribe, meta=meta,
                                            mediainfo=mediainfo, downloads=downloads)
-        elif subscribe.current_priority == 100:
+        elif usersubscribe.current_priority == 100:
             # 洗版完成
-            self.__finish_subscribe(subscribe=subscribe, meta=meta, mediainfo=mediainfo)
+            self.__finish_subscribe(subscribe=subscribe, usersubscribe=usersubscribe, meta=meta, mediainfo=mediainfo)
         else:
             # 洗版，未下载到内容
             logger.info(f'{mediainfo.title_year} 继续洗版 ...')
@@ -620,7 +632,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     continue
 
                 # 如果媒体已存在或已下载完毕，跳过当前订阅处理
-                exist_flag, no_exists = self.check_and_handle_existing_media(subscribe=subscribe,                                                                             usersubscribe=usersubscribe,
+                exist_flag, no_exists = self.check_and_handle_existing_media(subscribe=subscribe,
                                                                              meta=meta,
                                                                              mediainfo=mediainfo,
                                                                              mediakey=mediakey)
@@ -788,8 +800,11 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                 if not _match_context:
                     # 未匹配到资源
                     logger.info(f'{mediainfo.title_year} 未匹配到符合条件的资源')
-                    self.finish_subscribe_or_not(subscribe=subscribe, meta=meta,
-                                                 mediainfo=mediainfo, lefts=no_exists)
+                    usersubscribes = self.usersubscribeoper.list_by_subscribeid(subscribe.id)
+                    for usersubscribe in usersubscribes:
+                        self.finish_subscribe_or_not(subscribe=subscribe, usersubscribe=usersubscribe,
+                                                     meta=meta,
+                                                     mediainfo=mediainfo, lefts=no_exists)
                     continue
 
                 # 开始批量择优下载
@@ -808,7 +823,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
 
                 # 判断是否要完成订阅
                 if subscribe:
-                    self.finish_subscribe_or_not(subscribe=subscribe, meta=meta, mediainfo=mediainfo,
+                    self.finish_subscribe_or_not(subscribe=subscribe, usersubscribe=usersubscribe,
+                                                 meta=meta, mediainfo=mediainfo,
                                                  downloads=downloads, lefts=lefts)
             logger.debug(f"match Lock released at {datetime.now()}")
 
@@ -933,7 +949,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     logger.error(f'follow用户分享订阅 {title} 添加失败：{message}')
         logger.info(f'follow用户分享订阅刷新完成，共添加 {success_count} 个订阅')
 
-    def __update_subscribe_note(self, subscribe: Subscribe, usersubscribe: UserSubscribe, downloads: Optional[List[Context]]):
+    def __update_subscribe_note(self, subscribe: Subscribe, usersubscribe: UserSubscribe,
+                                downloads: Optional[List[Context]]):
         """
         更新已下载信息到note字段
         """
@@ -974,11 +991,11 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         """
         获取已下载过的集数或电影
         """
-        if subscribe.best_version:
+        usersubscribes = UserSubscribeOper().list_by_subscribeid(subscribe.id)
+        if SubscribeOper().is_best_version(subscribe.id):
             return []
         # 求最小集（交集）
-        user_subscribes = UserSubscribeOper().list_by_subscribeid(subscribe.id)
-        note = reduce(lambda x, y: set(x) & set(y), [us.note for us in user_subscribes]) or []
+        note = reduce(lambda x, y: set(x) & set(y), [us.note for us in usersubscribes]) or []
         if not note:
             return []
         # 针对 TV 类型，返回已下载的集数
@@ -1026,15 +1043,16 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         if update_data:
             self.subscribeoper.update(subscribe.id, update_data)
 
-    def __finish_subscribe(self, subscribe: Subscribe, mediainfo: MediaInfo, meta: MetaBase):
+    def __finish_subscribe(self, subscribe: Subscribe, usersubscribe: UserSubscribe, mediainfo: MediaInfo,
+                           meta: MetaBase):
         """
         完成订阅
         """
         # 如果订阅状态为待定（P），说明订阅信息尚未完全更新，无法完成订阅
-        if subscribe.state == "P":
+        if usersubscribe.state == "P":
             return
         # 完成订阅
-        msgstr = "订阅" if not subscribe.best_version else "洗版"
+        msgstr = "订阅" if not usersubscribe.best_version else "洗版"
         logger.info(f'{mediainfo.title_year} 完成{msgstr}')
         # 新增订阅历史
         self.subscribeoper.add_history(**subscribe.to_dict())
@@ -1046,11 +1064,12 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         else:
             link = settings.MP_DOMAIN('#/subscribe/movie?tab=mysub')
         # 完成订阅按规则发送消息
+        user = self.useroper.get(usersubscribe.user_id)
         self.post_message(schemas.Notification(mtype=NotificationType.Subscribe,
                                                title=f'{mediainfo.title_year} {meta.season} 已完成{msgstr}',
                                                image=mediainfo.get_message_image(),
                                                link=link,
-                                               username=subscribe.username))
+                                               username=user.username))
         # 发送事件
         EventManager().send_event(EventType.SubscribeComplete, {
             "subscribe_id": subscribe.id,
@@ -1223,7 +1242,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     return True, {}
                 no_exists[mediakey][begin_season] = schemas.NotExistMediaInfo(
                     season=begin_season,
-                    episodes=list(set([float(ep) for ep in range(start, total_episode + 1)]).difference(set(downloaded_episodes))),
+                    episodes=list(set([float(ep) for ep in range(start, total_episode + 1)]).difference(
+                        set(downloaded_episodes))),
                     total_episode=total_episode,
                     start_episode=start,
                 )
@@ -1244,7 +1264,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         if site_id == "*":
             # 站点被重置
             SystemConfigOper().set(SystemConfigKey.RssSites, [])
-            for subscribe in self.subscribeoper.list():
+            for subscribe in self.subscribeoper.list_all():
                 if not subscribe.sites:
                     continue
                 self.subscribeoper.update(subscribe.id, {
@@ -1257,7 +1277,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             selected_sites.remove(site_id)
             SystemConfigOper().set(SystemConfigKey.RssSites, selected_sites)
         # 查询所有订阅
-        for subscribe in self.subscribeoper.list():
+        for subscribe in self.subscribeoper.list_all():
             if not subscribe.sites:
                 continue
             sites = subscribe.sites or []
@@ -1424,7 +1444,8 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         subscribe_info.episodes = episodes
         return subscribe_info
 
-    def check_and_handle_existing_media(self, subscribe: Subscribe, meta: MetaBase,
+    def check_and_handle_existing_media(self, subscribe: Subscribe,
+                                        meta: MetaBase,
                                         mediainfo: MediaInfo, mediakey: Union[str, int]):
         """
         检查媒体是否已经存在，并根据情况执行相应的操作
@@ -1440,8 +1461,11 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             - exist_flag (bool): 布尔值，表示媒体是否已经完全下载或已存在
             - no_exists (dict): 缺失的媒体信息，包含缺失的集数或其他相关信息
         """
+        usersubscribes = self.usersubscribeoper.list_by_subscribeid(subscribe.id)
+        best_version = self.subscribeoper.is_best_version(subscribe.id)
+        current_priority = self.subscribeoper.get_current_priority(subscribe.id)
         # 非洗版
-        if not subscribe.best_version:
+        if not best_version:
             # 每季总集数
             totals = {}
             if subscribe.season and subscribe.total_episode:
@@ -1456,7 +1480,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             )
         else:
             # 洗版，如果已经满足了优先级，则认为已经洗版完成
-            if subscribe.current_priority == 100:
+            if current_priority == 100:
                 exist_flag = True
                 no_exists = {}
             else:
@@ -1477,9 +1501,11 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
 
         # 如果媒体已存在，执行订阅完成操作
         if exist_flag:
-            if not subscribe.best_version:
+            if not best_version:
                 logger.info(f'{mediainfo.title_year} 媒体库中已存在')
-            self.finish_subscribe_or_not(subscribe=subscribe, meta=meta, mediainfo=mediainfo, force=True)
+            for usersubscribe in usersubscribes:
+                self.finish_subscribe_or_not(subscribe=subscribe, usersubscribe=usersubscribe, meta=meta,
+                                             mediainfo=mediainfo, force=True)
             return True, no_exists
 
         # 获取已下载的集数或电影
@@ -1502,7 +1528,9 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         # 如果已下载完毕，执行订阅完成操作
         if exist_flag:
             logger.info(f'{mediainfo.title_year} 已全部下载')
-            self.finish_subscribe_or_not(subscribe=subscribe, meta=meta, mediainfo=mediainfo, force=True)
+            for usersubscribe in usersubscribes:
+                self.finish_subscribe_or_not(subscribe=subscribe, usersubscribe=usersubscribe, meta=meta,
+                                             mediainfo=mediainfo, force=True)
             return True, no_exists
 
         # 返回结果，表示媒体未完全下载或存在
@@ -1522,7 +1550,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         # 如果状态是 R 或 P，则视为一起搜索，返回 R,P 作为查询条件
         if state in ["R", "P"]:
             return "R,P"
-        return state
+        return state or ['N']
 
     @staticmethod
     def get_subscribe_source_keyword(subscribe: Subscribe) -> str:

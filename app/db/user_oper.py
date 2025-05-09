@@ -63,6 +63,12 @@ class UserOper(DbOper):
     用户管理
     """
 
+    def get(self, uid: int) -> User:
+        """
+        获取用户列表
+        """
+        return User.get(self._db, uid)
+
     def list(self) -> List[User]:
         """
         获取用户列表
@@ -120,4 +126,17 @@ class UserOper(DbOper):
                 for k, v in kwargs.items():
                     if user_setting.get(k) == str(v):
                         return user.name
+        return None
+
+    def get_by_setting(self, **kwargs) -> Optional[User]:
+        """
+        根据绑定账号获取用户名称
+        """
+        users = self.list()
+        for user in users:
+            user_setting = user.settings
+            if user_setting:
+                for k, v in kwargs.items():
+                    if user_setting.get(k) == str(v):
+                        return user
         return None

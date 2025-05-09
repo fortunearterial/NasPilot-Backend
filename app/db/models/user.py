@@ -1,7 +1,7 @@
-from sqlalchemy import Boolean, Column, Integer, JSON, Sequence, String, BigInteger
+from sqlalchemy import Boolean, Column, JSON, String, BigInteger
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update,  db_id, Base
+from app.db import db_query, db_update, db_id, Base
 
 
 class User(Base):

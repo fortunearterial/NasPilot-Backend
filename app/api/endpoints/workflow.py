@@ -5,13 +5,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app import schemas
+from app.chain.workflow import WorkflowChain
 from app.core.config import global_vars
 from app.core.workflow import WorkFlowManager
 from app.db import get_db
 from app.db.models.workflow import Workflow
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import get_current_active_user
-from app.chain.workflow import WorkflowChain
 from app.scheduler import Scheduler
 
 router = APIRouter()

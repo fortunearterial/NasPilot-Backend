@@ -28,7 +28,7 @@ from app.schemas import Notification, NotificationType, Workflow
 from app.schemas.types import EventType, SystemConfigKey
 from app.utils.singleton import Singleton
 from app.utils.timer import TimerUtils
-
+from app.chain.userjob import UserJobChain
 
 lock = threading.Lock()
 
@@ -145,7 +145,12 @@ class Scheduler(metaclass=Singleton):
                     "name": "推荐缓存",
                     "func": RecommendChain().refresh_recommend,
                     "running": False,
-                }
+                },
+                "user_job": {
+                    "name": "用户任务",
+                    "func": UserJobChain().user_job,
+                    "running": False,
+                },
             }
 
             # 创建定时服务
@@ -349,6 +354,18 @@ class Scheduler(metaclass=Singleton):
                 next_run_time=datetime.now(pytz.timezone(settings.TZ)) + timedelta(seconds=3),
                 kwargs={
                     'job_id': 'recommend_refresh'
+                }
+            )
+
+            # 用户任务
+            self._scheduler.add_job(
+                self.start,
+                "interval",
+                id="user_job",
+                name="用户任务",
+                minutes=5,
+                kwargs={
+                    'job_id': 'user_job'
                 }
             )
 

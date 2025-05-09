@@ -1,24 +1,16 @@
-import secrets
-
 import json
+import secrets
+from datetime import timedelta
+
+from fastapi import APIRouter, Form, HTTPException, Depends
 
 import schemas
-import jwt
-
-from datetime import datetime, timedelta
-from typing import Optional
-
-from starlette.responses import RedirectResponse
-from fastapi import APIRouter, Form, HTTPException, Body, Depends
-
 from app.core import security
-from app.core.config import settings
-from app.helper.sites import SitesHelper
-from app.db.user_oper import get_current_user
-from app.schemas import User, OAuth2TokenRequestForm, OAuth2AuthorizeRequestQuery
 from app.core.cache import cache_backend
-from chain.user import UserChain
-from db.user_oper import UserOper, get_current_active_user
+from app.core.config import settings
+from app.db.user_oper import UserOper, get_current_active_user
+from app.helper.sites import SitesHelper
+from app.schemas import User
 
 SECRET_KEY = "your-secret-key-32bytes"
 ALGORITHM = "HS256"

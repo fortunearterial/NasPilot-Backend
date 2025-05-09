@@ -24,7 +24,7 @@ from app.schemas import ExistMediaInfo, NotExistMediaInfo, DownloadingTorrent, N
 from app.schemas.types import MediaType, TorrentStatus, EventType, MessageChannel, NotificationType, ChainEventType
 from app.utils.http import RequestUtils
 from app.utils.string import StringUtils
-from helper.sites import PageSpider
+from app.helper.sites import PageSpider
 
 
 class DownloadChain(ChainBase):
@@ -271,6 +271,7 @@ class DownloadChain(ChainBase):
                                              episode_group=_media.episode_group)
             if new_media:
                 _media = new_media
+                context.media_info = _media
 
         # 实际下载的集数
         download_episodes = StringUtils.format_ep(list(episodes)) if episodes else None
@@ -317,6 +318,44 @@ class DownloadChain(ChainBase):
                                        title="下载失败", role="system")
                 return None
 
+        # 登记下载记录
+        job_id = self.userjoboper.publish(
+            userid=userid,
+            name="download",
+            context=context,
+            content=content,
+            episodes=episodes,
+            download_dir=download_dir,
+            label=label,
+            downloader=downloader or _site_downloader,
+            _folder_name=_folder_name,
+            _file_list=_file_list,
+            download_episodes=download_episodes,
+            channel=channel,
+            source=source,
+            torrent_file=torrent_file
+        )
+
+        return job_id
+
+    def download_single_job(self,
+                            context: Context,
+                            download_dir: Path,
+                            _folder_name: str,
+                            _file_list: list,
+                            download_episodes: str,
+                            content: Optional[Union[Path, str]] = None,
+                            episodes: Set[int] = None,
+                            label: Optional[str] = None,
+                            downloader: Optional[str] = None,
+                            channel: MessageChannel = None,
+                            source: Optional[str] = None,
+                            torrent_file: Path = None):
+        _torrent = context.torrent_info
+        _media = context.media_info
+        _meta = context.meta_info
+
+        user = self.useroper.get(settings.CURRENT_USERID)
         # 添加下载
         result: Optional[tuple] = self.download(content=content,
                                                 cookie=_torrent.site_cookie,
@@ -324,7 +363,7 @@ class DownloadChain(ChainBase):
                                                 download_dir=download_dir,
                                                 category=_media.category,
                                                 label=label,
-                                                downloader=downloader or _site_downloader)
+                                                downloader=downloader)
         if result:
             _downloader, _hash, _layout, error_msg = result
         else:
@@ -364,8 +403,8 @@ class DownloadChain(ChainBase):
                 torrent_name=_torrent.title,
                 torrent_description=_torrent.description,
                 torrent_site=_torrent.site_name,
-                userid=userid,
-                username=username,
+                userid=user.id,
+                username=user.name,
                 channel=channel.value if channel else None,
                 date=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                 media_category=_media.category,
@@ -399,14 +438,14 @@ class DownloadChain(ChainBase):
 
             # 下载成功发送消息
             self.post_download_message(meta=_meta, mediainfo=_media, torrent=_torrent,
-                                       username=username, download_episodes=download_episodes)
+                                       username=user.name, download_episodes=download_episodes)
             # 下载成功后处理
             self.download_added(context=context, download_dir=download_dir, torrent_path=torrent_file)
             # 广播事件
             self.eventmanager.send_event(EventType.DownloadAdded, {
                 "hash": _hash,
                 "context": context,
-                "username": username,
+                "username": user.name,
                 "downloader": _downloader,
                 "episodes": episodes or _meta.episode_list,
                 "source": source
@@ -426,7 +465,7 @@ class DownloadChain(ChainBase):
                      f"种子名称：{_meta.org_string}\n"
                      f"错误信息：{error_msg}",
                 image=_media.get_message_image(),
-                userid=userid))
+                userid=user.id))
         return _hash
 
     def batch_download(self, user_id: int,

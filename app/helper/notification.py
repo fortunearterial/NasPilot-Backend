@@ -1,18 +1,18 @@
 from typing import Optional
 
-from app.helper.service import ServiceBaseHelper
+from app.helper.service import UserServiceBaseHelper
 from app.schemas import NotificationConf, ServiceInfo
-from app.schemas.types import SystemConfigKey, ModuleType
+from app.schemas.types import UserConfigKey, ModuleType
 
 
-class NotificationHelper(ServiceBaseHelper[NotificationConf]):
+class NotificationHelper(UserServiceBaseHelper[NotificationConf]):
     """
     消息通知帮助类
     """
 
     def __init__(self):
         super().__init__(
-            config_key=SystemConfigKey.Notifications,
+            config_key=UserConfigKey.Notifications,
             conf_type=NotificationConf,
             module_type=ModuleType.Notification
         )

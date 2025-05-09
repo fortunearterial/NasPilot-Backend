@@ -1,7 +1,8 @@
 import time
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, Float, JSON, Text, BigInteger
+from sqlalchemy import Column, Integer, String, Float, JSON, Text, BigInteger, DateTime
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, db_id, Base
@@ -54,20 +55,10 @@ class Subscribe(Base):
     total_episode = Column(Integer)
     # 开始集数
     start_episode = Column(Integer)
-    # 缺失集数
-    lack_episode = Column(Integer)
-    # 状态：N-新建 R-订阅中 P-待定 S-暂停
-    state = Column(String(255), nullable=False, index=True, default='N')
     # 最后更新时间
     last_update = Column(String(255))
-    # 创建时间
-    date = Column(String(255))
     # 订阅站点
     sites = Column(JSON, default=list)
-    # 是否洗版
-    best_version = Column(Integer, default=0)
-    # 当前优先级
-    current_priority = Column(Integer)
     # 是否使用 imdbid 搜索
     search_imdbid = Column(Integer, default=0)
     # 是否手动修改过总集数 0否 1是
@@ -100,18 +91,6 @@ class Subscribe(Base):
         elif bangumiid:
             return db.query(Subscribe).filter(Subscribe.bangumiid == bangumiid).first()
         return None
-
-    @staticmethod
-    @db_query
-    def get_by_state(db: Session, state: str):
-        # 如果 state 为空或 None，返回所有订阅
-        if not state:
-            result = db.query(Subscribe).all()
-        else:
-            # 如果传入的状态不为空，拆分成多个状态
-            states = state.split(',')
-            result = db.query(Subscribe).filter(Subscribe.state.in_(states)).all()
-        return list(result)
 
     @staticmethod
     @db_query
@@ -150,53 +129,12 @@ class Subscribe(Base):
     @db_query
     def get_by_javdbid(db: Session, javdbid: str):
         # 区分大小写
-        return db.query(Subscribe).filter(Subscribe.javdbid == func.binary(javdbid)).first()
+        return db.query(Subscribe).filter(Subscribe.javdbid == javdbid).first()
 
     @staticmethod
     @db_query
     def get_by_mediaid(db: Session, mediaid: str):
         return db.query(Subscribe).filter(Subscribe.mediaid == mediaid).first()
-
-    @db_update
-    def delete_by_tmdbid(self, db: Session, tmdbid: int, season: int):
-        subscrbies = self.get_by_tmdbid(db, tmdbid, season)
-        for subscrbie in subscrbies:
-            subscrbie.delete(db, subscrbie.id)
-        return True
-
-    @db_update
-    def delete_by_doubanid(self, db: Session, doubanid: str):
-        subscribe = self.get_by_doubanid(db, doubanid)
-        if subscribe:
-            subscribe.delete(db, subscribe.id)
-        return True
-
-    @db_update
-    def delete_by_mediaid(self, db: Session, mediaid: str):
-        subscribe = self.get_by_mediaid(db, mediaid)
-        if subscribe:
-            subscribe.delete(db, subscribe.id)
-        return True
-
-    @staticmethod
-    @db_query
-    def list_by_userid(db: Session, user_id: int, state: Optional[str] = None, mtype: Optional[str] = None):
-        subscribe_ids = [us.subscribe_id for us in UserSubscribe.list_by_userid(db, user_id)]
-        if mtype:
-            if state:
-                result = db.query(Subscribe).filter(Subscribe.state == state,
-                                                    Subscribe.id.in_(subscribe_ids),
-                                                    Subscribe.type == mtype).all()
-            else:
-                result = db.query(Subscribe).filter(Subscribe.id.in_(subscribe_ids),
-                                                    Subscribe.type == mtype).all()
-        else:
-            if state:
-                result = db.query(Subscribe).filter(Subscribe.state == state,
-                                                    Subscribe.id.in_(subscribe_ids), ).all()
-            else:
-                result = db.query(Subscribe).filter(Subscribe.id.in_(subscribe_ids), ).all()
-        return list(result)
 
     @staticmethod
     @db_query
@@ -208,19 +146,12 @@ class Subscribe(Base):
                     ).all()
         return list(result)
 
-    @db_update
-    def delete_by_steamid(self, db: Session, steamid: str):
-        subscribe = self.get_by_steamid(db, steamid)
-        if subscribe:
-            subscribe.delete(db, subscribe.id)
-        return True
-
-    @db_update
-    def delete_by_javdbid(self, db: Session, javdbid: str):
-        subscribe = self.get_by_javdbid(db, javdbid)
-        if subscribe:
-            subscribe.delete(db, subscribe.id)
-        return True
+    @staticmethod
+    @db_query
+    def list_by_ids(db: Session, sids: list[int]):
+        return db.query(Subscribe).filter(
+            Subscribe.id.in_(sids)
+        ).all()
 
 
 class UserSubscribe(Base):
@@ -232,6 +163,12 @@ class UserSubscribe(Base):
     subscribe_id = Column(BigInteger, index=True)
     # 订阅用户
     user_id = Column(BigInteger)
+    # 创建时间
+    date = Column(DateTime, default=datetime.now)
+    # 缺失集数
+    lack_episode = Column(Integer)
+    # 状态：N-新建 R-订阅中 P-待定 S-暂停
+    state = Column(String(255), nullable=False, index=True, default='N')
     # 下载器
     downloader = Column(String(255))
     # 是否洗版
@@ -245,24 +182,53 @@ class UserSubscribe(Base):
 
     @staticmethod
     @db_query
-    def exists(db: Session, subscribe_id: Optional[int] = None, user_id: Optional[int] = None):
+    def exists(db: Session, user_id: int, subscribe_id: int):
         return db.query(UserSubscribe).filter(
-            UserSubscribe.subscribe_id == subscribe_id and UserSubscribe.user_id == user_id).first()
+            UserSubscribe.subscribe_id == subscribe_id,
+            UserSubscribe.user_id == user_id
+        ).first()
 
     @staticmethod
     @db_query
-    def get(db: Session, subscribe_id: Optional[int] = None, user_id: Optional[int] = None):
+    def get(db: Session, user_id: int, subscribe_id: int):
         return db.query(UserSubscribe).filter(
-            UserSubscribe.subscribe_id == subscribe_id and UserSubscribe.user_id == user_id).first()
+            UserSubscribe.subscribe_id == subscribe_id,
+            UserSubscribe.user_id == user_id
+        ).first()
 
     @staticmethod
     @db_query
     def list_by_userid(db: Session, user_id: int):
         return db.query(UserSubscribe).filter(
-            UserSubscribe.user_id == user_id).all()
+            UserSubscribe.user_id == user_id
+        ).all()
+
+    @staticmethod
+    @db_query
+    def list_by_state(db: Session, state: str, user_id: int):
+        # 如果传入的状态不为空，拆分成多个状态
+        if state:
+            states = state.split(',')
+            return db.query(UserSubscribe).filter(
+                UserSubscribe.state.in_(states),
+                UserSubscribe.user_id == user_id
+            ).all()
+        else:
+            return db.query(UserSubscribe).filter(
+                UserSubscribe.user_id == user_id
+            ).all()
 
     @staticmethod
     @db_query
     def list_by_subscribeid(db: Session, subscribe_id: int):
         return db.query(UserSubscribe).filter(
-            UserSubscribe.subscribe_id == subscribe_id).all()
+            UserSubscribe.subscribe_id == subscribe_id
+        ).all()
+
+    @staticmethod
+    @db_update
+    def delete_by_subscribeid(db: Session, user_id: int, subscribe_id: int):
+        return db.query(UserSubscribe).filter(
+            UserSubscribe.user_id == user_id,
+            UserSubscribe.subscribe_id == subscribe_id
+        ).delete()

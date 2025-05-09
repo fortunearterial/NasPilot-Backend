@@ -8,6 +8,7 @@ from app.helper.directory import DirectoryHelper
 from app.log import logger
 from app.schemas import MediaType
 
+
 class StorageChain(ChainBase):
     """
     存储处理链

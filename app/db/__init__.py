@@ -1,8 +1,8 @@
 from typing import Any, Generator, List, Optional, Self, Tuple
 
+from snowflake import SnowflakeGenerator
 from sqlalchemy import NullPool, QueuePool, and_, create_engine, inspect, text
 from sqlalchemy.orm import Session, as_declarative, declared_attr, scoped_session, sessionmaker
-from snowflake import SnowflakeGenerator
 
 from app.core.config import settings
 
@@ -204,9 +204,9 @@ class Base:
     __name__: str
 
     @classmethod
-    def to_kwargs(cls, **kwargs) -> dict:
+    def from_dict(cls, **kwargs) -> dict:
         valid_keys = cls.__table__.columns.keys()
-        return {k: v for k, v in kwargs.items() if k in valid_keys}
+        return cls.__init__(**{k: v for k, v in kwargs.items() if k in valid_keys})
 
     @db_update
     def create(self, db: Session):

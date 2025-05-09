@@ -1,12 +1,12 @@
 from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, Depends
 from requests import Session
 
-from db import get_db
-from db.user_oper import get_current_websocket_user
-from schemas import User
 from app.api.websockets import ConnectionManager
+from app.db import get_db
+from app.db.user_oper import get_current_websocket_user
+from app.schemas import User
 
 router = APIRouter()
 

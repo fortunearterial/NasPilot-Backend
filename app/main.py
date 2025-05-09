@@ -1,11 +1,18 @@
 import multiprocessing
 import os
+import secrets
+import socket
 import sys
 import threading
 import asyncio
+import webbrowser
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 
 import uvicorn as uvicorn
 from PIL import Image
+from requests.auth import HTTPBasicAuth
+from requests_oauthlib import OAuth2Session
 from uvicorn import Config
 
 from app.factory import app
@@ -39,10 +46,94 @@ def start_tray():
 
     def open_web():
         """
-        调用浏览器打开前端页面
+        登录
         """
-        import webbrowser
-        webbrowser.open(f"http://localhost:{settings.NGINX_PORT}")
+        class CallbackHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                # 解析回调中的 code 和 state
+                query = urlparse(self.path).query
+                params = parse_qs(query)
+                code = params.get("code", [None])[0]
+                state = params.get("state", [None])[0]
+
+                # 验证 state 是否匹配
+                if state != self.server.oauth.state:
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write(b"Invalid state parameter")
+                    return
+
+                # 返回成功页面给用户
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b"Authorization successful! You can close this window.")
+
+                # 将 code 传递给主线程
+                self.server.authorization_code = code
+                self.server.server_close()
+
+        import os
+        os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+        # 获取一个可用的端口
+        def get_free_port():
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('', 0))  # 绑定到所有接口的随机可用端口
+                return s.getsockname()[1]  # 返回实际分配的端口号
+
+        # 本地服务器用于接收回调
+        def run_local_server(oauth, port=8080) -> int:
+            server_address = ("", port)
+            httpd = HTTPServer(server_address, CallbackHandler)
+            httpd.oauth = oauth  # 传递 oauth 对象到 Handler
+            httpd.authorization_code = None
+            httpd.handle_request()  # 处理单个请求后自动停止
+            return httpd.authorization_code
+
+        code_verifier = secrets.token_urlsafe(64)
+        port = get_free_port()
+        redirect_uri = f"http://localhost:{port}/oauth/callback"
+
+        # 创建 OAuth2Session 并生成授权 URL
+        oauth = OAuth2Session(
+            settings.CLIENT_ID,
+            redirect_uri=redirect_uri,
+            scope=["read"],
+            state=secrets.token_urlsafe(16),  # 随机 state 防止 CSRF
+        )
+        authorization_url, _ = oauth.authorization_url(settings.APP_DOMAIN)
+        # FIX authorization_url
+        sch, net, path, par, query, fra = urlparse(authorization_url)
+        authorization_url = f"{settings.APP_DOMAIN}/#/oauth/authorize?{query}"
+
+        # 用浏览器打开授权页面
+        print("请打开浏览器访问以下 URL 完成授权:")
+        print(authorization_url)
+        webbrowser.open(authorization_url)
+
+        # 启动本地服务器等待回调
+        print("等待授权回调...")
+        code = run_local_server(oauth, port)
+
+        if not code:
+            print("未收到授权码")
+            return
+
+        # 使用授权码换取令牌
+        token = oauth.fetch_token(
+            f"{settings.APP_DOMAIN}/api/oauth/token",
+            code=code,
+            client_secret=settings.CLIENT_SECRET,
+            code_verifier=code_verifier,  # PKCE 验证
+            auth=HTTPBasicAuth(settings.CLIENT_ID, settings.CLIENT_SECRET),
+        )
+
+        # 使用令牌访问受保护资源
+        response = oauth.get(f"{settings.APP_DOMAIN}/api/v1/user/current")
+        print(f"用户信息: {response.json()}")
+        settings.update_setting('CURRENT_USERID', response.json().get("id"))
+
+        return token
 
     def quit_app():
         """

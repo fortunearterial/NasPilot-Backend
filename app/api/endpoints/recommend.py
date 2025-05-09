@@ -3,11 +3,11 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends
 
 from app import schemas
+from app.chain.recommend import RecommendChain
 from app.core.event import eventmanager
 from app.core.security import verify_token
-from app.schemas.types import ChainEventType
-from app.chain.recommend import RecommendChain
 from app.schemas import RecommendSourceEventData
+from app.schemas.types import ChainEventType
 
 router = APIRouter()
 

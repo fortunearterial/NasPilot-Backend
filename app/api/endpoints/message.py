@@ -11,8 +11,8 @@ from app.chain.message import MessageChain
 from app.core.config import settings, global_vars
 from app.core.security import verify_token, verify_apitoken
 from app.db import get_db
-from app.db.models.user import User
 from app.db.models.message import Message
+from app.db.models.user import User
 from app.db.user_oper import get_current_active_superuser
 from app.helper.service import ServiceConfigHelper
 from app.log import logger

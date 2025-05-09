@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, JSON, DateTime, BigInteger
+from sqlalchemy import Column, Integer, String, JSON, DateTime, BigInteger
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, db_id, Base

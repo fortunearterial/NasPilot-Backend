@@ -3,13 +3,13 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends
 
 from app import schemas
+from app.chain.bangumi import BangumiChain
+from app.chain.douban import DoubanChain
+from app.chain.tmdb import TmdbChain
 from app.core.event import eventmanager
 from app.core.security import verify_token
 from app.schemas import DiscoverSourceEventData
 from app.schemas.types import ChainEventType, MediaType
-from chain.bangumi import BangumiChain
-from chain.douban import DoubanChain
-from chain.tmdb import TmdbChain
 
 router = APIRouter()
 

@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, Sequence, Boolean, func, or_, JSON, BigInteger
+from sqlalchemy import Column, Integer, String, Boolean, func, or_, JSON, BigInteger
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, db_id, Base

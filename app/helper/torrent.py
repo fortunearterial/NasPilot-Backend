@@ -1,9 +1,11 @@
+import asyncio
 import datetime
 import re
 from pathlib import Path
 from typing import Tuple, Optional, List, Union, Dict
 from urllib.parse import unquote
 
+from magnet2torrent import Magnet2Torrent, FailedToFetchException
 from requests import Response
 from torrentool.api import Torrent
 

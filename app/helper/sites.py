@@ -19,11 +19,11 @@ from app.helper.browser import PlaywrightHelper
 from app.schemas import MediaType
 from app.utils.http import RequestUtils
 from app.utils.string import StringUtils
+from app.utils.singleton import Singleton
 
 # noinspection PyUnresolvedReferences
 from app.resources.sites import SitesHelper as SitesHelperBase, SiteSpider as SiteSpiderBase
 
-from utils.singleton import Singleton
 
 
 class SitesHelper(SitesHelperBase):
@@ -246,20 +246,20 @@ class SiteSpider(SiteSpiderBase):
         self.mtype = mtype
         self.indexerid = indexer.get('id')
         self.indexername = indexer.get('name')
-        self.search = indexer.get('search')
+        self.search = indexer.get('search', {})
         self.batch = indexer.get('batch')
-        self.browse = indexer.get('browse')
+        self.browse = indexer.get('browse', {})
         self.category = indexer.get('category')
-        self.torrent_in_detail = indexer.get('search_torrents').get('torrent_in_detail') if keyword else indexer.get(
-            'browser_torrents').get('torrent_in_detail')
-        self.list = indexer.get('search_torrents').get('list', {}) if keyword else indexer.get(
-            'browser_torrents').get('list', {})
-        self.list_fields = indexer.get('search_torrents').get('list_fields') if keyword else indexer.get(
-            'browser_torrents').get('list_fields')
-        self.torrent = indexer.get('search_torrents').get('torrent', {}) if keyword else indexer.get(
-            'browser_torrents').get('torrent', {})
-        self.torrent_fields = indexer.get('search_torrents').get('torrent_fields') if keyword else indexer.get(
-            'browser_torrents').get('torrent_fields')
+        self.torrent_in_detail = indexer.get('search_torrents', {}).get('torrent_in_detail') if keyword else indexer.get(
+            'browser_torrents', {}).get('torrent_in_detail')
+        self.list = indexer.get('search_torrents', {}).get('list', {}) if keyword else indexer.get(
+            'browser_torrents', {}).get('list', {})
+        self.list_fields = indexer.get('search_torrents', {}).get('list_fields') if keyword else indexer.get(
+            'browser_torrents', {}).get('list_fields')
+        self.torrent = indexer.get('search_torrents', {}).get('torrent', {}) if keyword else indexer.get(
+            'browser_torrents', {}).get('torrent', {})
+        self.torrent_fields = indexer.get('search_torrents', {}).get('torrent_fields') if keyword else indexer.get(
+            'browser_torrents', {}).get('torrent_fields')
         self.render = indexer.get('render')
         self.url = indexer.get('url')
         self.result_num = int(indexer.get('result_num') or 100)
@@ -285,10 +285,13 @@ class SiteSpider(SiteSpiderBase):
         """
         开始请求
         """
-        torrents_info_array = super().get_torrents()
-        logger.debug(f"default method returns {json.dumps(torrents_info_array)}")
-        if torrents_info_array:
-            return torrents_info_array
+        try:
+            torrents_info_array = super().get_torrents()
+            logger.debug(f"default method returns {json.dumps(torrents_info_array)}")
+            if torrents_info_array:
+                return torrents_info_array
+        except Exception:
+            pass
 
         if (not self.browse and not self.search) or not self.url:
             return []

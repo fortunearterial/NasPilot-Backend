@@ -100,6 +100,11 @@ class IndexerModule(_ModuleBase):
             # 通过encosure去重
             return list({f"{t.title}_{t.description}": t for t in _torrents}.values())
 
+        if mtype and site.get("types") and \
+                not mtype.name.lower() in site.get("types"):
+            logger.info(f"{site.get('name')} 不支持 {mtype} 类型")
+            return []
+
         # 确认搜索的名字
         if not keywords:
             # 浏览种子页

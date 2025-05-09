@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Sequence, JSON, BigInteger
+from sqlalchemy import Column, String, JSON, BigInteger
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, db_id, Base

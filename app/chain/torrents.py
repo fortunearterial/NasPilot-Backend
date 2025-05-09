@@ -2,8 +2,6 @@ import re
 import traceback
 from typing import Dict, List, Union, Optional
 
-from cachetools import cached, TTLCache
-
 from app.chain import ChainBase
 from app.chain.media import MediaChain
 from app.core.config import settings, global_vars

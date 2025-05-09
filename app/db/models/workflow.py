@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, Integer, JSON, Sequence, String, and_, BigInteger
+from sqlalchemy import Column, Integer, JSON, String, and_, BigInteger
 
 from app.db import db_query, db_update, db_id, Base
 
@@ -36,6 +36,8 @@ class Workflow(Base):
     add_time = Column(String(255), default=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     # 最后执行时间
     last_time = Column(String(255))
+    # 所属用户
+    user_id = Column(BigInteger)
 
     @staticmethod
     @db_query

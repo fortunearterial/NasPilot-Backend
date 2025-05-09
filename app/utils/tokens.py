@@ -36,6 +36,3 @@ class Tokens:
             return None
         else:
             return self._tokens[index]
-
-    def __dict__(self):
-        return {"text": self._text}

@@ -9,9 +9,10 @@ from app.core.context import MediaInfo, Context, TorrentInfo
 from app.core.metainfo import MetaInfo
 from app.core.security import verify_token
 from app.db.models.user import User
-from app.db.systemconfig_oper import SystemConfigOper
+from app.db.models.userconfig import UserConfig
 from app.db.user_oper import get_current_active_user
-from app.schemas.types import SystemConfigKey
+from app.db.user_oper import get_current_user
+from app.db.userconfig_oper import UserConfigOper
 
 router = APIRouter()
 
@@ -114,11 +115,11 @@ def stop(hashString: str,
 
 
 @router.get("/clients", summary="查询可用下载器", response_model=List[dict])
-def clients(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
+def clients(current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     查询可用下载器
     """
-    downloaders: List[dict] = SystemConfigOper().get(SystemConfigKey.Downloaders)
+    downloaders: List[dict] = UserConfigOper().get(current_user.id, UserConfig.Downloaders)
     if downloaders:
         return [{"name": d.get("name"), "type": d.get("type")} for d in downloaders if d.get("enabled")]
     return []

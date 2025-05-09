@@ -1,15 +1,12 @@
-from typing import Any, List
-
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import PlainTextResponse
-from sqlalchemy.orm import Session
 import json
+from typing import Any
+
+from fastapi import APIRouter
+from fastapi.responses import PlainTextResponse
 from pyquery import PyQuery
 
-from app.utils.http import RequestUtils
 from app.helper.sites import SitesHelper, SiteSpider
 from app.utils.string import StringUtils
-from app.core.config import settings
 from log import logger
 
 crawl_router = APIRouter(tags=['servcrawl'])

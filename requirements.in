@@ -78,3 +78,5 @@ websockets~=15.0.1
 python-multipart~=0.0.20
 snowflake-id~=1.0.2
 pyhessian2~=2.0.1
+# py2exe~=0.13.0.2
+requests_oauthlib~=2.0.0

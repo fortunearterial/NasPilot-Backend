@@ -1,10 +1,12 @@
+import datetime
 from typing import Optional, List, Dict, Any
 
 from pydantic import BaseModel, Field
 
+from app.schemas.base import BaseSchema
 
-class Subscribe(BaseModel):
-    id: Optional[int] = None
+
+class Subscribe(BaseSchema):
     # 订阅名称
     name: Optional[str] = None
     # 订阅年份
@@ -53,8 +55,6 @@ class Subscribe(BaseModel):
     state: Optional[str] = None
     # 最后更新时间
     last_update: Optional[str] = None
-    # 订阅用户
-    username: Optional[str] = None
     # 订阅站点
     sites: Optional[List[int]] = Field(default_factory=list)
     # 下载器
@@ -68,7 +68,7 @@ class Subscribe(BaseModel):
     # 是否使用 imdbid 搜索
     search_imdbid: Optional[int] = 0
     # 时间
-    date: Optional[str] = None
+    date: Optional[datetime.datetime] = None
     # 自定义识别词
     custom_words: Optional[str] = None
     # 自定义媒体类别

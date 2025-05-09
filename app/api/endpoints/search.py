@@ -40,7 +40,7 @@ def search_by_id(mediaid: str,
         media_type = MediaType(mtype)
     else:
         media_type = None
-    if season is not None:
+    if season is not None and season != '':
         media_season = int(season)
     else:
         media_season = None
@@ -100,6 +100,12 @@ def search_by_id(mediaid: str,
                                                       sites=site_list, cache_local=True)
             else:
                 return schemas.Response(success=False, message="未识别到豆瓣媒体信息")
+    elif mediaid.startswith("steam:"):
+        steamid = mediaid.replace("steam:", "")
+        torrents = SearchChain().search_by_id(steamid=steamid, mtype=mtype, area=area)
+    elif mediaid.startswith("javdb:"):
+        javdbid = mediaid.replace("javdb:", "")
+        torrents = SearchChain().search_by_id(javdbid=javdbid, mtype=mtype, area=area)
     else:
         # 未知前缀，广播事件解析媒体信息
         event_data = MediaRecognizeConvertEventData(
@@ -141,12 +147,6 @@ def search_by_id(mediaid: str,
     # 返回搜索结果
     if not torrents:
         return schemas.Response(success=False, message="未搜索到任何资源")
-    elif mediaid.startswith("steam:"):
-        steamid = mediaid.replace("steam:", "")
-        torrents = SearchChain().search_by_id(steamid=steamid, mtype=mtype, area=area)
-    elif mediaid.startswith("javdb:"):
-        javdbid = mediaid.replace("javdb:", "")
-        torrents = SearchChain().search_by_id(javdbid=javdbid, mtype=mtype, area=area)
     else:
         return schemas.Response(success=True, data=[torrent.to_dict() for torrent in torrents])
 

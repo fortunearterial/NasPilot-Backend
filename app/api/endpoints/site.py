@@ -11,11 +11,11 @@ from app.core.event import EventManager
 from app.core.plugin import PluginManager
 from app.core.security import verify_token
 from app.db import get_db
-from app.db.models.user import User
 from app.db.models.site import Site
 from app.db.models.siteicon import SiteIcon
 from app.db.models.sitestatistic import SiteStatistic
 from app.db.models.siteuserdata import SiteUserData
+from app.db.models.user import User
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import get_current_active_superuser
 from app.helper.sites import SitesHelper

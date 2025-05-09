@@ -1,18 +1,18 @@
 from typing import Optional
 
-from app.helper.service import ServiceBaseHelper
+from app.helper.service import UserServiceBaseHelper
 from app.schemas import DownloaderConf, ServiceInfo
-from app.schemas.types import SystemConfigKey, ModuleType
+from app.schemas.types import UserConfigKey, ModuleType
 
 
-class DownloaderHelper(ServiceBaseHelper[DownloaderConf]):
+class DownloaderHelper(UserServiceBaseHelper[DownloaderConf]):
     """
     下载器帮助类
     """
 
     def __init__(self):
         super().__init__(
-            config_key=SystemConfigKey.Downloaders,
+            config_key=UserConfigKey.Downloaders,
             conf_type=DownloaderConf,
             module_type=ModuleType.Downloader
         )

@@ -157,7 +157,7 @@ def get_config(key: str,
     """
     查询用户配置
     """
-    value = UserConfigOper().get(username=current_user.name, key=key)
+    value = UserConfigOper().get(user_id=current_user.id, key=key)
     return schemas.Response(success=True, data={
         "value": value
     })
@@ -169,7 +169,7 @@ def set_config(key: str, value: Union[list, dict, bool, int, str] = None,
     """
     更新用户配置
     """
-    UserConfigOper().set(username=current_user.name, key=key, value=value)
+    UserConfigOper().set(user_id=current_user.id, key=key, value=value)
     return schemas.Response(success=True)
 
 

@@ -1,18 +1,18 @@
 from typing import Optional
 
-from app.helper.service import ServiceBaseHelper
+from app.helper.service import UserServiceBaseHelper
 from app.schemas import MediaServerConf, ServiceInfo
-from app.schemas.types import SystemConfigKey, ModuleType
+from app.schemas.types import UserConfigKey, ModuleType
 
 
-class MediaServerHelper(ServiceBaseHelper[MediaServerConf]):
+class MediaServerHelper(UserServiceBaseHelper[MediaServerConf]):
     """
     媒体服务器帮助类
     """
 
     def __init__(self):
         super().__init__(
-            config_key=SystemConfigKey.MediaServers,
+            config_key=UserConfigKey.MediaServers,
             conf_type=MediaServerConf,
             module_type=ModuleType.MediaServer
         )

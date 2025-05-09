@@ -10,6 +10,7 @@ from app.core.metainfo import MetaInfo
 from app.core.security import verify_apikey
 from app.db import get_db
 from app.db.models.subscribe import Subscribe
+from app.db.subscribe_oper import SubscribeOper
 from app.schemas import RadarrMovie, SonarrSeries
 from app.schemas.types import MediaType
 from version import APP_VERSION
@@ -278,7 +279,7 @@ def arr_movie_lookup(term: str, _: Annotated[str, Depends(verify_apikey)], db: S
         # 文件存在
         hasfile = True
     # 查询是否已订阅
-    subscribes = Subscribe.get_by_tmdbid(db, int(tmdbid))
+    subscribes = SubscribeOper().list_by_tmdbid(int(tmdbid))
     if subscribes:
         # 订阅ID
         subid = subscribes[0].id
@@ -339,7 +340,7 @@ def arr_add_movie(_: Annotated[str, Depends(verify_apikey)],
     新增Rardar电影订阅
     """
     # 检查订阅是否已存在
-    subscribe = Subscribe.get_by_tmdbid(db, movie.tmdbId)
+    subscribe = SubscribeOper().list_by_tmdbid(movie.tmdbId)
     if subscribe:
         return {
             "id": subscribe.id
@@ -557,7 +558,7 @@ def arr_series_lookup(term: str, _: Annotated[str, Depends(verify_apikey)], db: 
 
     # 查询订阅信息
     seasons: List[dict] = []
-    subscribes = Subscribe.get_by_tmdbid(db, mediainfo.tmdb_id)
+    subscribes = SubscribeOper().list_by_tmdbid(mediainfo.tmdb_id)
     if subscribes:
         # 已监控
         monitored = True
@@ -647,7 +648,7 @@ def arr_add_series(tv: schemas.SonarrSeries,
     # 检查订阅是否存在
     left_seasons = []
     for season in tv.seasons:
-        subscribe = Subscribe.get_by_tmdbid(db, tmdbid=tv.tmdbId,
+        subscribe = SubscribeOper().list_by_tmdbid(tmdbid=tv.tmdbId,
                                             season=season.get("seasonNumber"))
         if subscribe:
             continue

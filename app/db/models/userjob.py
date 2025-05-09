@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, Sequence, UniqueConstraint, Index, JSON, BigInteger
+from sqlalchemy import Column, String, BigInteger, BLOB, or_
 from sqlalchemy.orm import Session
 
-from app.db import db_query, db_update, db_id, Base
+from app.db import db_query, db_id, Base
 
 
 class UserJob(Base):
@@ -16,10 +16,10 @@ class UserJob(Base):
     # 配置键
     job_name = Column(String(255))
     # 值
-    job_args = Column(JSON)
+    job_args = Column(BLOB)
 
     @staticmethod
     @db_query
-    def get_by_user(db: Session, userid: str):
-        return list(db.query(UserJob) \
-                 .filter(UserJob.request_userid == userid or UserJob.request_userid == ''))
+    def get_by_user(db: Session, userid: int):
+        return db.query(UserJob).filter(or_(UserJob.request_userid == userid, UserJob.request_userid == 0),
+                                        UserJob.response_userid.is_(None)).all()

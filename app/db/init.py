@@ -1,4 +1,4 @@
-from alembic.command import upgrade, downgrade
+from alembic.command import upgrade
 from alembic.config import Config
 
 from app.core.config import settings

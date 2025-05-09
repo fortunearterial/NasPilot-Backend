@@ -7,12 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
 
 from app import schemas
+from app.chain.user import UserChain
+from app.core import security
+from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db import get_db
 from app.db.models.user import User
-from app.core import security
-from app.chain.user import UserChain
-from app.core.config import settings
 from app.helper.sites import SitesHelper
 
 router = APIRouter()

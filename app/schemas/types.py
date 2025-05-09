@@ -98,14 +98,6 @@ class ChainEventType(Enum):
 
 # 系统配置Key字典
 class SystemConfigKey(Enum):
-    # 下载器配置
-    Downloaders = "Downloaders"
-    # 媒体服务器配置
-    MediaServers = "MediaServers"
-    # 消息通知配置
-    Notifications = "Notifications"
-    # 通知场景开关设置
-    NotificationSwitchs = "NotificationSwitchs"
     # 目录配置
     Directories = "Directories"
     # 存储配置
@@ -148,6 +140,10 @@ class SystemConfigKey(Enum):
     DefaultMovieSubscribeConfig = "DefaultMovieSubscribeConfig"
     # 默认电视剧订阅规则
     DefaultTvSubscribeConfig = "DefaultTvSubscribeConfig"
+    # 默认游戏订阅规则
+    DefaultGameSubscribeConfig = "DefaultGameSubscribeConfig"
+    # 默认Jav订阅规则
+    DefaultJavSubscribeConfig = "DefaultJavSubscribeConfig"
     # 用户站点认证参数
     UserSiteAuthParams = "UserSiteAuthParams"
     # Follow订阅分享者
@@ -262,6 +258,14 @@ class OtherModulesType(Enum):
 class UserConfigKey(Enum):
     # 监控面板
     Dashboard = "Dashboard"
+    # 下载器配置
+    Downloaders = "Downloaders"
+    # 媒体服务器配置
+    MediaServers = "MediaServers"
+    # 消息通知配置
+    Notifications = "Notifications"
+    # 通知场景开关设置
+    NotificationSwitchs = "NotificationSwitchs"
 
 
 # 支持的存储类型

@@ -1,17 +1,13 @@
-import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Any, Tuple, Optional
-
-from pyquery import PyQuery
 
 from app.core.config import settings
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfo
 from app.schemas.types import MediaType
 from app.utils.string import StringUtils
-from helper.sites import SiteSpider, PageSpider
 
 
 @dataclass
