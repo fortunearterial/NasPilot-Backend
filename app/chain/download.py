@@ -219,7 +219,6 @@ class DownloadChain(ChainBase):
         if not torrent_file:
             # 下载种子文件，得到的可能是文件也可能是磁力链
             content, _folder_name, _file_list = self.download_torrent(torrent=_torrent,
-                                                                      user_id=user_id,
                                                                       channel=channel,
                                                                       source=source,
                                                                       userid=userid)
@@ -586,7 +585,7 @@ class DownloadChain(ChainBase):
                             if len(torrent_season) == 1:
                                 # 只有一季的可能是命名错误，需要打开种子鉴别，只有实际集数大于等于总集数才下载
                                 logger.info(f"开始下载种子 {torrent.title} ...")
-                                content, _, torrent_files = self.download_torrent(torrent=torrent, user_id=user_id)
+                                content, _, torrent_files = self.download_torrent(torrent=torrent)
                                 if not content:
                                     logger.warn(f"{torrent.title} 种子下载失败！")
                                     continue
