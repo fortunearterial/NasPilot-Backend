@@ -1,7 +1,7 @@
 import random
 import string
 from datetime import timedelta
-from typing import Any, Annotated, Optional
+from typing import Any, Annotated, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
@@ -35,7 +35,7 @@ class LogonRequestForm:
         self.recommend_code = recommend_code
 
 
-@router.post("/", summary="用户注册", response_model=schemas.Token)
+@router.post("/", summary="用户注册", response_model=Union[schemas.Response, schemas.Token])
 def create_user(
         *,
         form_data: Annotated[LogonRequestForm, Depends()],
