@@ -231,6 +231,7 @@ class ChainBase(metaclass=ABCMeta):
                             "traceback": traceback.format_exc()
                         }
                     )
+            logger.debug(f"请求[服务端]模块执行：{method} {result}")
             return result
 
         # if method in [

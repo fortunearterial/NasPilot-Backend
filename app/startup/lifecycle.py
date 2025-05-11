@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,15 +16,27 @@ async def lifespan(app: FastAPI):
     """
     定义应用的生命周期事件
     """
-    print("Starting up...")
+    logger.debug("Starting up...")
     # 启动模块
     start_modules(app)
-    # 初始化工作流动作
-    init_workflow(app)
-    # 初始化路由
-    init_routers(app)
-    # 初始化插件
-    plugin_init_task = asyncio.create_task(init_plugins_async())
+    logger.debug("启动模块完成")
+    try:
+        # 初始化工作流动作
+        init_workflow(app)
+        logger.debug("初始化工作流动作完成")
+    except Exception as e:
+        logger.error(f"初始化工作流动作失败: {e}")
+    try:
+        # 初始化路由
+        init_routers(app)
+        logger.debug("初始化路由完成")
+        # 初始化插件
+        plugin_init_task = asyncio.create_task(init_plugins_async())
+        logger.debug("初始化插件完成")
+    except Exception as e:
+        logger.critical(f"Error during starting up: {e}")
+        logger.debug(traceback.format_exc())
+        return
     try:
         # 在此处 yield，表示应用已经启动，控制权交回 FastAPI 主事件循环
         yield

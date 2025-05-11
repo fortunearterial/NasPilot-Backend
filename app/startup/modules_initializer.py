@@ -164,10 +164,8 @@ def start_modules(_: FastAPI):
     Scheduler()
     # 加载命令
     Command()
-    logger.info("加载命令完成")
     # 启动前端服务
-    # start_frontend()
-    logger.info("启动前端服务完成")
+    start_frontend()
     # 检查认证状态
     check_auth()
-    logger.info("检查认证状态完成")
+    logger.info("应用启动完毕")

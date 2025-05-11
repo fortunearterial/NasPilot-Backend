@@ -4,13 +4,12 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Form, HTTPException, Depends
 
-import schemas
+from app import schemas
 from app.core import security
 from app.core.cache import cache_backend
 from app.core.config import settings
 from app.db.user_oper import UserOper, get_current_active_user
 from app.helper.sites import SitesHelper
-from app.schemas import User
 
 SECRET_KEY = "your-secret-key-32bytes"
 ALGORITHM = "HS256"
@@ -26,7 +25,7 @@ async def authorize(
         redirect_uri: str,
         state: str = None,
         # request: OAuth2AuthorizeRequestQuery,
-        current_user: User = Depends(get_current_active_user),
+        current_user: schemas.User = Depends(get_current_active_user),
 ):
     # 验证客户端
     # client = clients_db.get(client_id)
@@ -95,9 +94,3 @@ async def token(
         avatar=user_or_message.avatar,
         level=level
     )
-
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "expires_in": ACCESS_TOKEN_EXPIRE
-    }

@@ -150,7 +150,7 @@ def start_tray():
         icon=Image.open(settings.ROOT_PATH / 'app.ico'),
         menu=pystray.Menu(
             pystray.MenuItem(
-                '打开',
+                '登录',
                 open_web,
             ),
             pystray.MenuItem(
