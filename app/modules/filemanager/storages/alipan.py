@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import io
 import secrets
 import threading
 import time
@@ -21,6 +22,10 @@ lock = threading.Lock()
 
 
 class NoCheckInException(Exception):
+    pass
+
+
+class SessionInvalidException(Exception):
     pass
 
 
@@ -177,7 +182,7 @@ class AliPan(StorageBase, metaclass=Singleton):
         确认登录后，获取相关token
         """
         if not self._auth_state:
-            raise Exception("【阿里云盘】请先生成二维码")
+            raise SessionInvalidException("【阿里云盘】请先生成二维码")
         resp = self.session.post(
             f"{self.base_url}/oauth/access_token",
             json={
@@ -188,7 +193,7 @@ class AliPan(StorageBase, metaclass=Singleton):
             }
         )
         if resp is None:
-            raise Exception("【阿里云盘】获取 access_token 失败")
+            raise SessionInvalidException("【阿里云盘】获取 access_token 失败")
         result = resp.json()
         if result.get("code"):
             raise Exception(f"【阿里云盘】{result.get('code')} - {result.get('message')}！")
@@ -199,7 +204,7 @@ class AliPan(StorageBase, metaclass=Singleton):
         刷新access_token
         """
         if not refresh_token:
-            raise Exception("【阿里云盘】会话失效，请重新扫码登录！")
+            raise SessionInvalidException("【阿里云盘】会话失效，请重新扫码登录！")
         resp = self.session.post(
             f"{self.base_url}/oauth/access_token",
             json={
@@ -335,6 +340,8 @@ class AliPan(StorageBase, metaclass=Singleton):
         """
         if not fileinfo:
             return schemas.FileItem()
+        if not parent.endswith("/"):
+            parent += "/"
         if fileinfo.get("type") == "folder":
             return schemas.FileItem(
                 storage=self.schema.value,
@@ -437,7 +444,7 @@ class AliPan(StorageBase, metaclass=Singleton):
             "/adrive/v1.0/openFile/create",
             json={
                 "drive_id": parent_item.drive_id,
-                "parent_file_id": parent_item.fileid,
+                "parent_file_id": parent_item.fileid or "root",
                 "name": name,
                 "type": "folder"
             }
@@ -628,6 +635,29 @@ class AliPan(StorageBase, metaclass=Singleton):
             raise Exception(resp.get("message"))
         return resp
 
+    @staticmethod
+    def _log_progress(desc: str, total: int) -> tqdm:
+        """
+        创建一个可以输出到日志的进度条
+        """
+
+        class TqdmToLogger(io.StringIO):
+            def write(s, buf):  # noqa
+                buf = buf.strip('\r\n\t ')
+                if buf:
+                    logger.info(buf)
+
+        return tqdm(
+            total=total,
+            unit='B',
+            unit_scale=True,
+            desc=desc,
+            file=TqdmToLogger(),
+            mininterval=1.0,
+            maxinterval=5.0,
+            miniters=1
+        )
+
     def upload(self, target_dir: schemas.FileItem, local_path: Path,
                new_name: Optional[str] = None) -> Optional[schemas.FileItem]:
         """
@@ -668,13 +698,7 @@ class AliPan(StorageBase, metaclass=Singleton):
 
         # 4. 初始化进度条
         logger.info(f"【阿里云盘】开始上传: {local_path} -> {target_path}，分片数：{len(part_info_list)}")
-        progress_bar = tqdm(
-            total=file_size,
-            unit='B',
-            unit_scale=True,
-            desc="上传进度",
-            ascii=True
-        )
+        progress_bar = self._log_progress(f"【阿里云盘】{target_name} 上传进度", file_size)
 
         # 5. 分片上传循环
         with open(local_path, 'rb') as f:
@@ -828,7 +852,7 @@ class AliPan(StorageBase, metaclass=Singleton):
             if resp.get("code"):
                 logger.debug(f"【阿里云盘】获取文件信息失败: {resp.get('message')}")
                 return None
-            return self.__get_fileitem(resp, parent=f"{str(path.parent)}/")
+            return self.__get_fileitem(resp, parent=str(path.parent))
         except Exception as e:
             logger.debug(f"【阿里云盘】获取文件信息失败: {str(e)}")
             return None
@@ -854,7 +878,7 @@ class AliPan(StorageBase, metaclass=Singleton):
         if folder:
             return folder
         # 逐级查找和创建目录
-        fileitem = schemas.FileItem(storage=self.schema.value, path="/")
+        fileitem = schemas.FileItem(storage=self.schema.value, path="/", drive_id=self._default_drive_id)
         for part in path.parts[1:]:
             dir_file = __find_dir(fileitem, part)
             if dir_file:
@@ -956,4 +980,6 @@ class AliPan(StorageBase, metaclass=Singleton):
                 available=total_size - used_size
             )
         except NoCheckInException:
+            return None
+        except SessionInvalidException:
             return None

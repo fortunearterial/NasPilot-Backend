@@ -59,6 +59,8 @@ class PluginDashboard(Plugin):
     name: Optional[str] = None
     # 仪表板key
     key: Optional[str] = None
+    # 演染模式
+    render_mode: Optional[str] = Field(default="vuetify")
     # 全局配置
     attrs: Optional[dict] = Field(default_factory=dict)
     # col列数

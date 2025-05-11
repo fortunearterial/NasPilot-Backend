@@ -122,7 +122,7 @@ class MessageChain(ChainBase):
         userid = info.userid
         # 用户名
         username = info.username or userid
-        if not userid:
+        if userid is None or userid == '':
             logger.debug(f'未识别到用户ID：{body}{form}{args}')
             return
         # 消息内容

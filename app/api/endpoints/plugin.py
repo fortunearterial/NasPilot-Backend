@@ -1,6 +1,9 @@
+import mimetypes
 from typing import Annotated, Any, List, Optional
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException
+from starlette import status
+from starlette.responses import FileResponse
 
 from app import schemas
 from app.command import Command
@@ -16,7 +19,6 @@ from app.scheduler import Scheduler
 from app.schemas.types import SystemConfigKey
 
 PROTECTED_ROUTES = {"/api/v1/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
-
 PLUGIN_PREFIX = f"{settings.API_V1_STR}/plugin"
 
 router = APIRouter()
@@ -66,9 +68,13 @@ def _update_plugin_api_routes(plugin_id: Optional[str], action: str):
             try:
                 api["path"] = api_path
                 allow_anonymous = api.pop("allow_anonymous", False)
+                auth_mode = api.pop("auth", "apikey")
                 dependencies = api.setdefault("dependencies", [])
-                if not allow_anonymous and Depends(verify_apikey) not in dependencies:
-                    dependencies.append(Depends(verify_apikey))
+                if not allow_anonymous:
+                    if auth_mode == "bear" and Depends(verify_token) not in dependencies:
+                        dependencies.append(Depends(verify_token))
+                    elif Depends(verify_apikey) not in dependencies:
+                        dependencies.append(Depends(verify_apikey))
                 app.add_api_route(**api, tags=["plugin"])
                 is_modified = True
                 logger.debug(f"Added plugin route: {api_path}")
@@ -218,25 +224,60 @@ def install(plugin_id: str,
     return schemas.Response(success=True)
 
 
+@router.get("/remotes", summary="获取插件联邦组件列表", response_model=List[dict])
+def remotes(token: str) -> Any:
+    """
+    获取插件联邦组件列表
+    """
+    if token != "moviepilot":
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return PluginManager().get_plugin_remotes()
+
+
 @router.get("/form/{plugin_id}", summary="获取插件表单页面")
 def plugin_form(plugin_id: str,
                 _: schemas.TokenPayload = Depends(get_current_active_superuser)) -> dict:
     """
-    根据插件ID获取插件配置表单
+    根据插件ID获取插件配置表单或Vue组件URL
     """
-    conf, model = PluginManager().get_plugin_form(plugin_id)
-    return {
-        "conf": conf,
-        "model": model
-    }
+    plugin_instance = PluginManager().running_plugins.get(plugin_id)
+    if not plugin_instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"插件 {plugin_id} 不存在或未加载")
+
+    # 渲染模式
+    render_mode, _ = plugin_instance.get_render_mode()
+    try:
+        conf, model = plugin_instance.get_form()
+        return {
+            "render_mode": render_mode,
+            "conf": conf,
+            "model": PluginManager().get_plugin_config(plugin_id) or model
+        }
+    except Exception as e:
+        logger.error(f"插件 {plugin_id} 调用方法 get_form 出错: {str(e)}")
+    return {}
 
 
 @router.get("/page/{plugin_id}", summary="获取插件数据页面")
-def plugin_page(plugin_id: str, _: schemas.TokenPayload = Depends(get_current_active_superuser)) -> List[dict]:
+def plugin_page(plugin_id: str, _: schemas.TokenPayload = Depends(get_current_active_superuser)) -> dict:
     """
     根据插件ID获取插件数据页面
     """
-    return PluginManager().get_plugin_page(plugin_id)
+    plugin_instance = PluginManager().running_plugins.get(plugin_id)
+    if not plugin_instance:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"插件 {plugin_id} 不存在或未加载")
+
+    # 渲染模式
+    render_mode, _ = plugin_instance.get_render_mode()
+    try:
+        page = plugin_instance.get_page()
+        return {
+            "render_mode": render_mode,
+            "page": page or []
+        }
+    except Exception as e:
+        logger.error(f"插件 {plugin_id} 调用方法 get_page 出错: {str(e)}")
+    return {}
 
 
 @router.get("/dashboard/meta", summary="获取所有插件仪表板元信息")
@@ -247,22 +288,22 @@ def plugin_dashboard_meta(_: schemas.TokenPayload = Depends(verify_token)) -> Li
     return PluginManager().get_plugin_dashboard_meta()
 
 
+@router.get("/dashboard/{plugin_id}/{key}", summary="获取插件仪表板配置")
+def plugin_dashboard_by_key(plugin_id: str, key: str, user_agent: Annotated[str | None, Header()] = None,
+                            _: schemas.TokenPayload = Depends(verify_token)) -> Optional[schemas.PluginDashboard]:
+    """
+    根据插件ID获取插件仪表板
+    """
+    return PluginManager().get_plugin_dashboard(plugin_id, key, user_agent)
+
+
 @router.get("/dashboard/{plugin_id}", summary="获取插件仪表板配置")
 def plugin_dashboard(plugin_id: str, user_agent: Annotated[str | None, Header()] = None,
                      _: schemas.TokenPayload = Depends(verify_token)) -> schemas.PluginDashboard:
     """
     根据插件ID获取插件仪表板
     """
-    return PluginManager().get_plugin_dashboard(plugin_id, user_agent=user_agent)
-
-
-@router.get("/dashboard/{plugin_id}/{key}", summary="获取插件仪表板配置")
-def plugin_dashboard(plugin_id: str, key: str, user_agent: Annotated[str | None, Header()] = None,
-                     _: schemas.TokenPayload = Depends(verify_token)) -> schemas.PluginDashboard:
-    """
-    根据插件ID获取插件仪表板
-    """
-    return PluginManager().get_plugin_dashboard(plugin_id, key=key, user_agent=user_agent)
+    return plugin_dashboard_by_key(plugin_id, "", user_agent)
 
 
 @router.get("/reset/{plugin_id}", summary="重置插件配置及数据", response_model=schemas.Response)
@@ -284,6 +325,41 @@ def reset_plugin(plugin_id: str,
     # 注册插件API
     register_plugin_api(plugin_id)
     return schemas.Response(success=True)
+
+
+@router.get("/file/{plugin_id}/{filepath:path}", summary="获取插件静态文件")
+def plugin_static_file(plugin_id: str, filepath: str):
+    """
+    获取插件静态文件
+    """
+    # 基础安全检查
+    if ".." in filepath or ".." in filepath:
+        logger.warning(f"Static File API: Path traversal attempt detected: {plugin_id}/{filepath}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    plugin_base_dir = settings.ROOT_PATH / "app" / "plugins" / plugin_id.lower()
+    plugin_file_path = plugin_base_dir / filepath
+    if not plugin_file_path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{plugin_file_path} 不存在")
+    if not plugin_file_path.is_file():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{plugin_file_path} 不是文件")
+
+    # 判断 MIME 类型
+    response_type, _ = mimetypes.guess_type(str(plugin_file_path))
+    suffix = plugin_file_path.suffix.lower()
+    # 强制修正 .mjs 和 .js 的 MIME 类型
+    if suffix in ['.js', '.mjs']:
+        response_type = 'application/javascript'
+    elif suffix == '.css' and not response_type:  # 如果 guess_type 没猜对 css，也修正
+        response_type = 'text/css'
+    elif not response_type:  # 对于其他猜不出的类型
+        response_type = 'application/octet-stream'
+
+    try:
+        return FileResponse(plugin_file_path, media_type=response_type)
+    except Exception as e:
+        logger.error(f"Error creating/sending FileResponse for {plugin_file_path}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 @router.get("/{plugin_id}", summary="获取插件配置")

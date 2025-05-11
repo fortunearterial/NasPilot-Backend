@@ -1,6 +1,6 @@
 import base64
 import hashlib
-import json
+import io
 import secrets
 import threading
 import time
@@ -375,7 +375,7 @@ class U115Pan(StorageBase, metaclass=Singleton):
             "POST",
             "/open/folder/add",
             data={
-                "pid": int(parent_item.fileid),
+                "pid": int(parent_item.fileid or "0"),
                 "file_name": name
             }
         )
@@ -399,17 +399,37 @@ class U115Pan(StorageBase, metaclass=Singleton):
             modify_time=int(time.time())
         )
 
+    @staticmethod
+    def _log_progress(desc: str, total: int) -> tqdm:
+        """
+        创建一个可以输出到日志的进度条
+        """
+
+        class TqdmToLogger(io.StringIO):
+            def write(s, buf):  # noqa
+                buf = buf.strip('\r\n\t ')
+                if buf:
+                    logger.info(buf)
+
+        return tqdm(
+            total=total,
+            unit='B',
+            unit_scale=True,
+            desc=desc,
+            file=TqdmToLogger(),
+            mininterval=1.0,
+            maxinterval=5.0,
+            miniters=1
+        )
+
     def upload(self, target_dir: schemas.FileItem, local_path: Path,
                new_name: Optional[str] = None) -> Optional[schemas.FileItem]:
         """
         实现带秒传、断点续传和二次认证的文件上传
         """
 
-        def encode_callback(cb: dict):
-            """
-            回调参数Base64编码函数
-            """
-            return oss2.utils.b64encode_as_string(json.dumps(cb).strip())
+        def encode_callback(cb: str) -> str:
+            return oss2.utils.b64encode_as_string(cb)
 
         target_name = new_name or local_path.name
         target_path = Path(target_dir.path) / target_name
@@ -535,12 +555,6 @@ class U115Pan(StorageBase, metaclass=Singleton):
             security_token=SecurityToken
         )
         bucket = oss2.Bucket(auth, endpoint, bucket_name)  # noqa
-        # 处理oss请求回调
-        callback_dict = json.loads(callback.get("callback"))
-        callback_var_dict = json.loads(callback.get("callback_var"))
-        # 补充参数
-        logger.debug(f"【115】上传 Step 6 回调参数：{callback_dict} {callback_var_dict}")
-        # 填写不能包含Bucket名称在内的Object完整路径，例如exampledir/exampleobject.txt。
         # determine_part_size方法用于确定分片大小，设置分片大小为 100M
         part_size = determine_part_size(file_size, preferred_size=100 * 1024 * 1024)
 
@@ -584,8 +598,8 @@ class U115Pan(StorageBase, metaclass=Singleton):
 
         # 请求头
         headers = {
-            'X-oss-callback': encode_callback(callback_dict),
-            'x-oss-callback-var': encode_callback(callback_var_dict),
+            'X-oss-callback': encode_callback(callback["callback"]),
+            'x-oss-callback-var': encode_callback(callback["callback_var"]),
             'x-oss-forbid-overwrite': 'false'
         }
         try:

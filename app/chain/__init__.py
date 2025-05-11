@@ -5,6 +5,7 @@ import pickle
 import sys
 import traceback
 from abc import ABCMeta
+from collections.abc import Callable
 from pathlib import Path
 from typing import Optional, Any, Tuple, List, Set, Union, Dict, get_origin, get_args
 
@@ -16,10 +17,11 @@ from app.core.context import Context, MediaInfo, TorrentInfo
 from app.core.event import EventManager
 from app.core.meta import MetaBase
 from app.core.module import ModuleManager
+from app.core.plugin import PluginManager
 from app.db.message_oper import MessageOper
 from app.db.user_oper import UserOper
 from app.db.userjob_oper import UserJobOper
-from app.helper.message import MessageHelper, MessageQueueManager
+from app.helper.message import MessageHelper, MessageQueueManager, MessageTemplateHelper
 from app.helper.service import ServiceConfigHelper
 from app.log import logger
 from app.schemas import TransferInfo, TransferTorrent, ExistMediaInfo, DownloadingTorrent, CommingMessage, Notification, \
@@ -45,6 +47,7 @@ class ChainBase(metaclass=ABCMeta):
             send_callback=self.run_module
         )
         self.useroper = UserOper()
+        self.pluginmanager = PluginManager()
         self.userjoboper = UserJobOper()
 
     @staticmethod
@@ -100,139 +103,97 @@ class ChainBase(metaclass=ABCMeta):
             else:
                 return ret is None
 
-        def extract_inner_type(annotation):
-            origin = get_origin(annotation)
-            args = get_args(annotation)
-
-            # 递归解析嵌套类型
-            if origin is Union:  # Optional 实际是 Union[T, None]
-                inner_type = next((arg for arg in args if arg is not type(None)), None)
-                return extract_inner_type(inner_type)
-            elif origin is list or origin is List:  # List[T]
-                return extract_inner_type(args[0])
-            else:
-                return annotation
-
-        def get_method_return_annotation():
-            """
-            获取方法的参数名和默认值
-            """
-            # 获取当前堆栈帧的上一级帧（即调用者）
-            for i in range(1, 50):
-                if sys._getframe(i).f_code.co_name == "run_module":
-                    caller_frame = sys._getframe(i + 1)
-                    break
-            # 获取调用者的函数对象
-            caller_func_name = caller_frame.f_code.co_name
-            # 尝试从实例中获取方法（若调用者是类方法）
-            instance = caller_frame.f_locals.get('self', None)
-            if instance:
-                caller_func_obj = getattr(instance.__class__, caller_func_name, None)
-            else:
-                caller_func_obj = caller_frame.f_globals.get(caller_func_name, None)
-            return_annotation = caller_func_obj.__annotations__.get('return', None)
-            return extract_inner_type(return_annotation)
-
-        def broadcast_to_clients(method: str, timeout: int = 5, *args, **kwargs):
-            """
-            广播消息给所有客户端
-            """
-            logger.debug(f"请求[广播]模块执行：{method}(args={args}, kwargs={kwargs}) ...")
-
-            # 模式，交由websocket广播处理
-            from app.api.websockets import ConnectionManager
-            # 获取调用者的返回类型注解
-            return_annotation = get_method_return_annotation()
-
-            try:
-                results = asyncio.run(ConnectionManager().broadcast(
-                    request_data={"method": method, "args": args, "kwargs": kwargs},
-                    timeout=timeout
-                ))
-                if not results:
-                    return None
-                return [return_annotation(**result) for result in results]
-            except BaseException as ex:
-                logger.error(f"执行[广播]模块 {method} 出错，转由服务端执行：{str(ex)}")
-                return run_on_server(method=method, *args, **kwargs)
-
-        def send_to_client(user_id: int, method: str, timeout: int = 5, *args, **kwargs):
-            """
-            发送消息给指定客户端
-            """
-            logger.debug(f"请求[单机]模块执行：{method}(args={args}, kwargs={kwargs}) ...")
-            if not user_id:
-                raise Exception("user_id is required")
-
-            # 实时模式，交由websocket单点处理
-            from app.api.websockets import ConnectionManager
-            # 获取调用者的返回类型注解
-            return_annotation = get_method_return_annotation()
-
-            try:
-                results = asyncio.run(
-                    ConnectionManager().send(user_id=user_id,
-                                             request_data={"method": method, "args": args, "kwargs": kwargs},
-                                             timeout=timeout)
-                )
-                if not results:
-                    return None
-                return [return_annotation(**result) for result in results]
-            except BaseException as ex:
-                logger.error(f"执行[单机]模块 {method} 出错：{str(ex)}")
-                return None
-
-        def run_on_server(method: str, *args, **kwargs):
-            logger.debug(f"请求[服务端]模块执行：{method} ...")
-
-            result = None
-            modules = self.modulemanager.get_running_modules(method)
-            # 按优先级排序
-            modules = sorted(modules, key=lambda x: x.get_priority())
-            for module in modules:
-                module_id = module.__class__.__name__
-                try:
-                    module_name = module.get_name()
-                except Exception as err:
-                    logger.debug(f"获取[服务端]模块名称出错：{str(err)}")
-                    module_name = module_id
-                try:
-                    func = getattr(module, method)
-                    if is_result_empty(result):
-                        # 返回None，第一次执行或者需继续执行下一模块
-                        result = func(*args, **kwargs)
-                    elif ObjectUtils.check_signature(func, result):
-                        # 返回结果与方法签名一致，将结果传入（不能多个模块同时运行的需要通过开关控制）
-                        result = func(result)
-                    elif isinstance(result, list):
-                        # 返回为列表，有多个模块运行结果时进行合并（不能多个模块同时运行的需要通过开关控制）
-                        temp = func(*args, **kwargs)
-                        if isinstance(temp, list):
-                            result.extend(temp)
-                    else:
-                        # 中止继续执行
-                        break
-                except Exception as err:
-                    if kwargs.get("raise_exception"):
-                        raise
-                    logger.error(
-                        f"运行[服务端]模块 {module_id}.{method} 出错：{str(err)}\n{traceback.format_exc()}")
-                    self.messagehelper.put(title=f"{module_name}发生了错误",
-                                           message=str(err),
-                                           role="system")
-                    self.eventmanager.send_event(
-                        EventType.SystemError,
-                        {
-                            "type": "module",
-                            "module_id": module_id,
-                            "module_name": module_name,
-                            "module_method": method,
-                            "error": str(err),
-                            "traceback": traceback.format_exc()
-                        }
-                    )
-            logger.debug(f"请求[服务端]模块执行：{method} {result}")
+        result = None
+        plugin_modules = self.pluginmanager.get_plugin_modules()
+        # 插件模块
+        for plugin, module_dict in plugin_modules.items():
+            plugin_id, plugin_name = plugin
+            if method in module_dict:
+                func = module_dict[method]
+                if func:
+                    try:
+                        logger.info(f"请求插件 {plugin_name} 执行：{method} ...")
+                        if is_result_empty(result):
+                            # 返回None，第一次执行或者需继续执行下一模块
+                            result = func(*args, **kwargs)
+                        elif isinstance(result, list):
+                            # 返回为列表，有多个模块运行结果时进行合并
+                            temp = func(*args, **kwargs)
+                            if isinstance(temp, list):
+                                result.extend(temp)
+                        else:
+                            break
+                    except Exception as err:
+                        if kwargs.get("raise_exception"):
+                            raise
+                        logger.error(
+                            f"运行插件 {plugin_id} 模块 {method} 出错：{str(err)}\n{traceback.format_exc()}")
+                        self.messagehelper.put(title=f"{plugin_name} 发生了错误",
+                                               message=str(err),
+                                               role="plugin")
+                        self.eventmanager.send_event(
+                            EventType.SystemError,
+                            {
+                                "type": "plugin",
+                                "plugin_id": plugin_id,
+                                "plugin_name": plugin_name,
+                                "plugin_method": method,
+                                "error": str(err),
+                                "traceback": traceback.format_exc()
+                            }
+                        )
+        if not is_result_empty(result) and not isinstance(result, list):
+            # 插件模块返回结果不为空且不是列表，直接返回
             return result
+
+        # 系统模块
+        logger.debug(f"请求系统模块执行：{method} ...")
+        modules = self.modulemanager.get_running_modules(method)
+        # 按优先级排序
+        modules = sorted(modules, key=lambda x: x.get_priority())
+        for module in modules:
+            module_id = module.__class__.__name__
+            try:
+                module_name = module.get_name()
+            except Exception as err:
+                logger.debug(f"获取模块名称出错：{str(err)}")
+                module_name = module_id
+            try:
+                func = getattr(module, method)
+                if is_result_empty(result):
+                    # 返回None，第一次执行或者需继续执行下一模块
+                    result = func(*args, **kwargs)
+                elif ObjectUtils.check_signature(func, result):
+                    # 返回结果与方法签名一致，将结果传入
+                    result = func(result)
+                elif isinstance(result, list):
+                    # 返回为列表，有多个模块运行结果时进行合并
+                    temp = func(*args, **kwargs)
+                    if isinstance(temp, list):
+                        result.extend(temp)
+                else:
+                    # 中止继续执行
+                    break
+            except Exception as err:
+                if kwargs.get("raise_exception"):
+                    raise
+                logger.error(
+                    f"运行模块 {module_id}.{method} 出错：{str(err)}\n{traceback.format_exc()}")
+                self.messagehelper.put(title=f"{module_name}发生了错误",
+                                       message=str(err),
+                                       role="system")
+                self.eventmanager.send_event(
+                    EventType.SystemError,
+                    {
+                        "type": "module",
+                        "module_id": module_id,
+                        "module_name": module_name,
+                        "module_method": method,
+                        "error": str(err),
+                        "traceback": traceback.format_exc()
+                    }
+                )
+        return result
 
         # if method in [
         #     "tmdb_discover", "tmdb_trending",
@@ -520,7 +481,8 @@ class ChainBase(metaclass=ABCMeta):
                  target_storage: Optional[str] = None, target_path: Path = None,
                  transfer_type: Optional[str] = None, scrape: bool = None,
                  library_type_folder: bool = None, library_category_folder: bool = None,
-                 episodes_info: List[TmdbEpisode] = None) -> Optional[TransferInfo]:
+                 episodes_info: List[TmdbEpisode] = None,
+                 source_oper: Callable = None, target_oper: Callable = None) -> Optional[TransferInfo]:
         """
         文件转移
         :param fileitem:  文件信息
@@ -534,6 +496,8 @@ class ChainBase(metaclass=ABCMeta):
         :param library_type_folder: 是否按类型创建目录
         :param library_category_folder: 是否按类别创建目录
         :param episodes_info: 当前季的全部集信息
+        :param source_oper:  源存储操作类
+        :param target_oper:  目标存储操作类
         :return: {path, target_path, message}
         """
         return self.run_module("transfer",
@@ -543,7 +507,8 @@ class ChainBase(metaclass=ABCMeta):
                                transfer_type=transfer_type, scrape=scrape,
                                library_type_folder=library_type_folder,
                                library_category_folder=library_category_folder,
-                               episodes_info=episodes_info)
+                               episodes_info=episodes_info,
+                               source_oper=source_oper, target_oper=target_oper)
 
     def transfer_completed(self, hashs: str, downloader: Optional[str] = None) -> None:
         """
@@ -611,13 +576,27 @@ class ChainBase(metaclass=ABCMeta):
         """
         return self.run_module("media_files", mediainfo=mediainfo)
 
-    def post_message(self, message: Notification) -> None:
+    def post_message(self,
+                    message: Optional[Notification] = None,
+                    meta: Optional[MetaBase] = None,
+                    mediainfo: Optional[MediaInfo] = None,
+                    torrentinfo: Optional[TorrentInfo] = None,
+                    transferinfo: Optional[TransferInfo] = None,
+                    **kwargs) -> None:
         """
         发送消息
-        :param message:  消息体
+        :param message:  Notification实例
+        :param meta:  元数据
+        :param mediainfo:  媒体信息
+        :param torrentinfo:  种子信息
+        :param transferinfo:  文件整理信息
+        :param kwargs:  其他参数(覆盖业务对象属性值)
         :return: 成功或失败
         """
-        # 保存原消息
+        # 渲染消息
+        message = MessageTemplateHelper.render(message=message, meta=meta, mediainfo=mediainfo,
+                                       torrentinfo=torrentinfo, transferinfo=transferinfo, **kwargs)
+        # 保存消息
         self.messagehelper.put(message, role="user", title=message.title)
         self.messageoper.add(**message.dict())
         # 发送消息按设置隔离

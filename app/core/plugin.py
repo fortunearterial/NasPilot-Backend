@@ -7,8 +7,10 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union, Callable, Tuple
 
+from fastapi import HTTPException
+from starlette import status
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -220,6 +222,14 @@ class PluginManager(metaclass=Singleton):
             self._running_plugins = {}
         logger.info("插件停止完成")
 
+    @property
+    def running_plugins(self):
+        """
+        获取运行态插件列表
+        :return: 运行态插件列表
+        """
+        return self._running_plugins
+
     def reload_monitor(self):
         """
         重新加载插件文件修改监测
@@ -407,68 +417,6 @@ class PluginManager(metaclass=Singleton):
         self.plugindata.del_data(pid)
         return True
 
-    def get_plugin_form(self, pid: str) -> Tuple[List[dict], Dict[str, Any]]:
-        """
-        获取插件表单
-        :param pid: 插件ID
-        """
-        plugin = self._running_plugins.get(pid)
-        if not plugin:
-            return [], {}
-        if hasattr(plugin, "get_form"):
-            return plugin.get_form() or ([], {})
-        return [], {}
-
-    def get_plugin_page(self, pid: str) -> List[dict]:
-        """
-        获取插件页面
-        :param pid: 插件ID
-        """
-        plugin = self._running_plugins.get(pid)
-        if not plugin:
-            return []
-        if hasattr(plugin, "get_page"):
-            return plugin.get_page() or []
-        return []
-
-    def get_plugin_dashboard(self, pid: str, key: Optional[str] = None, **kwargs) -> Optional[schemas.PluginDashboard]:
-        """
-        获取插件仪表盘
-        :param pid: 插件ID
-        :param key: 仪表盘key
-        """
-
-        def __get_params_count(func: Callable):
-            """
-            获取函数的参数信息
-            """
-            signature = inspect.signature(func)
-            return len(signature.parameters)
-
-        plugin = self._running_plugins.get(pid)
-        if not plugin:
-            return None
-        if hasattr(plugin, "get_dashboard"):
-            # 检查方法的参数个数
-            params_count = __get_params_count(plugin.get_dashboard)
-            if params_count > 1:
-                dashboard: Tuple = plugin.get_dashboard(key=key, **kwargs)
-            elif params_count > 0:
-                dashboard: Tuple = plugin.get_dashboard(**kwargs)
-            else:
-                dashboard: Tuple = plugin.get_dashboard()
-            if dashboard:
-                cols, attrs, elements = dashboard
-                return schemas.PluginDashboard(
-                    id=pid,
-                    name=plugin.plugin_name,
-                    key=key or "",
-                    cols=cols or {},
-                    elements=elements,
-                    attrs=attrs or {}
-                )
-        return None
-
     def get_plugin_state(self, pid: str) -> bool:
         """
         获取插件状态
@@ -517,16 +465,20 @@ class PluginManager(metaclass=Singleton):
         }]
         """
         ret_apis = []
-        for plugin_id, plugin in self._running_plugins.items():
+        if pid:
+            plugins = {pid: self._running_plugins.get(pid)}
+        else:
+            plugins = self._running_plugins
+        for plugin_id, plugin in plugins.items():
             if pid and pid != plugin_id:
                 continue
             if hasattr(plugin, "get_api") and ObjectUtils.check_method(plugin.get_api):
                 try:
-                    if not plugin.get_state():
-                        continue
                     apis = plugin.get_api() or []
                     for api in apis:
                         api["path"] = f"/{plugin_id}{api['path']}"
+                        if not api.get("auth"):
+                            api["auth"] = "apikey"
                     ret_apis.extend(apis)
                 except Exception as e:
                     logger.error(f"获取插件 {plugin_id} API出错：{str(e)}")
@@ -558,7 +510,63 @@ class PluginManager(metaclass=Singleton):
                     logger.error(f"获取插件 {plugin_id} 服务出错：{str(e)}")
         return ret_services
 
-    def get_plugin_dashboard_meta(self):
+    def get_plugin_modules(self, pid: Optional[str] = None) -> Dict[tuple, Dict[str, Any]]:
+        """
+        获取插件模块
+        {
+            plugin_id: {
+                method: function
+            }
+        }
+        """
+        ret_modules = {}
+        for plugin_id, plugin in self._running_plugins.items():
+            if pid and pid != plugin_id:
+                continue
+            if hasattr(plugin, "get_module") and ObjectUtils.check_method(plugin.get_module):
+                try:
+                    if not plugin.get_state():
+                        continue
+                    plugin_module = plugin.get_module() or []
+                    ret_modules[(plugin_id, plugin.get_name())] = plugin_module
+                except Exception as e:
+                    logger.error(f"获取插件 {plugin_id} 模块出错：{str(e)}")
+        return ret_modules
+
+    @staticmethod
+    def get_plugin_remote_entry(plugin_id: str, dist_path: str) -> str:
+        """
+        获取插件的远程入口地址
+        :param plugin_id: 插件 ID
+        :param dist_path: 插件的分发路径
+        :return: 远程入口地址
+        """
+        if dist_path.startswith("/"):
+            dist_path = dist_path[1:]
+        if dist_path.endswith("/"):
+            dist_path = dist_path[:-1]
+        return f"/plugin/file/{plugin_id.lower()}/{dist_path}/remoteEntry.js"
+
+    def get_plugin_remotes(self, pid: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        获取插件联邦组件列表
+        """
+        remotes = []
+        for plugin_id, plugin in self._running_plugins.items():
+            if pid and pid != plugin_id:
+                continue
+            if hasattr(plugin, "get_render_mode"):
+                render_mode, dist_path = plugin.get_render_mode()
+                if render_mode != "vue":
+                    continue
+                remotes.append({
+                    "id": plugin_id,
+                    "url": self.get_plugin_remote_entry(plugin_id, dist_path),
+                    "name": plugin.plugin_name,
+                })
+        return remotes
+
+    def get_plugin_dashboard_meta(self) -> List[Dict[str, str]]:
         """
         获取所有插件仪表盘元信息
         """
@@ -587,6 +595,50 @@ class PluginManager(metaclass=Singleton):
             except Exception as e:
                 logger.error(f"获取插件[{plugin_id}]仪表盘元数据出错：{str(e)}")
         return dashboard_meta
+
+    def get_plugin_dashboard(self, pid: str, key: str, user_agent: str = None) -> schemas.PluginDashboard:
+        """
+        获取插件仪表盘
+        """
+
+        def __get_params_count(func: Callable):
+            """
+            获取函数的参数信息
+            """
+            signature = inspect.signature(func)
+            return len(signature.parameters)
+
+        # 获取插件实例
+        plugin_instance = self.running_plugins.get(pid)
+        if not plugin_instance:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"插件 {pid} 不存在或未加载")
+
+        # 渲染模式
+        render_mode, _ = plugin_instance.get_render_mode()
+        # 获取插件仪表板
+        try:
+            # 检查方法的参数个数
+            params_count = __get_params_count(plugin_instance.get_dashboard)
+            if params_count > 1:
+                dashboard: Tuple = plugin_instance.get_dashboard(key=key, user_agent=user_agent)
+            elif params_count > 0:
+                dashboard: Tuple = plugin_instance.get_dashboard(user_agent=user_agent)
+            else:
+                dashboard: Tuple = plugin_instance.get_dashboard()
+        except Exception as e:
+            logger.error(f"插件 {pid} 调用方法 get_dashboard 出错: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail=f"插件 {pid} 调用方法 get_dashboard 出错: {str(e)}")
+        cols, attrs, elements = dashboard
+        return schemas.PluginDashboard(
+            id=pid,
+            name=plugin_instance.plugin_name,
+            key=key,
+            render_mode=render_mode,
+            cols=cols or {},
+            attrs=attrs or {},
+            elements=elements
+        )
 
     def get_plugin_attr(self, pid: str, attr: str) -> Any:
         """
@@ -781,7 +833,8 @@ class PluginManager(metaclass=Singleton):
             logger.debug(f"获取插件是否在本地包中存在失败，{e}")
             return False
 
-    def get_plugins_from_market(self, market: str, package_version: Optional[str] = None) -> Optional[List[schemas.Plugin]]:
+    def get_plugins_from_market(self, market: str, package_version: Optional[str] = None) -> Optional[
+        List[schemas.Plugin]]:
         """
         从指定的市场获取插件信息
         :param market: 市场的 URL 或标识
@@ -795,7 +848,8 @@ class PluginManager(metaclass=Singleton):
         # 获取在线插件
         online_plugins = self.pluginhelper.get_plugins(market, package_version)
         if online_plugins is None:
-            logger.warning(f"获取{package_version if package_version else ''}插件库失败：{market}，请检查 GitHub 网络连接")
+            logger.warning(
+                f"获取{package_version if package_version else ''}插件库失败：{market}，请检查 GitHub 网络连接")
             return []
         ret_plugins = []
         add_time = len(online_plugins)

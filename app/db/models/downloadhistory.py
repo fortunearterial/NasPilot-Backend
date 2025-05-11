@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 
-from sqlalchemy import Column, Integer, String, JSON, Text, BigInteger
+from sqlalchemy import Column, Integer, String, Sequence, JSON, Text, BigInteger, or_
 from sqlalchemy.orm import Session
 
 from app.db import db_query, db_update, db_id, Base
@@ -67,8 +67,8 @@ class DownloadHistory(Base):
     @staticmethod
     @db_query
     def get_by_mediaid(db: Session, tmdbid: int, doubanid: str):
-        return db.query(DownloadHistory).filter(DownloadHistory.tmdbid == tmdbid,
-                                                DownloadHistory.doubanid == doubanid).all()
+        return db.query(DownloadHistory).filter(or_(DownloadHistory.tmdbid == tmdbid,
+                                                    DownloadHistory.doubanid == doubanid)).all()
 
     @staticmethod
     @db_query
@@ -99,18 +99,18 @@ class DownloadHistory(Base):
                                                           DownloadHistory.type == mtype,
                                                           DownloadHistory.seasons == season,
                                                           DownloadHistory.episodes == episode).order_by(
-                DownloadHistory.id.desc()).all()
+                    DownloadHistory.id.desc()).all()
             # 电视剧某季
             elif season is not None:
                 result = db.query(DownloadHistory).filter(DownloadHistory.tmdbid == tmdbid,
                                                           DownloadHistory.type == mtype,
                                                           DownloadHistory.seasons == season).order_by(
-                DownloadHistory.id.desc()).all()
+                    DownloadHistory.id.desc()).all()
             else:
                 # 电视剧所有季集/电影
                 result = db.query(DownloadHistory).filter(DownloadHistory.tmdbid == tmdbid,
                                                           DownloadHistory.type == mtype).order_by(
-                DownloadHistory.id.desc()).all()
+                    DownloadHistory.id.desc()).all()
         # 标题 + 年份
         elif title and year:
             # 电视剧某季某集
@@ -119,18 +119,18 @@ class DownloadHistory(Base):
                                                           DownloadHistory.year == year,
                                                           DownloadHistory.seasons == season,
                                                           DownloadHistory.episodes == episode).order_by(
-                DownloadHistory.id.desc()).all()
+                    DownloadHistory.id.desc()).all()
             # 电视剧某季
             elif season is not None:
                 result = db.query(DownloadHistory).filter(DownloadHistory.title == title,
                                                           DownloadHistory.year == year,
                                                           DownloadHistory.seasons == season).order_by(
-                DownloadHistory.id.desc()).all()
+                    DownloadHistory.id.desc()).all()
             else:
                 # 电视剧所有季集/电影
                 result = db.query(DownloadHistory).filter(DownloadHistory.title == title,
                                                           DownloadHistory.year == year).order_by(
-                DownloadHistory.id.desc()).all()
+                    DownloadHistory.id.desc()).all()
 
         if result:
             return list(result)

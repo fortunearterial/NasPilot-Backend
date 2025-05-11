@@ -55,6 +55,13 @@ class _PluginBase(metaclass=ABCMeta):
         """
         pass
 
+    def get_name(self) -> str:
+        """
+        获取插件名称
+        :return: 插件名称
+        """
+        return self.plugin_name
+
     @abstractmethod
     def get_state(self) -> bool:
         """
@@ -76,6 +83,14 @@ class _PluginBase(metaclass=ABCMeta):
         """
         pass
 
+    @staticmethod
+    def get_render_mode() -> Tuple[str, Optional[str]]:
+        """
+        获取插件渲染模式
+        :return: 1、渲染模式，支持：vue/vuetify，默认vuetify；2、vue模式下编译后文件的相对路径，默认为`dist/asserts`，vuetify模式下为None
+        """
+        return "vuetify", None
+
     @abstractmethod
     def get_api(self) -> List[Dict[str, Any]]:
         """
@@ -84,6 +99,7 @@ class _PluginBase(metaclass=ABCMeta):
             "path": "/xx",
             "endpoint": self.xxx,
             "methods": ["GET", "POST"],
+            "auth: "apikey",  # 鉴权类型：apikey/bear
             "summary": "API名称",
             "description": "API说明"
         }]
@@ -91,18 +107,19 @@ class _PluginBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
+    def get_form(self) -> Tuple[Optional[List[dict]], Dict[str, Any]]:
         """
-        拼装插件配置页面，需要返回两块数据：1、页面配置；2、数据结构
-        插件配置页面使用Vuetify组件拼装，参考：https://vuetifyjs.com/
+        拼装插件配置页面，插件配置页面使用Vuetify组件拼装，参考：https://vuetifyjs.com/
+        :return: 1、页面配置（vuetify模式）或 None（vue模式）；2、默认数据结构
         """
         pass
 
     @abstractmethod
-    def get_page(self) -> List[dict]:
+    def get_page(self) -> Optional[List[dict]]:
         """
         拼装插件详情页面，需要返回页面配置，同时附带数据
         插件详情页面使用Vuetify组件拼装，参考：https://vuetifyjs.com/
+        :return: 页面配置（vuetify模式）或 None（vue模式）
         """
         pass
 
@@ -119,9 +136,9 @@ class _PluginBase(metaclass=ABCMeta):
         """
         pass
 
-    def get_dashboard(self, key: str, **kwargs) -> Optional[Tuple[Dict[str, Any], Dict[str, Any], List[dict]]]:
+    def get_dashboard(self, key: str, **kwargs) -> Optional[Tuple[Dict[str, Any], Dict[str, Any], Optional[List[dict]]]]:
         """
-        获取插件仪表盘页面，需要返回：1、仪表板col配置字典；2、全局配置（自动刷新等）；3、仪表板页面元素配置json（含数据）
+        获取插件仪表盘页面，需要返回：1、仪表板col配置字典；2、全局配置（布局、自动刷新等）；3、仪表板页面元素配置含数据json（vuetify）或 None（vue模式）
         1、col配置参考：
         {
             "cols": 12, "md": 6
@@ -133,7 +150,7 @@ class _PluginBase(metaclass=ABCMeta):
             "title": "组件标题", // 组件标题，如有将显示该标题，否则显示插件名称
             "subtitle": "组件子标题", // 组件子标题，缺省时不展示子标题
         }
-        3、页面配置使用Vuetify组件拼装，参考：https://vuetifyjs.com/
+        3、vuetify模式页面配置使用Vuetify组件拼装，参考：https://vuetifyjs.com/；vue模式为None
 
         kwargs参数可获取的值：1、user_agent：浏览器UA
 
@@ -152,6 +169,16 @@ class _PluginBase(metaclass=ABCMeta):
                 "key": "dashboard2",
                 "name": "仪表盘2"
             }]
+        """
+        pass
+
+    def get_module(self) -> Dict[str, Any]:
+        """
+        获取插件模块声明，用于胁持系统模块实现（方法名：方法实现）
+        {
+            "id1": self.xxx1,
+            "id2": self.xxx2,
+        }
         """
         pass
 

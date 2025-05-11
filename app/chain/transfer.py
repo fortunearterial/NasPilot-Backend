@@ -17,6 +17,7 @@ from app.core.config import settings, global_vars
 from app.core.context import MediaInfo
 from app.core.meta import MetaBase
 from app.core.metainfo import MetaInfoPath
+from app.core.event import eventmanager
 from app.db.downloadhistory_oper import DownloadHistoryOper
 from app.db.models.downloadhistory import DownloadHistory
 from app.db.models.transferhistory import TransferHistory
@@ -29,7 +30,8 @@ from app.log import logger
 from app.schemas import TransferInfo, TransferTorrent, Notification, EpisodeFormat, FileItem, TransferDirectoryConf, \
     TransferTask, TransferQueue, TransferJob, TransferJobTask
 from app.schemas.types import TorrentStatus, EventType, MediaType, ProgressKey, NotificationType, MessageChannel, \
-    SystemConfigKey
+    SystemConfigKey, ChainEventType, ContentType
+from app.schemas import StorageOperSelectionEventData
 from app.utils.singleton import Singleton
 from app.utils.string import StringUtils
 
@@ -699,9 +701,35 @@ class TransferChain(ChainBase, metaclass=Singleton):
                                                                          storage=task.fileitem.storage,
                                                                          src_path=Path(task.fileitem.path),
                                                                          target_storage=task.target_storage)
+            if not task.target_storage and task.target_directory:
+                task.target_storage = task.target_directory.library_storage
 
             # 正在处理
             self.jobview.running_task(task)
+
+            # 广播事件，请示额外的源存储支持
+            source_oper = None
+            source_event_data = StorageOperSelectionEventData(
+                storage=task.fileitem.storage,
+            )
+            source_event = eventmanager.send_event(ChainEventType.StorageOperSelection, source_event_data)
+            # 使用事件返回的上下文数据
+            if source_event and source_event.event_data:
+                source_event_data: StorageOperSelectionEventData = source_event.event_data
+                if source_event_data.storage_oper:
+                    source_oper = source_event_data.storage_oper
+
+            # 广播事件，请示额外的目标存储支持
+            target_oper = None
+            target_event_data = StorageOperSelectionEventData(
+                storage=task.target_storage,
+            )
+            target_event = eventmanager.send_event(ChainEventType.StorageOperSelection, target_event_data)
+            # 使用事件返回的上下文数据
+            if target_event and target_event.event_data:
+                target_event_data: StorageOperSelectionEventData = target_event.event_data
+                if target_event_data.storage_oper:
+                    target_oper = target_event_data.storage_oper
 
             # 执行整理
             transferinfo: TransferInfo = self.transfer(fileitem=task.fileitem,
@@ -714,7 +742,9 @@ class TransferChain(ChainBase, metaclass=Singleton):
                                                        episodes_info=task.episodes_info,
                                                        scrape=task.scrape,
                                                        library_type_folder=task.library_type_folder,
-                                                       library_category_folder=task.library_category_folder)
+                                                       library_category_folder=task.library_category_folder,
+                                                       source_oper=source_oper,
+                                                       target_oper=target_oper)
             if not transferinfo:
                 logger.error("文件整理模块运行失败")
                 return False, "文件整理模块运行失败"
@@ -1355,22 +1385,17 @@ class TransferChain(ChainBase, metaclass=Singleton):
         """
         发送入库成功的消息
         """
-        msg_title = f"{mediainfo.title_year} {meta.season_episode if not season_episode else season_episode} 已入库"
-        if mediainfo.vote_average:
-            msg_str = f"评分：{mediainfo.vote_average}，类型：{mediainfo.type.value}"
-        else:
-            msg_str = f"类型：{mediainfo.type.value}"
-        if mediainfo.category:
-            msg_str = f"{msg_str}，类别：{mediainfo.category}"
-        if meta.resource_term:
-            msg_str = f"{msg_str}，质量：{meta.resource_term}"
-        msg_str = f"{msg_str}，共{transferinfo.file_count}个文件，" \
-                  f"大小：{StringUtils.str_filesize(transferinfo.total_size)}"
-        if transferinfo.message:
-            msg_str = f"{msg_str}，以下文件处理失败：\n{transferinfo.message}"
-        # 发送
-        self.post_message(Notification(
-            mtype=NotificationType.Organize,
-            title=msg_title, text=msg_str, image=mediainfo.get_message_image(),
-            username=username,
-            link=settings.MP_DOMAIN('#/history')))
+        self.post_message(
+            Notification(
+                mtype=NotificationType.Organize,
+                ctype=ContentType.OrganizeSuccess,
+                image=mediainfo.get_message_image(),
+                username=username,
+                link=settings.MP_DOMAIN('#/history')
+            ),
+            meta=meta,
+            mediainfo=mediainfo,
+            transferinfo=transferinfo,
+            season_episode=season_episode,
+            username=username
+        )
