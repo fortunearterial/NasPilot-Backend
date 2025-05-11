@@ -1,4 +1,5 @@
 import random
+import re  # 导入正则表达式模块
 import string
 from datetime import timedelta
 from typing import Any, Annotated, Optional, Union
@@ -35,7 +36,7 @@ class LogonRequestForm:
         self.recommend_code = recommend_code
 
 
-@router.post("/", summary="用户注册", response_model=Union[schemas.Response, schemas.Token])
+@router.post("/mobile", summary="用户注册", response_model=Union[schemas.Response, schemas.Token])
 def create_user(
         *,
         form_data: Annotated[LogonRequestForm, Depends()],
@@ -44,13 +45,18 @@ def create_user(
     """
     用户注册
     """
+    # 使用正则表达式验证手机号格式，以中国手机号为例
+    phone_pattern = re.compile(r'^1[3-9]\d{9}$')
+    if not phone_pattern.match(form_data.name):
+        return schemas.Response(success=False, message="请输入正确的手机号")
+    if form_data.password != form_data.confirm_password:
+        return schemas.Response(success=False, message="两次输入的密码不一致")
+
     user = User.get_by_name(db, name=form_data.name)
     if user:
         return schemas.Response(success=False, message="用户已存在")
     user_info = dict()
     user_info.update(form_data.__dict__)
-    if user_info.get("password") != user_info.get("confirm_password"):
-        return schemas.Response(success=False, message="两次输入的密码不一致")
     if user_info.get("password"):
         user_info["hashed_password"] = get_password_hash(user_info["password"])
         user_info.pop("password")
@@ -58,7 +64,7 @@ def create_user(
     if user_info.get("sms_code"):
         # 验证短信验证码
         user_info.pop("sms_code")
-    user_info["phone"] = user_info["name"]
+    user_info["phone"] = user_info.get("name")
     user_info["invite_code"] = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
     user = User(**user_info)
     user.create(db)

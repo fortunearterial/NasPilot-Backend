@@ -229,7 +229,7 @@ def remotes(token: str) -> Any:
     """
     获取插件联邦组件列表
     """
-    if token != "moviepilot":
+    if token != "naspilot":
         raise HTTPException(status_code=403, detail="Forbidden")
     return PluginManager().get_plugin_remotes()
 

@@ -175,7 +175,7 @@ def get_global_setting(token: str):
     """
     查询非敏感系统设置（默认鉴权）
     """
-    if token != "moviepilot":
+    if token != "naspilot":
         raise HTTPException(status_code=403, detail="Forbidden")
 
     # FIXME: 新增敏感配置项时要在此处添加排除项
