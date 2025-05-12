@@ -204,9 +204,9 @@ class Base:
     __name__: str
 
     @classmethod
-    def from_dict(cls, **kwargs) -> dict:
+    def from_dict(cls, **kwargs):
         valid_keys = cls.__table__.columns.keys()
-        return cls.__init__(**{k: v for k, v in kwargs.items() if k in valid_keys})
+        return cls(**{k: v for k, v in kwargs.items() if k in valid_keys})
 
     @db_update
     def create(self, db: Session):

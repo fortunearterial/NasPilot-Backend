@@ -77,7 +77,7 @@ class FileManagerModule(_ModuleBase):
         测试模块连接性
         """
         # 检查目录
-        dirs = self.directoryhelper.get_dirs()
+        dirs = self.directoryhelper.get_dirs(settings.CURRENT_USERID)
         if not dirs:
             return False, "未设置任何目录"
         for d in dirs:
@@ -1279,7 +1279,7 @@ class FileManagerModule(_ModuleBase):
         """
         ret_fileitems = []
         # 检查本地媒体库
-        dest_dirs = DirectoryHelper().get_library_dirs()
+        dest_dirs = DirectoryHelper().get_library_dirs(settings.CURRENT_USERID)
         # 检查每一个媒体库目录
         for dest_dir in dest_dirs:
             # 存储

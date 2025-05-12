@@ -692,12 +692,14 @@ class TransferChain(ChainBase, metaclass=Singleton):
             if not task.target_directory:
                 if task.target_path:
                     # 指定目标路径，`手动整理`场景下使用，忽略源目录匹配，使用指定目录匹配
-                    task.target_directory = self.directoryhelper.get_dir(media=task.mediainfo,
+                    task.target_directory = self.directoryhelper.get_dir(user_id=settings.CURRENT_USERID,
+                                                                         media=task.mediainfo,
                                                                          dest_path=task.target_path,
                                                                          target_storage=task.target_storage)
                 else:
                     # 启用源目录匹配时，根据源目录匹配下载目录，否则按源目录同盘优先原则，如无源目录，则根据媒体信息获取目标目录
-                    task.target_directory = self.directoryhelper.get_dir(media=task.mediainfo,
+                    task.target_directory = self.directoryhelper.get_dir(user_id=settings.CURRENT_USERID,
+                                                                         media=task.mediainfo,
                                                                          storage=task.fileitem.storage,
                                                                          src_path=Path(task.fileitem.path),
                                                                          target_storage=task.target_storage)
@@ -784,7 +786,7 @@ class TransferChain(ChainBase, metaclass=Singleton):
         # 全局锁，避免重复处理
         with downloader_lock:
             # 获取下载器监控目录
-            download_dirs = self.directoryhelper.get_download_dirs()
+            download_dirs = self.directoryhelper.get_download_dirs(settings.CURRENT_USERID)
             # 如果没有下载器监控的目录则不处理
             if not any(dir_info.monitor_type == "downloader" and dir_info.storage == "local"
                        for dir_info in download_dirs):

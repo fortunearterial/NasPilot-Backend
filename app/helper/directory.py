@@ -3,9 +3,9 @@ from typing import List, Optional
 
 from app import schemas
 from app.core.context import MediaInfo
-from app.db.systemconfig_oper import SystemConfigOper
-from app.schemas.types import SystemConfigKey
 from app.utils.system import SystemUtils
+from app.schemas.types import UserConfigKey
+from app.db.userconfig_oper import UserConfigOper
 
 
 class DirectoryHelper:
@@ -14,42 +14,42 @@ class DirectoryHelper:
     """
 
     def __init__(self):
-        self.systemconfig = SystemConfigOper()
+        self.userconfig = UserConfigOper()
 
-    def get_dirs(self) -> List[schemas.TransferDirectoryConf]:
+    def get_dirs(self, user_id: int) -> List[schemas.TransferDirectoryConf]:
         """
         获取所有下载目录
         """
-        dir_confs: List[dict] = self.systemconfig.get(SystemConfigKey.Directories)
+        dir_confs: List[dict] = self.userconfig.get(user_id, UserConfigKey.Directories)
         if not dir_confs:
             return []
         return [schemas.TransferDirectoryConf(**d) for d in dir_confs]
 
-    def get_download_dirs(self) -> List[schemas.TransferDirectoryConf]:
+    def get_download_dirs(self, user_id: int) -> List[schemas.TransferDirectoryConf]:
         """
         获取所有下载目录
         """
-        return sorted([d for d in self.get_dirs() if d.download_path], key=lambda x: x.priority)
+        return sorted([d for d in self.get_dirs(user_id) if d.download_path], key=lambda x: x.priority)
 
-    def get_local_download_dirs(self) -> List[schemas.TransferDirectoryConf]:
+    def get_local_download_dirs(self, user_id: int) -> List[schemas.TransferDirectoryConf]:
         """
         获取所有本地的可下载目录
         """
-        return [d for d in self.get_download_dirs() if d.storage == "local"]
+        return [d for d in self.get_download_dirs(user_id) if d.storage == "local"]
 
-    def get_library_dirs(self) -> List[schemas.TransferDirectoryConf]:
+    def get_library_dirs(self, user_id: int) -> List[schemas.TransferDirectoryConf]:
         """
         获取所有媒体库目录
         """
-        return sorted([d for d in self.get_dirs() if d.library_path], key=lambda x: x.priority)
+        return sorted([d for d in self.get_dirs(user_id) if d.library_path], key=lambda x: x.priority)
 
-    def get_local_library_dirs(self) -> List[schemas.TransferDirectoryConf]:
+    def get_local_library_dirs(self, user_id: int) -> List[schemas.TransferDirectoryConf]:
         """
         获取所有本地的媒体库目录
         """
-        return [d for d in self.get_library_dirs() if d.library_storage == "local"]
+        return [d for d in self.get_library_dirs(user_id) if d.library_storage == "local"]
 
-    def get_dir(self, media: MediaInfo, include_unsorted: Optional[bool] = False,
+    def get_dir(self, user_id: int, media: MediaInfo, include_unsorted: Optional[bool] = False,
                 storage: Optional[str] = None, src_path: Path = None,
                 target_storage: Optional[str] = None, dest_path: Path = None
                 ) -> Optional[schemas.TransferDirectoryConf]:
@@ -67,7 +67,7 @@ class DirectoryHelper:
             return None
         # 电影/电视剧
         media_type = media.type.value
-        dirs = self.get_dirs()
+        dirs = self.get_dirs(user_id)
 
         # 如果存在源目录，并源目录为任一下载目录的子目录时，则进行源目录匹配，否则，允许源目录按同盘优先的逻辑匹配
         matching_dirs = [d for d in dirs if src_path.is_relative_to(d.download_path)] if src_path else []

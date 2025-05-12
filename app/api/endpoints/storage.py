@@ -15,6 +15,7 @@ from app.db.models.user import User
 from app.db.user_oper import get_current_active_superuser
 from app.helper.progress import ProgressHelper
 from app.schemas.types import ProgressKey
+from db.user_oper import get_current_active_user
 
 router = APIRouter()
 
@@ -69,7 +70,7 @@ def reset(name: str,
 @router.post("/list", summary="所有目录和文件", response_model=List[schemas.FileItem])
 def list_files(fileitem: schemas.FileItem,
                sort: Optional[str] = 'updated_at',
-               current_user: User = Depends(get_current_active_superuser)) -> Any:
+               current_user: User = Depends(get_current_active_user)) -> Any:
     """
     查询当前目录下所有目录和文件
     :param fileitem: 文件项

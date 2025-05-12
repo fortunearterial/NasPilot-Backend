@@ -100,10 +100,6 @@ class ChainEventType(Enum):
 
 # 系统配置Key字典
 class SystemConfigKey(Enum):
-    # 目录配置
-    Directories = "Directories"
-    # 存储配置
-    Storages = "Storages"
     # 搜索站点范围
     IndexerSites = "IndexerSites"
     # 订阅站点范围
@@ -223,6 +219,8 @@ class MessageChannel(Enum):
 
 # 下载器类型
 class DownloaderType(Enum):
+    # Thunder
+    Thunder = "Thunder"
     # Qbittorrent
     Qbittorrent = "Qbittorrent"
     # Transmission
@@ -285,6 +283,10 @@ class UserConfigKey(Enum):
     Notifications = "Notifications"
     # 通知场景开关设置
     NotificationSwitchs = "NotificationSwitchs"
+    # 目录配置
+    Directories = "Directories"
+    # 存储配置
+    Storages = "Storages"
 
 
 # 支持的存储类型

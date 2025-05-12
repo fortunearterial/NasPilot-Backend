@@ -17,6 +17,8 @@ class UserJobChain(ChainBase, metaclass=Singleton):
         self.userjoboper = UserJobOper()
 
     def user_job(self):
+        if not settings.CURRENT_USERID:
+            return
         jobs = self.userjoboper.consume(settings.CURRENT_USERID)
         for job in jobs:
             job_args = pickle.loads(job.job_args)

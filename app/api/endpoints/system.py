@@ -181,12 +181,18 @@ def get_global_setting(token: str):
     # FIXME: 新增敏感配置项时要在此处添加排除项
     info = settings.dict(
         exclude={"SECRET_KEY", "RESOURCE_SECRET_KEY", "API_TOKEN", "TMDB_API_KEY", "TVDB_API_KEY", "FANART_API_KEY",
-                 "COOKIECLOUD_KEY", "COOKIECLOUD_PASSWORD", "GITHUB_TOKEN", "REPO_GITHUB_TOKEN"}
+                 "COOKIECLOUD_KEY", "COOKIECLOUD_PASSWORD", "GITHUB_TOKEN", "REPO_GITHUB_TOKEN",
+                 "DB_URL", "DB_ECHO", "DB_MAX_OVERFLOW", "DB_POOL_PRE_PING", "DB_POOL_RECYCLE", "DB_POOL_SIZE",
+                 "DB_POOL_TIMEOUT", "DB_POOL_TYPE", "DB_TIMEOUT", "DB_URL", "DB_WAL_ENABLE"}
     )
     # 追加用户唯一ID和订阅分享管理权限
     info.update({
         "USER_UNIQUE_ID": SubscribeHelper().get_user_uuid(),
         "SUBSCRIBE_SHARE_MANAGE": SubscribeHelper().is_admin_user(),
+        "VERSION": APP_VERSION,
+        "AUTH_VERSION": SitesHelper().auth_version,
+        "INDEXER_VERSION": SitesHelper().indexer_version,
+        "FRONTEND_VERSION": SystemChain().get_frontend_version()
     })
     return schemas.Response(success=True,
                             data=info)
@@ -198,7 +204,9 @@ def get_env_setting(_: User = Depends(get_current_active_superuser)):
     查询系统环境变量，包括当前版本号（仅管理员）
     """
     info = settings.dict(
-        exclude={"SECRET_KEY", "RESOURCE_SECRET_KEY"}
+        exclude={"SECRET_KEY", "RESOURCE_SECRET_KEY", "DB_URL", "DB_ECHO", "DB_MAX_OVERFLOW", "DB_POOL_PRE_PING",
+                 "DB_POOL_RECYCLE", "DB_POOL_SIZE", "DB_POOL_TIMEOUT", "DB_POOL_TYPE", "DB_TIMEOUT", "DB_URL",
+                 "DB_WAL_ENABLE"}
     )
     info.update({
         "VERSION": APP_VERSION,

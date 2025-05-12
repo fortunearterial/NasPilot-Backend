@@ -257,11 +257,11 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     ctype=ContentType.SubscribeAdded,
                     image=mediainfo.get_message_image(),
                     link=link,
-                    username=user.name
+                    username=current_user.name
                 ),
                 meta=metainfo,
                 mediainfo=mediainfo,
-                username=user.name
+                username=current_user.name
             )
         # 发送事件
         EventManager().send_event(EventType.SubscribeAdded, {
@@ -992,9 +992,12 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         if SubscribeOper().is_best_version(subscribe.id):
             return []
         # 求最小集（交集）
-        note = reduce(lambda x, y: set(x) & set(y), [us.note for us in usersubscribes]) or []
-        if not note:
-            return []
+        if len(usersubscribes) == 0:
+            note = []
+        elif len(usersubscribes) == 1:
+            note = usersubscribes[0].note or []
+        else:
+            note = reduce(lambda x, y: set(x) & set(y), [us.note or [] for us in usersubscribes])
         # 针对 TV 类型，返回已下载的集数
         if subscribe.type == MediaType.TV.value:
             logger.info(f'订阅 {subscribe.name} 第{subscribe.season}季 已下载集数：{note}')

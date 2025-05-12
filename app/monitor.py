@@ -93,7 +93,7 @@ class Monitor(metaclass=Singleton):
         self.stop()
 
         # 读取目录配置
-        monitor_dirs = self.directoryhelper.get_download_dirs()
+        monitor_dirs = self.directoryhelper.get_download_dirs(settings.CURRENT_USERID)
         if not monitor_dirs:
             return
 

@@ -12,10 +12,11 @@ from app.core.security import verify_token
 from app.db import get_db
 from app.db.mediaserver_oper import MediaServerOper
 from app.db.models import MediaServerItem
-from app.db.systemconfig_oper import SystemConfigOper
 from app.helper.mediaserver import MediaServerHelper
 from app.schemas import MediaType, NotExistMediaInfo
-from app.schemas.types import SystemConfigKey
+from app.schemas.types import UserConfigKey
+from app.db.user_oper import get_current_user
+from app.db.userconfig_oper import UserConfigOper
 
 router = APIRouter()
 
@@ -148,11 +149,11 @@ def library(server: str, hidden: Optional[bool] = False,
 
 
 @router.get("/clients", summary="查询可用媒体服务器", response_model=List[dict])
-def clients(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
+def clients(current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     查询可用媒体服务器
     """
-    mediaservers: List[dict] = SystemConfigOper().get(SystemConfigKey.MediaServers)
+    mediaservers: List[dict] = UserConfigOper().get(current_user.id, UserConfigKey.MediaServers)
     if mediaservers:
         return [{"name": d.get("name"), "type": d.get("type")} for d in mediaservers if d.get("enabled")]
     return []

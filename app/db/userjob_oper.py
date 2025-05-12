@@ -7,7 +7,7 @@ from app.db.models.userjob import UserJob
 
 class UserJobOper(DbOper):
 
-    def publish(self, userid: str, name: str, *args, **kwargs):
+    def publish(self, user_id: int, name: str, *args, **kwargs):
         """
         发布用户任务
         """
@@ -15,7 +15,7 @@ class UserJobOper(DbOper):
         # 写入数据库
         userjob = UserJob(
             id=id,
-            request_userid=userid,
+            request_userid=user_id,
             job_name=name,
             job_args=pickle.dumps({
             "args": args,

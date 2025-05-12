@@ -276,8 +276,12 @@ class ConfigModel(BaseModel):
     TOKENIZED_SEARCH: bool = False
     # 为指定默认字幕添加.default后缀
     DEFAULT_SUB: Optional[str] = "zh-cn"
+    # 客户端ID
+    CLIENT_ID: Optional[str] = None
+    # 客户端密钥
+    CLIENT_SECRET: Optional[str] = None
     # 当前用户
-    CURRENT_USERID: int = 0
+    CURRENT_USERID: Optional[str] = None
 
 
 class Settings(BaseSettings, ConfigModel, LogConfigModel):

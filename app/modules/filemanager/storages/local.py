@@ -8,6 +8,7 @@ from app.log import logger
 from app.modules.filemanager.storages import StorageBase
 from app.schemas.types import StorageSchema
 from app.utils.system import SystemUtils
+from app.core.config import settings
 
 
 class LocalStorage(StorageBase):
@@ -260,7 +261,7 @@ class LocalStorage(StorageBase):
         """
         存储使用情况
         """
-        library_dirs = DirectoryHelper().get_local_library_dirs()
+        library_dirs = DirectoryHelper().get_local_library_dirs(settings.CURRENT_USERID)
         total_storage, free_storage = SystemUtils.space_usage([Path(d.library_path) for d in library_dirs])
         return schemas.StorageUsage(
             total=total_storage,

@@ -235,7 +235,7 @@ class DownloadChain(ChainBase):
             download_dir = Path(save_path)
         else:
             # 根据媒体信息查询下载目录配置
-            dir_info = self.directoryhelper.get_dir(_media, storage="local", include_unsorted=True)
+            dir_info = self.directoryhelper.get_dir(user_id, _media, storage="local", include_unsorted=True)
             # 拼装子目录
             if dir_info:
                 # 一级目录
@@ -258,24 +258,40 @@ class DownloadChain(ChainBase):
                 return None
 
         # 登记下载记录
-        job_id = self.userjoboper.publish(
-            userid=userid,
-            name="download",
-            context=context,
-            content=content,
-            episodes=episodes,
-            download_dir=download_dir,
-            label=label,
-            downloader=downloader or _site_downloader,
-            _folder_name=_folder_name,
-            _file_list=_file_list,
-            download_episodes=download_episodes,
-            channel=channel,
-            source=source,
-            torrent_file=torrent_file
-        )
-
-        return job_id
+        if settings.CURRENT_USERID:
+            did = self.download_single_job(
+                context=context,
+                content=content,
+                episodes=episodes,
+                download_dir=download_dir,
+                label=label,
+                downloader=downloader or _site_downloader,
+                _folder_name=_folder_name,
+                _file_list=_file_list,
+                download_episodes=download_episodes,
+                channel=channel,
+                source=source,
+                torrent_file=torrent_file
+            )
+            return did
+        else:
+            job_id = self.userjoboper.publish(
+                user_id=user_id,
+                name="download",
+                context=context,
+                content=content,
+                episodes=episodes,
+                download_dir=download_dir,
+                label=label,
+                downloader=downloader or _site_downloader,
+                _folder_name=_folder_name,
+                _file_list=_file_list,
+                download_episodes=download_episodes,
+                channel=channel,
+                source=source,
+                torrent_file=torrent_file
+            )
+            return job_id
 
     def download_single_job(self,
                             context: Context,

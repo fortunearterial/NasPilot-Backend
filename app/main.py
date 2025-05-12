@@ -38,11 +38,12 @@ def start_tray():
     启动托盘图标
     """
 
-    if not SystemUtils.is_frozen():
-        return
+    if not settings.DEBUG:
+        if not SystemUtils.is_frozen():
+            return
 
-    if not SystemUtils.is_windows():
-        return
+        if not SystemUtils.is_windows():
+            return
 
     def open_web():
         """
@@ -90,6 +91,9 @@ def start_tray():
             httpd.handle_request()  # 处理单个请求后自动停止
             return httpd.authorization_code
 
+        if not settings.CLIENT_ID:
+            settings.CLIENT_ID = secrets.token_urlsafe(16)
+        settings.CLIENT_SECRET = secrets.token_urlsafe(16)
         code_verifier = secrets.token_urlsafe(64)
         port = get_free_port()
         redirect_uri = f"http://localhost:{port}/oauth/callback"
@@ -131,7 +135,11 @@ def start_tray():
         # 使用令牌访问受保护资源
         response = oauth.get(f"{settings.APP_DOMAIN}/api/v1/user/current")
         print(f"用户信息: {response.json()}")
-        settings.update_setting('CURRENT_USERID', response.json().get("id"))
+        settings.update_settings({
+            "CLIENT_ID": settings.CLIENT_ID,
+            "CLIENT_SECRET": settings.CLIENT_SECRET,
+            "CURRENT_USERID": response.json().get("id"),
+        })
 
         return token
 
