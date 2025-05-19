@@ -66,13 +66,15 @@ class TemplateContextBuilder:
         if include_raw_objects:
             self._add_raw_objects(meta, mediainfo, torrentinfo, transferinfo, episodes_info)
 
-        return self._context
+        # 移除空值
+        return {k: v for k, v in self._context.items() if v is not None}
 
     def _add_media_info(self, mediainfo: MediaInfo):
         """
         增加媒体信息
         """
         if not mediainfo: return
+        season_fmt = f"S{mediainfo.season:02d}" if mediainfo.season is not None else None
         base_info = {
             # 标题
             "title": self.__convert_invalid_characters(mediainfo.title),
@@ -82,6 +84,8 @@ class TemplateContextBuilder:
             "original_title": self.__convert_invalid_characters(mediainfo.original_title),
             # 季号
             "season": self._context.get("season") or mediainfo.season,
+            # Sxx
+            "season_fmt": self._context.get("season_fmt") or season_fmt,
             # 年份
             "year": mediainfo.year or self._context.get("year"),
             # 媒体标题 + 年份
@@ -148,6 +152,8 @@ class TemplateContextBuilder:
                 meta.name, meta.year) if meta.year else meta.name,
             # 季号
             "season": meta.season_seq,
+            # Sxx
+            "season_fmt": meta.season,
             # 集号
             "episode": meta.episode_seqs,
             # 季集 SxxExx
@@ -269,7 +275,7 @@ class TemplateContextBuilder:
             # 当前季的全部集信息
             "__episodes_info__": episodes_info,
         }
-        self._context.update({k: v for k, v in raw_objects.items() if v is not None})
+        self._context.update(raw_objects)
 
     @staticmethod
     def __convert_invalid_characters(filename: str):
@@ -565,6 +571,7 @@ class MessageQueueManager(metaclass=SingletonClass):
     def _parse_schedule(periods: Union[list, dict]) -> List[tuple[int, int, int, int]]:
         """
         将字符串时间格式转换为分钟数元组
+        支持格式为 'HH:MM' 或 'HH:MM:SS' 的时间字符串
         """
         parsed = []
         if not periods:
@@ -576,9 +583,31 @@ class MessageQueueManager(metaclass=SingletonClass):
                 continue
             if not period.get('start') or not period.get('end'):
                 continue
-            start_h, start_m = map(int, period['start'].split(':'))
-            end_h, end_m = map(int, period['end'].split(':'))
-            parsed.append((start_h, start_m, end_h, end_m))
+            try:
+                # 处理 start 时间
+                start_parts = period['start'].split(':')
+                if len(start_parts) == 2:
+                    start_h, start_m = map(int, start_parts)
+                elif len(start_parts) >= 3:
+                    start_h, start_m = map(int, start_parts[:2])  # 只取前两个部分 (HH:MM)
+                else:
+                    continue
+                # 处理 end 时间
+                end_parts = period['end'].split(':')
+                if len(end_parts) == 2:
+                    end_h, end_m = map(int, end_parts)
+                elif len(end_parts) >= 3:
+                    end_h, end_m = map(int, end_parts[:2])  # 只取前两个部分 (HH:MM)
+                else:
+                    continue
+
+                parsed.append((start_h, start_m, end_h, end_m))
+            except ValueError as e:
+                logger.error(f"解析时间周期时出现错误：{period}. 错误：{str(e)}. 跳过此周期。")
+                continue
+            except Exception as e:
+                logger.error(f"解析时间周期时出现意外错误：{period}. 错误：{str(e)}. 跳过此周期。")
+                continue
         return parsed
 
     @staticmethod

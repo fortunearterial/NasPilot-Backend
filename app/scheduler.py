@@ -51,6 +51,8 @@ class Scheduler(metaclass=Singleton):
     _jobs = {}
     # 用户认证失败次数
     _auth_count = 0
+    # 用户认证失败消息发送
+    _auth_message = False
 
     def __init__(self):
         self.init()
@@ -603,6 +605,9 @@ class Scheduler(metaclass=Singleton):
             schedulers = []
             # 去重
             added = []
+            # 避免_scheduler.shutdown()处于阻塞状态导致的死锁
+            if not self._scheduler or not self._scheduler.running:
+                return []
             jobs = self._scheduler.get_jobs()
             # 按照下次运行时间排序
             jobs.sort(key=lambda x: x.next_run_time)
@@ -675,9 +680,11 @@ class Scheduler(metaclass=Singleton):
         # 最大重试次数
         __max_try__ = 30
         if self._auth_count > __max_try__:
-            SchedulerChain().messagehelper.put(title=f"用户认证失败",
-                                               message="用户认证失败次数过多，将不再尝试认证！",
-                                               role="system")
+            if not self._auth_message:
+                SchedulerChain().messagehelper.put(title=f"用户认证失败",
+                                                   message="用户认证失败次数过多，将不再尝试认证！",
+                                                   role="system")
+                self._auth_message = True
             return
         logger.info("用户未认证，正在尝试认证...")
         auth_conf = SystemConfigOper().get(SystemConfigKey.UserSiteAuthParams)
@@ -692,10 +699,11 @@ class Scheduler(metaclass=Singleton):
                 Notification(
                     mtype=NotificationType.Manual,
                     title="NasPilot用户认证成功",
-                    text=f"使用站点：{msg}",
+                    text=f"使用站点：{msg}，如有插件使用异常，请重启NasPilot。",
                     link=settings.MP_DOMAIN('#/site')
                 )
             )
+            # 认证通过后重新初始化插件
             PluginManager().init_config()
             self.init_plugin_jobs()
 

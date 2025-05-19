@@ -25,29 +25,17 @@ class TmdbApi:
 
     def __init__(self, language: Optional[str] = None):
         # TMDB主体
-        self.tmdb = TMDb()
-        # 域名
-        self.tmdb.domain = settings.TMDB_API_DOMAIN
-        # 开启缓存
-        self.tmdb.cache = True
-        # APIKEY
-        self.tmdb.api_key = settings.TMDB_API_KEY
-        # 语种
-        self.tmdb.language = language or settings.TMDB_LOCALE
-        # 代理
-        self.tmdb.proxies = settings.PROXY
-        # 调试模式
-        self.tmdb.debug = False
+        self.tmdb = TMDb(language=language)
         # TMDB查询对象
-        self.search = Search()
-        self.movie = Movie()
-        self.tv = TV()
-        self.season_obj = Season()
-        self.episode_obj = Episode()
-        self.discover = Discover()
-        self.trending = Trending()
-        self.person = Person()
-        self.collection = Collection()
+        self.search = Search(language=language)
+        self.movie = Movie(language=language)
+        self.tv = TV(language=language)
+        self.season_obj = Season(language=language)
+        self.episode_obj = Episode(language=language)
+        self.discover = Discover(language=language)
+        self.trending = Trending(language=language)
+        self.person = Person(language=language)
+        self.collection = Collection(language=language)
 
     def search_multiis(self, title: str) -> List[dict]:
         """
@@ -1346,7 +1334,18 @@ class TmdbApi:
             return []
         try:
             logger.debug(f"正在获取剧集组：{group_id}...")
-            return self.tv.group_episodes(group_id) or []
+            group_seasons = self.tv.group_episodes(group_id) or []
+            return [
+                {
+                    **group_season,
+                    "episodes": [
+                        {**ep, "episode_number": idx}
+                        # 剧集组中每个季的episode_number从1开始
+                        for idx, ep in enumerate(group_season.get("episodes", []), start=1)
+                    ]
+                }
+                for group_season in group_seasons
+            ]
         except Exception as e:
             logger.error(str(e))
             return []
@@ -1360,9 +1359,6 @@ class TmdbApi:
             return {}
         for group_season in group_seasons:
             if group_season.get('order') == season:
-                # 剧集组中每个季的episode_number从1开始
-                for i, e in enumerate(group_season.get('episodes', []), start=1):
-                    e['episode_number'] = i
                 return group_season
         return {}
 

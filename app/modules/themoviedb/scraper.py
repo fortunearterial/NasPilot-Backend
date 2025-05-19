@@ -31,7 +31,6 @@ class TmdbScraper:
             return TmdbApi(language=mediainfo.original_language)
         return self.default_tmdb
 
-
     def get_metadata_nfo(self, meta: MetaBase, mediainfo: MediaInfo,
                          season: Optional[int] = None, episode: Optional[int] = None) -> Optional[str]:
         """
@@ -63,11 +62,12 @@ class TmdbScraper:
                 # 电视剧元数据文件
                 doc = self.__gen_tv_nfo_file(mediainfo=mediainfo)
         if doc:
-            return doc.toprettyxml(indent="  ", encoding="utf-8") # noqa
+            return doc.toprettyxml(indent="  ", encoding="utf-8")  # noqa
 
         return None
 
-    def get_metadata_img(self, mediainfo: MediaInfo, season: Optional[int] = None, episode: Optional[int] = None) -> dict:
+    def get_metadata_img(self, mediainfo: MediaInfo, season: Optional[int] = None,
+                         episode: Optional[int] = None) -> dict:
         """
         获取图片名称和url
         :param mediainfo: 媒体信息
@@ -76,7 +76,7 @@ class TmdbScraper:
         """
         images = {}
         if season is not None:
-            # 只需要集的图片
+            # 只需要季集的图片
             if episode:
                 # 集的图片
                 if mediainfo.episode_group:
@@ -100,7 +100,7 @@ class TmdbScraper:
                         images[poster_name] = poster_url
             return images
         else:
-            # 主媒体图片
+            # 获取媒体信息中原有图片（TheMovieDb或Fanart）
             for attr_name, attr_value in vars(mediainfo).items():
                 if attr_value \
                         and attr_name.endswith("_path") \
@@ -109,6 +109,15 @@ class TmdbScraper:
                         and attr_value.startswith("http"):
                     image_name = attr_name.replace("_path", "") + Path(attr_value).suffix
                     images[image_name] = attr_value
+            # 替换原语言Poster
+            if settings.TMDB_SCRAP_ORIGINAL_IMAGE:
+                _mediainfo = self.original_tmdb(mediainfo).get_info(mediainfo.type, mediainfo.tmdb_id)
+                if _mediainfo:
+                    for attr_name, attr_value in _mediainfo.items():
+                        if attr_name.endswith("_path") and attr_value is not None:
+                            image_url = f"https://{settings.TMDB_IMAGE_DOMAIN}/t/p/original{attr_value}"
+                            image_name = attr_name.replace("_path", "") + Path(image_url).suffix
+                            images[image_name] = image_url
             return images
 
     @staticmethod
