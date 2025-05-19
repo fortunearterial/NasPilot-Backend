@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     # 初始化命令
     init_command()
     # 初始化工作流
-    init_workflow(app)
+    init_workflow()
     # 插件同步到本地
     sync_plugins_task = asyncio.create_task(init_plugin_system())
     try:
