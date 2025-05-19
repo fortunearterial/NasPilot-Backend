@@ -1,7 +1,5 @@
 import time
-from datetime import datetime
 from urllib import parse
-from uuid import UUID
 
 import oss2
 import playwright.sync_api
@@ -9,13 +7,12 @@ import playwright.sync_api
 from oss2.credentials import StaticCredentialsProvider
 
 from app.utils.singleton import Singleton
-from app.utils.string import StringUtils
 from app.helper.sites import PageSpider
 
 
 class SpecialSitesHelper(metaclass=Singleton):
-    ACCESS_KEY_ID = "LTAI5t8v2Nqh7LhF1a4XM7oQ"
-    ACCESS_KEY_SECRET = "qGRvy7tqcESCgYODUzsoHVMyFJqOe7"
+    ACCESS_KEY_ID = ""
+    ACCESS_KEY_SECRET = ""
 
     def btbtl_handler(self, url: str):
         auth = oss2.ProviderAuthV4(StaticCredentialsProvider(
