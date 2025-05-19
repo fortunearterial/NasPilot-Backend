@@ -15,7 +15,7 @@ from app.db.models.user import User
 from app.db.user_oper import get_current_active_superuser
 from app.helper.progress import ProgressHelper
 from app.schemas.types import ProgressKey
-from db.user_oper import get_current_active_user
+from app.db.user_oper import get_current_active_user
 
 router = APIRouter()
 

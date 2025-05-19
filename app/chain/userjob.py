@@ -24,7 +24,7 @@ class UserJobChain(ChainBase, metaclass=Singleton):
             job_args = pickle.loads(job.job_args)
             try:
                 if job.job_name == "download":
-                    DownloadChain().download_single_job(**job_args.get("kwargs"))
+                    DownloadChain().download_single_job(user_id=settings.CURRENT_USERID, **job_args.get("kwargs"))
             except Exception as e:
                 continue
             self.userjoboper.done(job.job_id, settings.CURRENT_USERID)

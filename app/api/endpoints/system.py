@@ -38,6 +38,7 @@ from app.utils.http import RequestUtils
 from app.utils.security import SecurityUtils
 from app.utils.system import SystemUtils
 from app.utils.url import UrlUtils
+from app.db.user_oper import get_current_user
 from version import APP_VERSION
 
 router = APIRouter()
@@ -143,13 +144,13 @@ def proxy_img(
         imgurl: str,
         proxy: bool = False,
         if_none_match: Annotated[str | None, Header()] = None,
-        _: schemas.TokenPayload = Depends(verify_resource_token)
+        current_user: schemas.User = Depends(get_current_user)
 ) -> Response:
     """
     图片代理，可选是否使用代理服务器，支持 HTTP 缓存
     """
     # 媒体服务器添加图片代理支持
-    hosts = [config.config.get("host") for config in MediaServerHelper().get_configs().values() if
+    hosts = [config.config.get("host") for config in MediaServerHelper().get_configs(current_user.id).values() if
              config and config.config and config.config.get("host")]
     allowed_domains = set(settings.SECURITY_IMAGE_DOMAINS) | set(hosts)
     return fetch_image(url=imgurl, proxy=proxy, use_disk_cache=False,

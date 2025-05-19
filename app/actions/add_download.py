@@ -100,7 +100,8 @@ class AddDownloadAction(BaseAction):
                                     continue
 
             _started = True
-            did = self.downloadchain.download_single(context=t,
+            did, error_msg = self.downloadchain.download_single(user_id=0, #TODO: user_id
+                                                     context=t,
                                                      downloader=params.downloader,
                                                      save_path=params.save_path,
                                                      label=params.labels)

@@ -202,7 +202,7 @@ class UserServiceBaseHelper(Generic[TConf]):
         """
         configs: List[TConf] = ServiceConfigHelper.get_user_configs(user_id, self.config_key, self.conf_type)
         return {
-            config.name: config
+            config.user_id + "/" + config.name: config
             for config in configs
             if (config.name and config.type and config.enabled) or include_disabled
         } if configs else {}

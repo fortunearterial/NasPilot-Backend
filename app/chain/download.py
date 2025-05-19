@@ -19,11 +19,14 @@ from app.helper.directory import DirectoryHelper
 from app.helper.message import MessageHelper
 from app.helper.torrent import TorrentHelper
 from app.log import logger
-from app.schemas import ExistMediaInfo, NotExistMediaInfo, DownloadingTorrent, Notification, ResourceSelectionEventData, ResourceDownloadEventData
-from app.schemas.types import MediaType, TorrentStatus, EventType, MessageChannel, NotificationType, ContentType, ChainEventType
+from app.schemas import ExistMediaInfo, NotExistMediaInfo, DownloadingTorrent, Notification, ResourceSelectionEventData, \
+    ResourceDownloadEventData
+from app.schemas.types import MediaType, TorrentStatus, EventType, MessageChannel, NotificationType, ContentType, \
+    ChainEventType
 from app.utils.http import RequestUtils
 from app.utils.string import StringUtils
 from app.helper.sites import PageSpider
+from app.helper.specialsites import SpecialSitesHelper
 
 
 class DownloadChain(ChainBase):
@@ -119,6 +122,9 @@ class DownloadChain(ChainBase):
             selector, url = re.findall(r'【(.*?)】', torrent.enclosure)
             _spider = PageSpider(url=url)
             torrent_url = _spider.parse(json.loads(selector))
+        elif torrent.enclosure.startswith("@btbtl:"):
+            selector, url = re.findall(r'【(.*?)】', torrent.enclosure)
+            torrent_url = SpecialSitesHelper().btbtl_handler(url)
         else:
             torrent_url = torrent.enclosure
         if not torrent_url:
@@ -150,8 +156,8 @@ class DownloadChain(ChainBase):
         return torrent_file, download_folder, files
 
     def download_single(self,
-                        context: Context,
                         user_id: int,
+                        context: Context,
                         torrent_file: Path = None,
                         episodes: Set[int] = None,
                         channel: MessageChannel = None,
@@ -160,7 +166,7 @@ class DownloadChain(ChainBase):
                         save_path: Optional[str] = None,
                         userid: Union[str, int] = None,
                         username: Optional[str] = None,
-                        label: Optional[str] = None) -> Optional[str]:
+                        label: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
         """
         下载及发送通知
         :param context: 资源上下文
@@ -257,43 +263,45 @@ class DownloadChain(ChainBase):
                                        title="下载失败", role="system")
                 return None
 
-        # 登记下载记录
-        if settings.CURRENT_USERID:
-            did = self.download_single_job(
-                context=context,
-                content=content,
-                episodes=episodes,
-                download_dir=download_dir,
-                label=label,
-                downloader=downloader or _site_downloader,
-                _folder_name=_folder_name,
-                _file_list=_file_list,
-                download_episodes=download_episodes,
-                channel=channel,
-                source=source,
-                torrent_file=torrent_file
-            )
-            return did
-        else:
-            job_id = self.userjoboper.publish(
-                user_id=user_id,
-                name="download",
-                context=context,
-                content=content,
-                episodes=episodes,
-                download_dir=download_dir,
-                label=label,
-                downloader=downloader or _site_downloader,
-                _folder_name=_folder_name,
-                _file_list=_file_list,
-                download_episodes=download_episodes,
-                channel=channel,
-                source=source,
-                torrent_file=torrent_file
-            )
-            return job_id
+        # if settings.CURRENT_USERID:
+        hash, error_msg = self.download_single_job(
+            user_id=user_id,
+            context=context,
+            content=content,
+            episodes=episodes,
+            download_dir=download_dir,
+            label=label,
+            downloader=downloader or _site_downloader,
+            _folder_name=_folder_name,
+            _file_list=_file_list,
+            download_episodes=download_episodes,
+            channel=channel,
+            source=source,
+            torrent_file=torrent_file
+        )
+        return hash, error_msg
+        # else:
+        # # 登记下载记录
+        # job_id = self.userjoboper.publish(
+        #         user_id=user_id,
+        #         name="download",
+        #         context=context,
+        #         content=content,
+        #         episodes=episodes,
+        #         download_dir=download_dir,
+        #         label=label,
+        #         downloader=downloader or _site_downloader,
+        #         _folder_name=_folder_name,
+        #         _file_list=_file_list,
+        #         download_episodes=download_episodes,
+        #         channel=channel,
+        #         source=source,
+        #         torrent_file=torrent_file
+        #     )
+        #     return job_id
 
     def download_single_job(self,
+                            user_id: int,
                             context: Context,
                             download_dir: Path,
                             _folder_name: str,
@@ -310,9 +318,10 @@ class DownloadChain(ChainBase):
         _media = context.media_info
         _meta = context.meta_info
 
-        user = self.useroper.get(settings.CURRENT_USERID)
+        user = self.useroper.get(user_id)
         # 添加下载
-        result: Optional[tuple] = self.download(content=content,
+        result: Optional[tuple] = self.download(user_id=user_id,
+                                                content=content,
                                                 cookie=_torrent.site_cookie,
                                                 episodes=episodes,
                                                 download_dir=download_dir,
@@ -434,7 +443,7 @@ class DownloadChain(ChainBase):
                      f"错误信息：{error_msg}",
                 image=_media.get_message_image(),
                 userid=user.id))
-        return _hash
+        return _hash, error_msg
 
     def batch_download(self, user_id: int,
                        contexts: List[Context],
@@ -543,9 +552,10 @@ class DownloadChain(ChainBase):
                     or context.media_info.type == MediaType.GAME \
                     or context.media_info.type == MediaType.JAV:
                 logger.info(f"开始下载{context.media_info.type} {context.torrent_info.title} ...")
-                if self.download_single(context=context, user_id=user_id, save_path=save_path, channel=channel,
+                did, error_msg = self.download_single(user_id=user_id, context=context, save_path=save_path, channel=channel,
                                         source=source, userid=userid, username=username,
-                                        downloader=downloader):
+                                        downloader=downloader)
+                if did:
                     # 下载成功
                     logger.info(f"{context.torrent_info.title} 添加下载成功")
                     downloaded_list.append(context)
@@ -625,9 +635,9 @@ class DownloadChain(ChainBase):
                                 else:
                                     # 下载
                                     logger.info(f"开始下载 {torrent.title} ...")
-                                    download_id = self.download_single(
-                                        context=context,
+                                    download_id, error_msg = self.download_single(
                                         user_id=user_id,
+                                        context=context,
                                         torrent_file=content if isinstance(content, Path) else None,
                                         save_path=save_path,
                                         channel=channel,
@@ -639,7 +649,8 @@ class DownloadChain(ChainBase):
                             else:
                                 # 下载
                                 logger.info(f"开始下载 {torrent.title} ...")
-                                download_id = self.download_single(context=context, user_id=user_id,
+                                download_id, error_msg = self.download_single(user_id=user_id,
+                                                                   context=context,
                                                                    save_path=save_path,
                                                                    channel=channel, source=source,
                                                                    userid=userid, username=username,
@@ -711,7 +722,8 @@ class DownloadChain(ChainBase):
                             if torrent_episodes.intersection(set(need_episodes)):
                                 # 下载
                                 logger.info(f"开始下载 {meta.title} ...")
-                                download_id = self.download_single(context=context, user_id=user_id,
+                                download_id, error_msg = self.download_single(user_id=user_id,
+                                                                   context=context,
                                                                    save_path=save_path,
                                                                    channel=channel, source=source,
                                                                    userid=userid, username=username,
@@ -795,9 +807,9 @@ class DownloadChain(ChainBase):
                             logger.info(f"{torrent.site_name} - {torrent.title} 选中集数：{selected_episodes}")
                             # 添加下载
                             logger.info(f"开始下载 {torrent.title} ...")
-                            download_id = self.download_single(
-                                context=context,
+                            download_id, error_msg = self.download_single(
                                 user_id=user_id,
+                                context=context,
                                 torrent_file=content if isinstance(content, Path) else None,
                                 episodes=selected_episodes,
                                 save_path=save_path,

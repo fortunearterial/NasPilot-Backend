@@ -22,13 +22,13 @@ router = APIRouter()
 
 
 @router.get("/play/{itemid:path}", summary="在线播放")
-def play_item(itemid: str, _: schemas.TokenPayload = Depends(verify_token)) -> schemas.Response:
+def play_item(itemid: str, current_user: schemas.User = Depends(get_current_user)) -> schemas.Response:
     """
     获取媒体服务器播放页面地址
     """
     if not itemid:
         return schemas.Response(success=False, message="参数错误")
-    configs = MediaServerHelper().get_configs()
+    configs = MediaServerHelper().get_configs(user_id=current_user.id)
     if not configs:
         return schemas.Response(success=False, message="未配置媒体服务器")
     media_chain = MediaServerChain()

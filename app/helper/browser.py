@@ -10,11 +10,12 @@ class PlaywrightHelper:
         self.browser_type = browser_type
 
     @staticmethod
-    def __pass_cloudflare(url: str, page: Page) -> bool:
+    def __pass_cloudflare(url: str, page: Page, is_stealth: bool = True) -> bool:
         """
         尝试跳过cloudfare验证
         """
-        sync_stealth(page, pure=True)
+        if is_stealth:
+            sync_stealth(page, pure=True)
         page.goto(url)
         return sync_cf_retry(page)[0]
 
@@ -24,7 +25,8 @@ class PlaywrightHelper:
                ua: Optional[str] = None,
                proxies: Optional[dict] = None,
                headless: Optional[bool] = False,
-               timeout: Optional[int] = 30) -> Any:
+               timeout: Optional[int] = 30,
+               user_data_dir: Optional[str] = None) -> Any:
         """
         访问网页，接收Page对象并执行操作
         :param url: 网页地址
@@ -37,13 +39,17 @@ class PlaywrightHelper:
         """
         try:
             with sync_playwright() as playwright:
-                browser = playwright[self.browser_type].launch(headless=headless)
-                context = browser.new_context(user_agent=ua, proxy=proxies)
+                if user_data_dir:
+                    context = playwright[self.browser_type].launch_persistent_context(user_data_dir=user_data_dir,
+                                                                                      headless=headless)
+                else:
+                    browser = playwright[self.browser_type].launch(headless=headless)
+                    context = browser.new_context(user_agent=ua, proxy=proxies)
                 page = context.new_page()
                 if cookies:
                     page.set_extra_http_headers({"cookie": cookies})
                 try:
-                    if not self.__pass_cloudflare(url, page):
+                    if not self.__pass_cloudflare(url, page, False):
                         logger.warn("cloudflare challenge fail！")
                     page.wait_for_load_state("networkidle", timeout=timeout * 1000)
                     # 回调函数

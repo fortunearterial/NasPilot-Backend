@@ -11,17 +11,18 @@ from app.core.metainfo import MetaInfo
 from app.core.security import verify_token
 from app.schemas import MediaRecognizeConvertEventData
 from app.schemas.types import MediaType, ChainEventType
+from app.db.user_oper import get_current_user
 
 router = APIRouter()
 
 
 @router.get("/last", summary="查询搜索结果", response_model=List[schemas.Context])
-def search_latest(_: schemas.TokenPayload = Depends(verify_token)) -> Any:
+def search_latest(current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     查询搜索结果
     """
     torrents = SearchChain().last_search_results()
-    return [torrent.to_dict() for torrent in torrents]
+    return [torrent.to_dict(not current_user.is_superuser) for torrent in torrents]
 
 
 @router.get("/media/{mediaid}", summary="精确搜索资源", response_model=schemas.Response)
@@ -32,7 +33,7 @@ def search_by_id(mediaid: str,
                  year: Optional[str] = None,
                  season: Optional[str] = None,
                  sites: Optional[str] = None,
-                 _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+                 current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     根据TMDBID/豆瓣ID精确搜索站点资源 tmdb:/douban:/bangumi:/steam:/javdb:
     """
@@ -148,14 +149,14 @@ def search_by_id(mediaid: str,
     if not torrents:
         return schemas.Response(success=False, message="未搜索到任何资源")
     else:
-        return schemas.Response(success=True, data=[torrent.to_dict() for torrent in torrents])
+        return schemas.Response(success=True, data=[torrent.to_dict(not current_user.is_superuser) for torrent in torrents])
 
 
 @router.get("/title", summary="模糊搜索资源", response_model=schemas.Response)
 def search_by_title(keyword: Optional[str] = None,
                     page: Optional[int] = 0,
                     sites: Optional[str] = None,
-                    _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+                    current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     根据名称模糊搜索站点资源，支持分页，关键词为空是返回首页资源
     """
@@ -164,4 +165,4 @@ def search_by_title(keyword: Optional[str] = None,
                                              cache_local=True)
     if not torrents:
         return schemas.Response(success=False, message="未搜索到任何资源")
-    return schemas.Response(success=True, data=[torrent.to_dict() for torrent in torrents])
+    return schemas.Response(success=True, data=[torrent.to_dict(not current_user.is_superuser) for torrent in torrents])

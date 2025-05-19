@@ -5,6 +5,8 @@ from app.helper.service import ServiceConfigHelper
 from app.schemas import Notification, NotificationConf, MediaServerConf, DownloaderConf
 from app.schemas.types import ModuleType, DownloaderType, MediaServerType, MessageChannel, StorageSchema, \
     OtherModulesType
+from app.core.config import settings
+from app.db.userconfig_oper import UserConfigOper
 
 
 class _ModuleBase(metaclass=ABCMeta):
@@ -173,6 +175,98 @@ class ServiceBase(Generic[TService, TConf], metaclass=ABCMeta):
         return first_conf.name if first_conf else None
 
 
+class UserServiceBase(Generic[TService, TConf], metaclass=ABCMeta):
+    """
+    抽象用户服务基类，负责用户服务的初始化、获取实例和配置管理
+    """
+
+    def __init__(self):
+        """
+        初始化 ServiceBase 类的实例
+        """
+        self._service_name: Optional[str] = None
+        self._service_type: Optional[Union[Type[TService], Callable[..., TService]]] = None
+
+    def init_service(self, service_name: str,
+                     service_type: Optional[Union[Type[TService], Callable[..., TService]]] = None):
+        """
+        初始化服务，获取配置并实例化对应服务
+
+        :param service_name: 服务名称，作为配置匹配的依据
+        :param service_type: 服务的类型，可以是类类型（Type[TService]）、工厂函数（Callable）或 None 来跳过实例化
+        """
+        if not service_name:
+            raise Exception("service_name is null")
+        self._service_name = service_name
+        self._service_type = service_type
+
+    def get_instances(self, user_id: int) -> Dict[str, TService]:
+        """
+        获取服务实例列表
+
+        :return: 返回服务实例列表
+        """
+        raise NotImplementedError("get_instances method is not implemented")
+
+    def get_instance(self, user_id: int, name: Optional[str] = None) -> Optional[TService]:
+        """
+        获取指定名称的服务实例
+
+        :param name: 实例名称，可选。如果为 None，则返回默认实例
+        :return: 返回符合条件的服务实例，若不存在则返回 None
+        """
+        if not user_id:
+            return None
+        conf = self.get_config(user_id, name)
+        if not conf:
+            return None
+
+        # 通过服务类型或工厂函数来创建实例
+        if isinstance(self._service_type, type):
+            # 如果传入的是类类型，调用构造函数实例化
+            return self._service_type(**conf.config)
+        else:
+            # 如果传入的是工厂函数，直接调用工厂函数
+            return self._service_type(conf)
+
+    @abstractmethod
+    def get_configs(self, user_id: int) -> Dict[str, TConf]:
+        """
+        获取已启用的服务配置字典
+
+        :return: 返回配置字典
+        """
+        pass
+
+    def get_config(self, user_id: int, name: Optional[str] = None) -> Optional[TConf]:
+        """
+        获取指定名称的服务配置
+
+        :param name: 配置名称，可选。如果为 None，则返回默认服务配置
+        :return: 返回符合条件的配置，若不存在则返回 None
+        """
+        if not user_id:
+            return None
+        configs = ServiceConfigHelper.get_downloader_configs(user_id)
+        if not self._service_name:
+            return {}
+        configs = {conf.name: conf for conf in configs if conf.type == self._service_name and conf.enabled}
+        if not name:
+            name = self.get_default_config_name(user_id)
+        return configs.get(name) if name else None
+
+    def get_default_config_name(self, user_id: int) -> Optional[str]:
+        """
+        获取默认服务配置的名称
+
+        :return: 默认第一个配置的名称
+        """
+        # 默认使用第一个配置的名称
+        configs = UserConfigOper().get(user_id=user_id)
+        first_conf = next(iter(configs.values()), None)
+        return first_conf.name if first_conf else None
+
+
 class _MessageBase(ServiceBase[TService, NotificationConf]):
     """
     消息基类
@@ -222,7 +316,7 @@ class _MessageBase(ServiceBase[TService, NotificationConf]):
         return True
 
 
-class _DownloaderBase(ServiceBase[TService, DownloaderConf]):
+class _DownloaderBase(UserServiceBase[TService, DownloaderConf]):
     """
     下载器基类
     """
@@ -232,37 +326,29 @@ class _DownloaderBase(ServiceBase[TService, DownloaderConf]):
         初始化下载器基类
         """
         super().__init__()
-        self._default_config_name: Optional[str] = None
 
-    def get_default_config_name(self) -> Optional[str]:
+    def get_default_config_name(self, user_id: int) -> Optional[str]:
         """
         获取默认服务配置的名称
 
         :return: 优先从所有下载器中查找配置了默认的下载器，如果没有配置，则获取第一个下载器名称
         """
         # 优先查找默认配置
-        if self._default_config_name:
-            return self._default_config_name
-
-        configs = ServiceConfigHelper.get_downloader_configs()
+        configs = ServiceConfigHelper.get_downloader_configs(user_id)
         for conf in configs:
             if conf.default:
-                self._default_config_name = conf.name
-                return self._default_config_name
+                return conf.name
         # 如果没有默认配置，返回第一个配置的名称
         first_conf = next(iter(configs), None)
-        self._default_config_name = first_conf.name if first_conf else None
-        return self._default_config_name
+        return first_conf.name if first_conf else None
 
-    def get_configs(self) -> Dict[str, DownloaderConf]:
+    def get_configs(self, user_id: int) -> Dict[str, DownloaderConf]:
         """
         获取已启用的下载器的配置字典
 
         :return: 返回下载器配置字典
         """
-        if self._configs is not None:
-            return self._configs
-        configs = ServiceConfigHelper.get_downloader_configs()
+        configs = ServiceConfigHelper.get_downloader_configs(user_id)
         if not self._service_name:
             return {}
         return {conf.name: conf for conf in configs if conf.type == self._service_name and conf.enabled}

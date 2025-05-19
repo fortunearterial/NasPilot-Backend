@@ -88,7 +88,7 @@ class ChainBase(metaclass=ABCMeta):
         if cache_path.exists():
             cache_path.unlink()
 
-    def run_module(self, method: str, user_id: int = None, *args, **kwargs) -> Any:
+    def run_module(self, method: str, *args, **kwargs) -> Any:
         """
         运行包含该方法的所有模块，然后返回结果
         当kwargs包含命名参数raise_exception时，如模块方法抛出异常且raise_exception为True，则同步抛出异常
@@ -433,7 +433,7 @@ class ChainBase(metaclass=ABCMeta):
         return self.run_module("filter_torrents", rule_groups=rule_groups,
                                torrent_list=torrent_list, mediainfo=mediainfo)
 
-    def download(self, content: Union[Path, str], download_dir: Path, cookie: str,
+    def download(self, user_id: int, content: Union[Path, str], download_dir: Path, cookie: str,
                  episodes: Set[int] = None, category: Optional[str] = None, label: Optional[str] = None,
                  downloader: Optional[str] = None
                  ) -> Optional[Tuple[Optional[str], Optional[str], Optional[str], str]]:
@@ -448,7 +448,8 @@ class ChainBase(metaclass=ABCMeta):
         :param downloader:  下载器
         :return: 下载器名称、种子Hash、种子文件布局、错误原因
         """
-        return self.run_module("download", content=content, download_dir=download_dir,
+        return self.run_module("download", user_id=user_id,
+                               content=content, download_dir=download_dir,
                                cookie=cookie, episodes=episodes, category=category, label=label,
                                downloader=downloader)
 
@@ -577,12 +578,12 @@ class ChainBase(metaclass=ABCMeta):
         return self.run_module("media_files", mediainfo=mediainfo)
 
     def post_message(self,
-                    message: Optional[Notification] = None,
-                    meta: Optional[MetaBase] = None,
-                    mediainfo: Optional[MediaInfo] = None,
-                    torrentinfo: Optional[TorrentInfo] = None,
-                    transferinfo: Optional[TransferInfo] = None,
-                    **kwargs) -> None:
+                     message: Optional[Notification] = None,
+                     meta: Optional[MetaBase] = None,
+                     mediainfo: Optional[MediaInfo] = None,
+                     torrentinfo: Optional[TorrentInfo] = None,
+                     transferinfo: Optional[TransferInfo] = None,
+                     **kwargs) -> None:
         """
         发送消息
         :param message:  Notification实例
@@ -595,7 +596,7 @@ class ChainBase(metaclass=ABCMeta):
         """
         # 渲染消息
         message = MessageTemplateHelper.render(message=message, meta=meta, mediainfo=mediainfo,
-                                       torrentinfo=torrentinfo, transferinfo=transferinfo, **kwargs)
+                                               torrentinfo=torrentinfo, transferinfo=transferinfo, **kwargs)
         # 保存消息
         self.messagehelper.put(message, role="user", title=message.title)
         self.messageoper.add(**message.dict())
@@ -672,7 +673,7 @@ class ChainBase(metaclass=ABCMeta):
         :param torrents:  种子列表
         :return: 成功或失败
         """
-        note_list = [torrent.torrent_info.to_dict() for torrent in torrents]
+        note_list = [torrent.torrent_info.to_dict(True) for torrent in torrents]
         self.messagehelper.put(message, role="user", note=note_list, title=message.title)
         self.messageoper.add(**message.dict(), note=note_list)
         return self.messagequeue.send_message("post_torrents_message", message=message, torrents=torrents)

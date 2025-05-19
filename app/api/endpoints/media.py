@@ -13,6 +13,7 @@ from app.core.metainfo import MetaInfo, MetaInfoPath
 from app.core.security import verify_token, verify_apitoken
 from app.schemas import MediaType, MediaRecognizeConvertEventData
 from app.schemas.types import ChainEventType
+from app.db.user_oper import get_current_user
 
 router = APIRouter()
 
@@ -20,7 +21,7 @@ router = APIRouter()
 @router.get("/recognize", summary="识别媒体信息（种子）", response_model=schemas.Context)
 def recognize(title: str,
               subtitle: Optional[str] = None,
-              _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+              current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     根据标题、副标题识别媒体信息
     """
@@ -28,7 +29,7 @@ def recognize(title: str,
     metainfo = MetaInfo(title, subtitle)
     mediainfo = MediaChain().recognize_by_meta(metainfo)
     if mediainfo:
-        return Context(meta_info=metainfo, media_info=mediainfo).to_dict()
+        return Context(meta_info=metainfo, media_info=mediainfo).to_dict(not current_user.is_superuser)
     return schemas.Context()
 
 
@@ -46,14 +47,14 @@ def recognize2(_: Annotated[str, Depends(verify_apitoken)],
 
 @router.get("/recognize_file", summary="识别媒体信息（文件）", response_model=schemas.Context)
 def recognize_file(path: str,
-                   _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+                   current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     根据文件路径识别媒体信息
     """
     # 识别媒体信息
     context = MediaChain().recognize_by_path(path)
     if context:
-        return context.to_dict()
+        return context.to_dict(not current_user.is_superuser)
     return schemas.Context()
 
 
@@ -199,7 +200,7 @@ def seasons(mediaid: Optional[str] = None,
 
 @router.get("/{mediaid}", summary="查询媒体详情", response_model=schemas.MediaInfo)
 def detail(mediaid: str, type_name: str, title: Optional[str] = None, year: str = None,
-           _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+           current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     根据媒体ID查询themoviedb或豆瓣媒体信息，type_name: 电影/电视剧
     """
@@ -242,6 +243,6 @@ def detail(mediaid: str, type_name: str, title: Optional[str] = None, year: str 
     # 识别
     if mediainfo:
         MediaChain().obtain_images(mediainfo)
-        return mediainfo.to_dict()
+        return mediainfo.to_dict(not current_user.is_superuser)
 
     return schemas.MediaInfo()

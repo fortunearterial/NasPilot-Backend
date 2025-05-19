@@ -140,13 +140,15 @@ class TorrentInfo:
             print(f"种子发布时间获取失败: {e}")
             return 0
 
-    def to_dict(self):
+    def to_dict(self, hide_url: bool = False):
         """
         返回字典
         """
         dicts = vars(self).copy()
         dicts["volume_factor"] = self.volume_factor
         dicts["freedate_diff"] = self.freedate_diff
+        if hide_url:
+            del dicts["page_url"]
         return dicts
 
 
@@ -950,13 +952,14 @@ class MediaInfo:
         overview = (overview[:max_len] + placeholder) if len(overview) > max_len else overview
         return overview
 
-    def to_dict(self):
+    def to_dict(self, hide_url: bool = False):
         """
         返回字典
         """
         dicts = vars(self).copy()
         dicts["type"] = self.type.value if self.type else None
-        dicts["detail_link"] = self.detail_link
+        if not hide_url:
+            dicts["detail_link"] = self.detail_link
         dicts["title_year"] = self.title_year
         dicts["tmdb_info"] = None
         dicts["douban_info"] = None
@@ -998,12 +1001,12 @@ class Context:
     # 种子信息
     torrent_info: TorrentInfo = None
 
-    def to_dict(self):
+    def to_dict(self, hide_url: bool = False):
         """
         转换为字典
         """
         return {
             "meta_info": self.meta_info.to_dict() if self.meta_info else None,
-            "torrent_info": self.torrent_info.to_dict() if self.torrent_info else None,
+            "torrent_info": self.torrent_info.to_dict(hide_url) if self.torrent_info else None,
             "media_info": self.media_info.to_dict() if self.media_info else None
         }

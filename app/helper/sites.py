@@ -4,7 +4,7 @@ import json
 import traceback
 import re
 
-from typing import List
+from typing import List, Callable, Any
 from urllib.parse import urlencode, quote, urlparse, parse_qs
 
 from jinja2 import Template
@@ -52,7 +52,7 @@ class SitesHelper(SitesHelperBase):
             search_path = search_path[1:]
         return {
             "id": site.id,
-            "name": site.name,
+            "name": f"站点{StringUtils.md5_hash(site.name)[0:6]}",
             "domain": site.domain,
             "encoding": "UTF-8",
             "public": True,
@@ -923,6 +923,8 @@ class SiteSpider(SiteSpiderBase):
                     text = param_value[0] if param_value else ''
                 elif method_name == "detailparse":
                     text = f"@:【{json.dumps(args)}】【{text}】"
+                elif method_name == "btbtlparse":
+                    text = f"@btbtl:【{json.dumps(args)}】【{text}】"
             except Exception as err:
                 logger.debug(f'过滤器 {method_name} 处理失败：{str(err)} - {traceback.format_exc()}')
         return text.strip()
@@ -1051,6 +1053,19 @@ class PageSpider(metaclass=Singleton):
         except Exception as err:
             logger.warn(f"错误：{self.url} {str(err)}")
 
+    def action(self, callback: Callable) -> Any:
+        logger.info(f"开始仿真请求：{self.url}")
+        # 浏览器仿真
+        return PlaywrightHelper().action(
+            url=self.url,
+            cookies=self.cookie,
+            ua=self.ua,
+            proxies=self.proxy_server,
+            timeout=self._timeout,
+            headless=not settings.DEBUG,
+            callback=callback
+        )
+
     def __get_properties(self):
         """
         获取属性列表
@@ -1125,3 +1140,4 @@ class PageSpider(metaclass=Singleton):
         if isinstance(items, list):
             items = items[0]
         return items
+

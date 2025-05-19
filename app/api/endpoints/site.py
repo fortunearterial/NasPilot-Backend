@@ -308,7 +308,7 @@ def site_resource(site_id: int,
     torrents = TorrentsChain().browse(domain=site.domain, keyword=keyword, cat=cat, page=page)
     if not torrents:
         return []
-    return [torrent.to_dict() for torrent in torrents]
+    return [torrent.to_dict(False) for torrent in torrents]
 
 
 @router.get("/domain/{site_url}", summary="站点详情", response_model=schemas.Site)

@@ -13,6 +13,7 @@ from app.modules.thunder.thunder import Thunder
 from app.schemas import TransferTorrent, DownloadingTorrent
 from app.schemas.types import TorrentStatus, ModuleType, DownloaderType
 from app.utils.string import StringUtils
+from app.db.user_oper import UserOper
 
 
 class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
@@ -56,13 +57,15 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
         """
         测试模块连接性
         """
-        if not self.get_instances():
-            return None
-        for name, server in self.get_instances().items():
-            if server.is_inactive():
-                server.reconnect()
-            if not server.transfer_info():
-                return False, f"无法连接迅雷下载器：{name}"
+        users = UserOper().list()
+        for user in users:
+            if not self.get_instances(user.id):
+                return None
+            for name, server in self.get_instances(user.id).items():
+                if server.is_inactive():
+                    server.reconnect()
+                if not server.transfer_info():
+                    return False, f"无法连接迅雷下载器：{name}"
         return True, ""
 
     def init_setting(self) -> Tuple[str, Union[str, bool]]:
@@ -72,12 +75,14 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
         """
         定时任务，每10分钟调用一次
         """
-        for name, server in self.get_instances().items():
-            if server.is_inactive():
-                logger.info(f"迅雷下载器 {name} 连接断开，尝试重连 ...")
-                server.reconnect()
+        users = UserOper().list()
+        for user in users:
+            for name, server in self.get_instances(user.id).items():
+                if server.is_inactive():
+                    logger.info(f"迅雷下载器 {name} 连接断开，尝试重连 ...")
+                    server.reconnect()
 
-    def download(self, content: Union[Path, str], download_dir: Path, cookie: str,
+    def download(self, user_id: int, content: Union[Path, str], download_dir: Path, cookie: str,
                  episodes: Set[int] = None, category: Optional[str] = None, label: Optional[str] = None,
                  downloader: Optional[str] = None) -> Optional[Tuple[Optional[str], Optional[str], Optional[str], str]]:
         """
@@ -113,14 +118,14 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             return None, None, None, f"种子文件不存在：{content}"
 
         # 获取下载器
-        server: Thunder = self.get_instance(downloader)
+        server: Thunder = self.get_instance(user_id, downloader)
         if not server:
             return None
 
         # 如果要选择文件则先暂停
         is_paused = True if episodes else False
         # 添加任务
-        state = server.add_torrent(
+        state, error = server.add_torrent(
             content=content.read_bytes() if isinstance(content, Path) else content,
             download_dir=str(download_dir),
             is_paused=is_paused,
@@ -128,6 +133,8 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             category=category,
             ignore_category_check=False
         )
+        if not state:
+            return None, None, None, error
 
         # 获取种子内容布局: `Original: 原始, Subfolder: 创建子文件夹, NoSubfolder: 不创建子文件夹`
         torrent_layout = server.get_content_layout()
@@ -154,11 +161,11 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
                         if settings.TORRENT_TAG and settings.TORRENT_TAG not in torrent_tags:
                             logger.info(f"给种子 {torrent_hash} 打上标签：{settings.TORRENT_TAG}")
                             server.set_torrents_tag(ids=torrent_hash, tags=[settings.TORRENT_TAG])
-                        return downloader or self.get_default_config_name(), torrent_hash, torrent_layout, f"下载任务已存在"
+                        return downloader or self.get_default_config_name(user_id), torrent_hash, torrent_layout, f"下载任务已存在"
             return None, None, None, f"添加种子任务失败：{content}"
         else:
             # 获取种子Hash
-            torrent_hash = server.get_torrent_id_by_tag(tags=tag)
+            torrent_hash = server.get_torrent_id_by_tag(tags=label)
             if not torrent_hash:
                 return None, None, None, f"下载任务添加成功，但获取Qbittorrent任务信息失败：{content}"
             else:
@@ -166,7 +173,7 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
                     # 种子文件
                     torrent_files = server.get_files(torrent_hash)
                     if not torrent_files:
-                        return downloader or self.get_default_config_name(), torrent_hash, torrent_layout, "获取种子文件失败，下载任务可能在暂停状态"
+                        return downloader or self.get_default_config_name(user_id), torrent_hash, torrent_layout, "获取种子文件失败，下载任务可能在暂停状态"
 
                     # 不需要的文件ID
                     file_ids = []
@@ -185,13 +192,13 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
                     if sucess_epidised and file_ids:
                         # 选择文件
                         server.set_files(torrent_hash=torrent_hash, file_ids=file_ids, priority=0)
-                    return downloader or self.get_default_config_name(), torrent_hash, torrent_layout, f"添加下载成功，已选择集数：{sucess_epidised}"
+                    return downloader or self.get_default_config_name(user_id), torrent_hash, torrent_layout, f"添加下载成功，已选择集数：{sucess_epidised}"
                 else:
                     if server.is_force_resume():
                         server.torrents_set_force_start(torrent_hash)
-                    return downloader or self.get_default_config_name(), torrent_hash, torrent_layout, "添加下载成功"
+                    return downloader or self.get_default_config_name(user_id), torrent_hash, torrent_layout, "添加下载成功"
 
-    def list_torrents(self, status: TorrentStatus = None,
+    def list_torrents(self, user_id: int, status: TorrentStatus = None,
                       hashs: Union[list, str] = None,
                       downloader: Optional[str] = None
                       ) -> Optional[List[Union[TransferTorrent, DownloadingTorrent]]]:
@@ -204,12 +211,12 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
         """
         # 获取下载器
         if downloader:
-            server: Thunder = self.get_instance(downloader)
+            server: Thunder = self.get_instance(user_id, downloader)
             if not server:
                 return None
             servers = {downloader: server}
         else:
-            servers: Dict[str, Thunder] = self.get_instances()
+            servers: Dict[str, Thunder] = self.get_instances(user_id)
         ret_torrents = []
         if hashs:
             # 按Hash获取
@@ -278,18 +285,18 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             return None
         return ret_torrents
 
-    def transfer_completed(self, hashs: str, downloader: Optional[str] = None) -> None:
+    def transfer_completed(self, user_id: int, hashs: str, downloader: Optional[str] = None) -> None:
         """
         转移完成后的处理
         :param hashs:  种子Hash
         :param downloader:  下载器
         """
-        server: Thunder = self.get_instance(downloader)
+        server: Thunder = self.get_instance(user_id, downloader)
         if not server:
             return None
         server.set_torrents_tag(ids=hashs, tags=['已整理'])
 
-    def remove_torrents(self, hashs: Union[str, list], delete_file: Optional[bool] = True,
+    def remove_torrents(self, user_id: int, hashs: Union[str, list], delete_file: Optional[bool] = True,
                         downloader: Optional[str] = None) -> Optional[bool]:
         """
         删除下载器种子
@@ -298,12 +305,12 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
         :param downloader:  下载器
         :return: bool
         """
-        server: Thunder = self.get_instance(downloader)
+        server: Thunder = self.get_instance(user_id, downloader)
         if not server:
             return None
         return server.delete_torrents(delete_file=delete_file, ids=hashs)
 
-    def start_torrents(self, hashs: Union[list, str],
+    def start_torrents(self, user_id: int, hashs: Union[list, str],
                        downloader: Optional[str] = None) -> Optional[bool]:
         """
         开始下载
@@ -311,43 +318,43 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
         :param downloader:  下载器
         :return: bool
         """
-        server: Thunder = self.get_instance(downloader)
+        server: Thunder = self.get_instance(user_id, downloader)
         if not server:
             return None
         return server.start_torrents(ids=hashs)
 
-    def stop_torrents(self, hashs: Union[list, str], downloader: Optional[str] = None) -> Optional[bool]:
+    def stop_torrents(self, user_id: int, hashs: Union[list, str], downloader: Optional[str] = None) -> Optional[bool]:
         """
         停止下载
         :param hashs:  种子Hash
         :param downloader:  下载器
         :return: bool
         """
-        server: Thunder = self.get_instance(downloader)
+        server: Thunder = self.get_instance(user_id, downloader)
         if not server:
             return None
         return server.stop_torrents(ids=hashs)
 
-    def torrent_files(self, tid: str, downloader: Optional[str] = None) -> Optional[TorrentFilesList]:
+    def torrent_files(self, user_id: int, tid: str, downloader: Optional[str] = None) -> Optional[TorrentFilesList]:
         """
         获取种子文件列表
         """
-        server: Thunder = self.get_instance(downloader)
+        server: Thunder = self.get_instance(user_id, downloader)
         if not server:
             return None
         return server.get_files(tid=tid)
 
-    def downloader_info(self, downloader: Optional[str] = None) -> Optional[List[schemas.DownloaderInfo]]:
+    def downloader_info(self, user_id: int, downloader: Optional[str] = None) -> Optional[List[schemas.DownloaderInfo]]:
         """
         下载器信息
         """
         if downloader:
-            server: Thunder = self.get_instance(downloader)
+            server: Thunder = self.get_instance(user_id, downloader)
             if not server:
                 return None
             servers = [server]
         else:
-            servers = self.get_instances().values()
+            servers = self.get_instances(user_id).values()
         # 调用Qbittorrent API查询实时信息
         ret_info = []
         for server in servers:

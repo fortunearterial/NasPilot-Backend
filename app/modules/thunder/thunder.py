@@ -1,59 +1,72 @@
+import json
 import pickle
 import time
-from typing import Optional, Union, Tuple, List, Any
-
-from win32com.client import Dispatch
+import traceback
+from typing import Optional, Union, Tuple, List, Any, Dict
 
 from app.log import logger
 from app.core.config import settings
+from app.utils.string import StringUtils
+from app.modules.thunder.apiv1 import RemoteClient, LoginFailed
 
 
 class Thunder:
-    _save_path: Optional[str] = ""
+    _username: Optional[str] = None
+    _password: Optional[str] = None
+    _device_name: Optional[str] = None
 
-    tdc: Dispatch
-    _torrents: list
+    tdc: RemoteClient = None
 
-    def __init__(self, **kwargs):
+    def __init__(self,
+                 username: Optional[str] = None,
+                 password: Optional[str] = None,
+                 device_name: Optional[str] = None,
+                 **kwargs):
         """
         若不设置参数，则创建配置文件设置的下载器
         """
-        try:
-            self.tdc = Dispatch("ThunderAgent.Agent64.1")
-        except Exception:
-            try:
-                self.tdc = Dispatch("ThunderAgent.Agent.1")
-            except Exception:
-                logger.error("未找到迅雷客户端！")
-                pass
-
-        try:
-            with open(settings.CONFIG_PATH / 'thunder.db', 'wb') as f:
-                self._torrents = pickle.load(f)
-        except Exception:
-            self._torrents = []
-
-    def _save(self):
-        """
-        保存数据
-        """
-        try:
-            with open(settings.CONFIG_PATH / 'thunder.db', 'wb') as f:
-                pickle.dump(self._torrents, f) # noqa
-        except Exception as err:
-            logger.error(f"保存迅雷数据出错：{str(err)}")
+        self._username = username
+        self._password = password
+        self._device_name = device_name
+        if self._username and self._password:
+            self.tdc = self.__login_thunder()
 
     def is_inactive(self) -> bool:
         """
         判断是否需要重连
         """
+        if not self._username or not self._password or not self._device_name:
+            return False
         return True if not self.tdc else False
 
     def reconnect(self):
         """
         重连
         """
-        pass
+        self.tdc = self.__login_thunder()
+
+    def __login_thunder(self) -> Optional[Any]:
+        """
+        连接thunder
+        :return: thunder对象
+        """
+        try:
+            # 登录
+            tdc = RemoteClient(username=self._username,
+                               password=self._password)
+            try:
+                tdc.auth_log_in()
+            except LoginFailed as e:
+                logger.error(f"thunder 登录失败：{str(e).strip() or '请检查用户名和密码是否正确'}")
+                return None
+            except Exception as e:
+                stack_trace = "".join(traceback.format_exception(None, e, e.__traceback__))[:2000]
+                logger.error(f"thunder 登录失败：{str(e)}\n{stack_trace}")
+                return None
+            return tdc
+        except Exception as err:
+            logger.error(f"thunder 连接出错：{str(err)}")
+            return None
 
     def get_torrents(self, ids: Optional[Union[str, list]] = None,
                      status: Optional[str] = None,
@@ -65,7 +78,6 @@ class Thunder:
         if not self.tdc:
             return [], True
         try:
-            # TODO: 迅雷不支持
             torrents = []
             if tags:
                 results = []
@@ -152,15 +164,13 @@ class Thunder:
         """
         是否支持强制作种
         """
-        return self._force_resume
+        return False
 
     def torrents_set_force_start(self, ids: Union[str, list]):
         """
         设置强制作种
         """
         if not self.tdc:
-            return
-        if not self._force_resume:
             return
         try:
             # TODO: 迅雷不支持
@@ -210,7 +220,7 @@ class Thunder:
                     category: Optional[str] = None,
                     cookie: Optional[str] = None,
                     **kwargs
-                    ) -> bool:
+                    ) -> Tuple[bool, Optional[str]]:
         """
         添加种子
         :param content: 种子urls或文件内容
@@ -230,7 +240,9 @@ class Thunder:
             # TODO：磁链转种子文件
             torrent_files = content
         else:
-            torrent_files = content
+            torrent_files = settings.TEMP_PATH / (StringUtils.generate_random_str(8) + ".torrent")
+            with open(torrent_files, 'wb') as f:
+                f.write(content)
 
         # 保存目录
         if download_dir:
@@ -246,30 +258,18 @@ class Thunder:
 
         try:
             # 添加下载
-            self.tdc.AddTask(
-                torrent_files,  # 下载地址
-                "",  # 另存名称，默认为空，表示由迅雷处理，可选参数
-                save_path,  # 存储目录，默认为空，表示由迅雷处理，可选参数
-                "",  # 下载注释，默认为空，可选参数
-                "",  # 引用页URL，默认为空，可选参数
-                0 if is_paused else 1,  # 开始模式，0手工开始，1立即开始，默认为-1，表示由迅雷处理，可选参数
-                0,  # 是否只从原始URL下载，1只从原始URL下载，0多资源下载，默认为0，可选参数
-                -1  # 原始地址下载线程数，范围1-10，默认为-1，表示由迅雷处理，可选参数
+            ret = self.tdc.create_task(
+                torrent_url=torrent_files,
+                device_name=self._device_name,
+                directory_path=save_path,
             )
-            qbc_ret = self.tdc.CommitTasks2(1)
 
-            if qbc_ret == 1:
-                self._torrents.append({
-                    torrent_files,
-                    save_path,
-                    tags,
-                })
-                self._save()
-                return True
-            return False
+            if ret:
+                return True, ret
+            return False, "添加种子失败"
         except Exception as err:
             logger.error(f"添加种子出错：{str(err)}")
-            return False
+            return False, str(err)
 
     def start_torrents(self, ids: Union[str, list]) -> bool:
         """
