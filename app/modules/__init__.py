@@ -209,15 +209,17 @@ class UserServiceBase(Generic[TService, TConf], metaclass=ABCMeta):
         if not user_id:
             return {}
         configs = self.get_configs(user_id)
+        instances = {}
 
         for conf in configs.values():
             # 通过服务类型或工厂函数来创建实例
             if isinstance(self._service_type, type):
                 # 如果传入的是类类型，调用构造函数实例化
-                yield self._service_type(**conf.config)
+                instances[conf.name] = self._service_type(**conf.config)
             else:
                 # 如果传入的是工厂函数，直接调用工厂函数
-                yield self._service_type(conf)
+                instances[conf.name] = self._service_type(conf)
+        return instances
 
     def get_instance(self, user_id: int, name: Optional[str] = None) -> Optional[TService]:
         """

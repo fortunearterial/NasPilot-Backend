@@ -320,6 +320,17 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     break
                 # 遍历用户订阅
                 usersubscribes = self.usersubscribeoper.list_by_subscribeid(int(subscribe.id))
+                if not usersubscribes:
+                    continue
+                # 如果usersubscribes所有状态不匹配，则跳过
+                goon = False
+                for usersubscribe in usersubscribes:
+                    if usersubscribe.state in self.get_states_for_search(state):
+                        goon = True
+                        break
+                if not goon:
+                    continue
+
                 mediakey = subscribe.tmdbid or subscribe.doubanid
                 custom_word_list = subscribe.custom_words.split("\n") if subscribe.custom_words else None
                 # 随机休眠1-5分钟

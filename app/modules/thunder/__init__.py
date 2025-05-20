@@ -125,7 +125,7 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
         # 如果要选择文件则先暂停
         is_paused = True if episodes else False
         # 添加任务
-        state, error = server.add_torrent(
+        state, error_or_id = server.add_torrent(
             content=content.read_bytes() if isinstance(content, Path) else content,
             download_dir=str(download_dir),
             is_paused=is_paused,
@@ -134,7 +134,7 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             ignore_category_check=False
         )
         if not state:
-            return None, None, None, error
+            return None, None, None, error_or_id
 
         # 获取种子内容布局: `Original: 原始, Subfolder: 创建子文件夹, NoSubfolder: 不创建子文件夹`
         torrent_layout = server.get_content_layout()
@@ -165,7 +165,7 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             return None, None, None, f"添加种子任务失败：{content}"
         else:
             # 获取种子Hash
-            torrent_hash = server.get_torrent_id_by_tag(tags=label)
+            torrent_hash = error_or_id
             if not torrent_hash:
                 return None, None, None, f"下载任务添加成功，但获取Thunder任务信息失败：{content}"
             else:

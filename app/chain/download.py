@@ -208,7 +208,7 @@ class DownloadChain(ChainBase):
                 logger.debug(
                     f"Resource download canceled by event: {event_data.source},"
                     f"Reason: {event_data.reason}")
-                return None
+                return None, event_data.reason
 
         # 补充完整的media数据
         if not _media.genre_ids:
@@ -229,7 +229,7 @@ class DownloadChain(ChainBase):
                                                                       source=source,
                                                                       userid=userid)
             if not content:
-                return None
+                return None, "下载种子文件失败"
         else:
             content = torrent_file
             # 获取种子文件的文件夹名和文件清单
@@ -261,10 +261,10 @@ class DownloadChain(ChainBase):
                 logger.error(f"未找到下载目录：{_media.type.value} {_media.title_year}")
                 self.messagehelper.put(f"{_media.type.value} {_media.title_year} 未找到下载目录！",
                                        title="下载失败", role="system")
-                return None
+                return None, "未找到下载目录"
 
         # if settings.CURRENT_USERID:
-        hash, error_msg = self.download_single_job(
+        did, error_msg = self.download_single_job(
             user_id=user_id,
             context=context,
             content=content,
@@ -279,7 +279,7 @@ class DownloadChain(ChainBase):
             source=source,
             torrent_file=torrent_file
         )
-        return hash, error_msg
+        return did, error_msg
         # else:
         # # 登记下载记录
         # job_id = self.userjoboper.publish(
