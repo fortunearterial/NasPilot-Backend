@@ -55,8 +55,6 @@ class Subscribe(Base):
     total_episode = Column(Integer)
     # 开始集数
     start_episode = Column(Integer)
-    # 最后更新时间
-    last_update = Column(String(255))
     # 订阅站点
     sites = Column(JSON, default=list)
     # 是否使用 imdbid 搜索
@@ -179,6 +177,8 @@ class UserSubscribe(Base):
     save_path = Column(String(2000))
     # 附加信息
     note = Column(JSON)
+    # 最后更新时间
+    last_update = Column(String(255))
 
     @staticmethod
     @db_query
@@ -190,7 +190,7 @@ class UserSubscribe(Base):
 
     @staticmethod
     @db_query
-    def get(db: Session, user_id: int, subscribe_id: int):
+    def get_by_normal(db: Session, user_id: int, subscribe_id: int):
         return db.query(UserSubscribe).filter(
             UserSubscribe.subscribe_id == subscribe_id,
             UserSubscribe.user_id == user_id

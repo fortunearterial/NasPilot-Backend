@@ -246,7 +246,7 @@ class MetaBase(object):
                         and isinstance(end_episode, int) \
                         and end_episode != self.begin_episode:
                     self.end_episode = end_episode
-                    self.total_episode = (self.end_episode - self.begin_episode) + 1
+                    self.total_episode = (math.ceil(self.end_episode) - math.floor(self.begin_episode)) + 1
                 self.type = MediaType.TV
                 self._subtitle_flag = True
                 return
@@ -258,7 +258,9 @@ class MetaBase(object):
                     episode_all = episode_all_str.group(2)
                 if episode_all and self.begin_episode is None:
                     try:
-                        self.total_episode = int(cn2an.cn2an(episode_all.strip(), mode='smart'))
+                        self.begin_episode = 1.0
+                        self.end_episode = cn2an.cn2an(episode_all.strip(), mode='smart')
+                        self.total_episode = (math.ceil(self.end_episode) - math.floor(self.begin_episode)) + 1
                     except Exception as err:
                         logger.debug(f'识别集失败：{str(err)} - {traceback.format_exc()}')
                         return
@@ -344,7 +346,11 @@ class MetaBase(object):
         if self.begin_episode is None:
             return []
         elif self.end_episode is not None:
-            return [float(episode) for episode in range(math.ceil(self.begin_episode), math.floor(self.end_episode))]
+            return list({
+                self.begin_episode,
+                *[float(episode) for episode in range(math.ceil(self.begin_episode), math.floor(self.end_episode) + 1)],
+                self.end_episode
+            })
         else:
             return [self.begin_episode]
 
@@ -478,7 +484,11 @@ class MetaBase(object):
         """
         if isinstance(episode, list):
             if self.end_episode is not None:
-                meta_episode = list(range(self.begin_episode, self.end_episode + 1))
+                meta_episode = list({
+                    self.begin_episode,
+                    *[range(math.ceil(self.begin_episode), math.floor(self.end_episode) + 1)],
+                    self.end_episode
+                })
             else:
                 meta_episode = [self.begin_episode]
             return set(meta_episode).issuperset(set(episode))
@@ -518,7 +528,7 @@ class MetaBase(object):
             elif len(ep) > 1 and StringUtils.is_number(ep[0]) and StringUtils.is_number(ep[-1]):
                 self.begin_episode = StringUtils.str_float(ep[0])
                 self.end_episode = StringUtils.str_float(ep[-1])
-                self.total_episode = (self.end_episode - self.begin_episode) + 1
+                self.total_episode = (math.ceil(self.end_episode) - math.floor(self.begin_episode)) + 1
         elif StringUtils.is_number(ep):
             self.begin_episode = StringUtils.str_float(ep)
             self.end_episode = None
@@ -532,7 +542,7 @@ class MetaBase(object):
         if end:
             self.end_episode = end
         if self.begin_episode and self.end_episode:
-            self.total_episode = (self.end_episode - self.begin_episode) + 1
+            self.total_episode = (math.ceil(self.end_episode) - math.floor(self.begin_episode)) + 1
 
     def merge(self, meta: Self):
         """

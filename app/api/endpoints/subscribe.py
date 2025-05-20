@@ -14,7 +14,7 @@ from app.db import get_db
 from app.db.models.subscribe import Subscribe, UserSubscribe
 from app.db.models.subscribehistory import SubscribeHistory
 from app.db.models.user import User
-from app.db.subscribe_oper import SubscribeOper
+from app.db.subscribe_oper import SubscribeOper, UserSubscribeOper
 from app.db.systemconfig_oper import SystemConfigOper
 from app.db.user_oper import get_current_active_user
 from app.db.user_oper import get_current_user, UserOper
@@ -98,7 +98,7 @@ def update_subscribe(
     更新订阅信息
     """
     subscribe = Subscribe.get(db, int(subscribe_in.id))
-    usersubscribe = UserSubscribe.get(db, subscribe.id, current_user.id)
+    usersubscribe = UserSubscribe.get_by_normal(db, subscribe.id, current_user.id)
     if not subscribe or not usersubscribe:
         return schemas.Response(success=False, message="订阅不存在")
     # 避免更新缺失集数
@@ -136,12 +136,12 @@ def update_subscribe_status(
         subid: int,
         state: str,
         db: Session = Depends(get_db),
-        current_user: schemas.TokenPayload = Depends(get_current_user)) -> Any:
+        current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     更新订阅状态
     """
     subscribe = Subscribe.get(db, subid)
-    usersubscribe = UserSubscribe.get(db, current_user.id, subid)
+    usersubscribe = UserSubscribe.get_by_normal(db, current_user.id, subid)
     if not usersubscribe:
         return schemas.Response(success=False, message="订阅不存在")
     valid_states = ["R", "P", "S"]
@@ -167,43 +167,55 @@ def subscribe_mediaid(
         season: Optional[int] = None,
         title: Optional[str] = None,
         db: Session = Depends(get_db),
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     根据 TMDBID/豆瓣ID/BangumiId/SteamId/JavdbId 查询订阅 tmdb:/douban:/steam:/javdb:
     """
+    result = None
     title_check = False
     if mediaid.startswith("tmdb:"):
         tmdbid = mediaid[5:]
         if not tmdbid or not str(tmdbid).isdigit():
             return Subscribe()
-        result = Subscribe.exists(db, tmdbid=int(tmdbid), season=season)
+        subscribe = Subscribe.exists(db, tmdbid=int(tmdbid), season=season)
+        if subscribe:
+            result = SubscribeOper().get_subscribe(sid=subscribe.id, user_id=current_user.id)
     elif mediaid.startswith("douban:"):
         doubanid = mediaid[7:]
         if not doubanid:
             return Subscribe()
-        result = Subscribe.get_by_doubanid(db, doubanid)
+        subscribe = Subscribe.get_by_doubanid(db, doubanid)
+        if subscribe:
+            result = SubscribeOper().get_subscribe(sid=subscribe.id, user_id=current_user.id)
         if not result and title:
             title_check = True
     elif mediaid.startswith("bangumi:"):
         bangumiid = mediaid[8:]
         if not bangumiid or not str(bangumiid).isdigit():
             return Subscribe()
-        result = Subscribe.get_by_bangumiid(db, int(bangumiid))
+        subscribe = Subscribe.get_by_bangumiid(db, int(bangumiid))
+        if subscribe:
+            result = SubscribeOper().get_subscribe(sid=subscribe.id, user_id=current_user.id)
     elif mediaid.startswith("steam:"):
         steamid = mediaid[6:]
         if not steamid:
             return Subscribe()
-        result = Subscribe.get_by_steamid(db, steamid)
+        subscribe = Subscribe.get_by_steamid(db, steamid)
+        if subscribe:
+            result = SubscribeOper().get_subscribe(sid=subscribe.id, user_id=current_user.id)
     elif mediaid.startswith("javdb:"):
         javdbid = mediaid[6:]
         if not javdbid:
             return Subscribe()
-        result = Subscribe.get_by_javdbid(db, javdbid)
-
+        subscribe = Subscribe.get_by_javdbid(db, javdbid)
+        if subscribe:
+            result = SubscribeOper().get_subscribe(sid=subscribe.id, user_id=current_user.id)
         if not result and title:
             title_check = True
     else:
-        result = Subscribe.get_by_mediaid(db, mediaid)
+        subscribe = Subscribe.get_by_mediaid(db, mediaid)
+        if subscribe:
+            result = SubscribeOper().get_subscribe(sid=subscribe.id, user_id=current_user.id)
         if not result and title:
             title_check = True
     # 使用名称检查订阅
@@ -211,7 +223,9 @@ def subscribe_mediaid(
         meta = MetaInfo(title)
         if season is not None:
             meta.begin_season = season
-        result = Subscribe.get_by_title(db, title=meta.name, season=meta.begin_season)
+        subscribe = Subscribe.get_by_title(db, title=meta.name, season=meta.begin_season)
+        if subscribe:
+            result = SubscribeOper().get_subscribe(sid=subscribe.id, user_id=current_user.id)
 
     return result if result else Subscribe()
 
@@ -235,7 +249,7 @@ def reset_subscribes(
     重置订阅
     """
     subscribe = Subscribe.get(db, subid)
-    usersubscribe = UserSubscribe.get(db, current_user.id, subid)
+    usersubscribe = UserSubscribe.get_by_normal(db, current_user.id, subid)
     if usersubscribe:
         old_usersubscribe_dict = subscribe.to_dict()
         old_usersubscribe_dict.update(usersubscribe.to_dict())
@@ -619,9 +633,9 @@ def delete_subscribe(
     删除订阅信息
     """
     subscribe = Subscribe.get(db, subscribe_id)
-    usersubscribe = UserSubscribe.get(db, current_user.id, subscribe_id)
+    usersubscribe = UserSubscribe.get_by_normal(db, current_user.id, subscribe_id)
     if subscribe and usersubscribe:
-        usersubscribe.delete(db, subscribe_id)
+        UserSubscribe.delete(db, usersubscribe.id)
         # 发送事件
         eventmanager.send_event(EventType.SubscribeDeleted, {
             "subscribe_id": subscribe_id,

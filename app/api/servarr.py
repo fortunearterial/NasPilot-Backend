@@ -697,7 +697,7 @@ def arr_remove_series(tid: int, _: Annotated[str, Depends(verify_apikey)], db: S
     """
     subscribe = Subscribe.get(db, tid)
     if subscribe:
-        subscribe.delete(db, tid)
+        Subscribe.delete(db, tid)
         return schemas.Response(success=True)
     else:
         raise HTTPException(

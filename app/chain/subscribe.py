@@ -307,7 +307,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         :param manual: 是否手动搜索
         :return: 更新订阅状态为R或删除订阅
         """
-        with self._rlock:
+        with (self._rlock):
             logger.debug(f"search lock acquired at {datetime.now()}")
             if sid:
                 subscribe = self.subscribeoper.get(sid)
@@ -323,13 +323,14 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                 if not usersubscribes:
                     continue
                 # 如果usersubscribes所有状态不匹配，则跳过
-                goon = False
-                for usersubscribe in usersubscribes:
-                    if usersubscribe.state in self.get_states_for_search(state):
-                        goon = True
-                        break
-                if not goon:
-                    continue
+                if state:
+                    goon = False
+                    for usersubscribe in usersubscribes:
+                        if usersubscribe.state in self.get_states_for_search(state):
+                            goon = True
+                            break
+                    if not goon:
+                        continue
 
                 mediakey = subscribe.tmdbid or subscribe.doubanid
                 custom_word_list = subscribe.custom_words.split("\n") if subscribe.custom_words else None
@@ -399,7 +400,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
 
                     for usersubscribe in usersubscribes:
                         # 校验用户订阅状态
-                        if not usersubscribe.state in self.get_states_for_search(state):
+                        if state and not usersubscribe.state in self.get_states_for_search(state):
                             continue
 
                         # 校验当前时间减订阅创建时间是否大于1分钟，否则跳过先，留出编辑订阅的时间
@@ -469,7 +470,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                     # 如果状态为N则更新为R
                     for usersubscribe in usersubscribes:
                         if usersubscribe.state == 'N':
-                            self.subscribeoper.update(usersubscribe.id, {'state': 'R'})
+                            self.usersubscribeoper.update(usersubscribe.id, {'state': 'R'})
 
             # 手动触发时发送系统消息
             if manual:
@@ -522,7 +523,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             # 更新订阅已下载信息
             self.__update_subscribe_note(subscribe=subscribe, usersubscribe=usersubscribe, downloads=downloads)
             # 更新订阅剩余集数和时间
-            self.__update_lack_episodes(lefts=lefts, subscribe=subscribe, mediainfo=mediainfo,
+            self.__update_lack_episodes(lefts=lefts, subscribe=subscribe, usersubscribe=usersubscribe, mediainfo=mediainfo,
                                         update_date=bool(downloads))
             # 判断是否需要完成订阅
             if ((no_lefts and meta.type == MediaType.TV)
@@ -1006,7 +1007,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             note = list(set(note).union(set(items)))
         # 更新订阅
         if note:
-            self.subscribeoper.update(subscribe.id, {
+            self.usersubscribeoper.update(usersubscribe.id, {
                 "note": note
             })
 
@@ -1037,6 +1038,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
 
     def __update_lack_episodes(self, lefts: Dict[Union[int, str], Dict[int, schemas.NotExistMediaInfo]],
                                subscribe: Subscribe,
+                               usersubscribe: UserSubscribe,
                                mediainfo: MediaInfo,
                                update_date: Optional[bool] = False):
         """
@@ -1068,7 +1070,7 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
             update_data["lack_episode"] = lack_episode
         # 更新数据库
         if update_data:
-            self.subscribeoper.update(subscribe.id, update_data)
+            self.usersubscribeoper.update(usersubscribe.id, update_data)
 
     def __finish_subscribe(self, subscribe: Subscribe, usersubscribe: UserSubscribe, mediainfo: MediaInfo,
                            meta: MetaBase):
@@ -1084,13 +1086,14 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
         # 新增订阅历史
         self.subscribeoper.add_history(**subscribe.to_dict())
         # 删除订阅
-        self.subscribeoper.delete(subscribe.id)
+        self.usersubscribeoper.delete(usersubscribe.id)
         # 发送通知
         if mediainfo.type == MediaType.TV:
             link = settings.MP_DOMAIN('#/subscribe/tv?tab=mysub')
         else:
             link = settings.MP_DOMAIN('#/subscribe/movie?tab=mysub')
         # 完成订阅按规则发送消息
+        user = self.useroper.get(usersubscribe.user_id)
         self.post_message(
             schemas.Notification(
                 mtype=NotificationType.Subscribe,
@@ -1165,8 +1168,9 @@ class SubscribeChain(ChainBase, metaclass=Singleton):
                 self.post_message(schemas.Notification(channel=channel, source=source,
                                                        title=f"订阅编号 {subscribe_id} 不存在！", userid=userid))
                 return
+            usersubscribe = self.usersubscribeoper.get_by_normal(userid, subscribe_id)
             # 删除订阅
-            self.subscribeoper.delete(subscribe_id)
+            self.usersubscribeoper.delete(usersubscribe.id)
             # 统计订阅
             self.subscribehelper.sub_done_async({
                 "tmdbid": subscribe.tmdbid,

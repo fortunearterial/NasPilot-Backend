@@ -544,10 +544,10 @@ class DownloadChain(ChainBase):
         # 分组排序
         contexts = TorrentHelper().sort_group_torrents(contexts)
 
-        # 如果是电影、游戏、JAV，直接下载
         for context in contexts:
             if global_vars.is_system_stopped:
                 break
+            # 如果是电影、游戏、JAV，直接下载
             if context.media_info.type == MediaType.MOVIE \
                     or context.media_info.type == MediaType.GAME \
                     or context.media_info.type == MediaType.JAV:

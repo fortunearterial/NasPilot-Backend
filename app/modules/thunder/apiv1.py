@@ -167,8 +167,11 @@ class RemoteClient:
             self._save_props()
             self.auth_log_in()
             return self.__request(method, url, **kwargs)
+        if data.get("error") == "external_unknown_err":
+            # 客户端离线
+            raise RuntimeError(f"迅雷客户端不在线，请检查客户端状态！")
         if data.get("error_code"):
-            raise Exception(f"thunder 请求出错：{data.get("error_description")}")
+            raise Exception(f"thunder 请求出错：{data.get('error_description')}")
         if response.status_code != 200:
             raise Exception(f"thunder 请求出错：{response.text}")
         return data
@@ -486,8 +489,6 @@ class RemoteClient:
                 "space": device.get("params").get("target")
             })
         )
-        if not response.get("link"):
-            raise Exception("客户端不在线，请检查客户端状态！")
         return response.get("link")
 
     def __invoke_innerapi_with_url(self, device: dict, url: str, params: dict):
@@ -1013,14 +1014,14 @@ class RemoteClient:
     def create_task(self, torrent_url: str, device_name: str, directory_path: str):
         device = self.get_device(device_name)
         directory = self.get_directory(device_name, directory_path)
-
+        # 获取种子的文件列表
         list_response = self.__request(
             method="POST",
             url="https://api-pan.xunlei.com/drive/v1/resource/list",
             json={"urls": torrent_url, "page_size": 2000}
         )
-
         resources = list_response.get("list").get("resources")[0]
+        # 开始下载
         response = self.__request(
             method="POST",
             url="https://api-pan.xunlei.com/drive/v1/task",

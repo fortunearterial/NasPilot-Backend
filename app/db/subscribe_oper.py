@@ -69,8 +69,8 @@ class SubscribeOper(DbOper):
                                               subscribe_id=subscribe_id)
         if not user_subscribe:
             user_subscribe = UserSubscribe.from_dict(user_id=user_id,
-                                           subscribe_id=subscribe_id,
-                                           **kwargs)
+                                                     subscribe_id=subscribe_id,
+                                                     **kwargs)
             user_subscribe.create(self._db)
             user_subscribe = UserSubscribe.exists(self._db,
                                                   user_id=user_id,
@@ -139,8 +139,10 @@ class SubscribeOper(DbOper):
         """
         获取订阅
         """
-        return self._merge_single(Subscribe.get(self._db, rid=sid),
-                                  UserSubscribe.get(self._db, user_id=user_id, subscribe_id=sid))
+        return self._merge_single(
+            Subscribe.get(self._db, rid=sid),
+            UserSubscribe.get_by_normal(self._db, user_id, sid)
+        )
 
     def list(self, user_id: int, state: Optional[str] = None) -> List[schemas.Subscribe]:
         """
@@ -155,7 +157,7 @@ class SubscribeOper(DbOper):
         subscribes = Subscribe.list_by_ids(self._db, subscribe_ids)
         return self._merge_all(subscribes, usersubscribes)
 
-    def list_all(self,) -> List[Subscribe]:
+    def list_all(self, ) -> List[Subscribe]:
         """
         获取订阅列表
         """
@@ -265,3 +267,21 @@ class UserSubscribeOper(DbOper):
         获取指定用户的订阅
         """
         return UserSubscribe.list_by_subscribeid(self._db, subscribe_id=subscribe_id)
+
+    def get_by_normal(self, user_id: int, subscribe_id: int):
+        return UserSubscribe.get_by_normal(self._db, user_id=user_id, subscribe_id=subscribe_id)
+
+    def update(self, usid: int, payload: dict) -> Subscribe:
+        """
+        更新订阅
+        """
+        usersubscribe = UserSubscribe.get(self._db, rid=usid)
+        if usersubscribe:
+            usersubscribe.update(self._db, payload=payload)
+        return usersubscribe
+
+    def delete(self, usid: int):
+        """
+        删除订阅
+        """
+        UserSubscribe.delete(self._db, rid=usid)
