@@ -11,7 +11,7 @@ from app.schemas.types import SystemConfigKey
 
 # revision identifiers, used by Alembic.
 revision = '89d24811e894'
-down_revision = '4b544f5d3b07'
+down_revision = '4e7a658458d9'
 branch_labels = None
 depends_on = None
 

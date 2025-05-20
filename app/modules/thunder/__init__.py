@@ -167,7 +167,7 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             # 获取种子Hash
             torrent_hash = server.get_torrent_id_by_tag(tags=label)
             if not torrent_hash:
-                return None, None, None, f"下载任务添加成功，但获取Qbittorrent任务信息失败：{content}"
+                return None, None, None, f"下载任务添加成功，但获取Thunder任务信息失败：{content}"
             else:
                 if is_paused:
                     # 种子文件

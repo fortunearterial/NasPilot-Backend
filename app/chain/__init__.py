@@ -195,25 +195,6 @@ class ChainBase(metaclass=ABCMeta):
                 )
         return result
 
-        # if method in [
-        #     "tmdb_discover", "tmdb_trending",
-        #     "bangumi_calendar",
-        #     "douban_discover",
-        #     "movie_showing", "movie_top250", "tv_weekly_chinese", "tv_weekly_global", "tv_animation",
-        #     "movie_hot", "tv_hot",
-        #     "recognize_media", "refresh_torrents"
-        # ]:
-        #     return broadcast_to_clients(method=method, timeout=60, *args, **kwargs)
-        # elif method in ["downloader_info", "list_files", "download"]:
-        #     return send_to_client(user_id=user_id, method=method, *args, **kwargs)
-        # if method in ["mediaserver_librarys"]:
-        #     # 延迟模式，由用户消费
-        #     self.userjoboper.publish(user_id=user_id, method=method, *args, **kwargs)
-        #     return None
-        # else:
-        #     return run_on_server(method=method, *args, **kwargs)
-        return run_on_server(method=method, *args, **kwargs)
-
     def recognize_media(self, meta: MetaBase = None,
                         mtype: Optional[MediaType] = None,
                         tmdbid: Optional[int] = None,

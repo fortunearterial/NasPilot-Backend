@@ -91,7 +91,7 @@ class SitesHelper(SitesHelperBase):
             "limit_seconds": site.limit_seconds,
             "timeout": site.timeout,
             "is_active": site.is_active,
-            "lst_mod_date": site.lst_mod_date,
+            # "lst_mod_date": site.lst_mod_date,
             "downloader": site.downloader,
             "result_num": 1000
         }
@@ -164,38 +164,6 @@ class SitesHelper(SitesHelperBase):
 
 
 class SiteSpider(SiteSpiderBase):
-    # # 是否出现错误
-    # is_error: bool = False
-    # # 索引器ID
-    # indexerid: int = None
-    # # 索引器名称
-    # indexername: str = None
-    # # 站点地址
-    # url: str = None
-    # # 站点Cookie
-    # cookie: str = None
-    # # 站点UA
-    # ua: str = None
-    # # Requests 代理
-    # proxies: dict = None
-    # # playwright 代理
-    # proxy_server: dict = None
-    # # 是否渲染
-    # render: bool = False
-    # # cat
-    # cat: str = None
-    # # 搜索关键字
-    # keyword: str = None
-    # # 媒体类型
-    # mtype: MediaType = None
-    # # 搜索路径、方式配置
-    # search: dict = {}
-    # # 批量搜索配置
-    # batch: dict = {}
-    # # 浏览配置
-    # browse: dict = {}
-    # # 站点分类配置
-    # category: dict = {}
     # 种子列表是否在列表详情页
     torrent_in_detail: bool = False
     # 站点列表配置
@@ -206,19 +174,6 @@ class SiteSpider(SiteSpiderBase):
     torrent: dict = {}
     # 站点种子字段配置
     torrent_fields: dict = {}
-
-    # # 页码
-    # page: int = 0
-    # # 搜索条数, 默认: 100条
-    # result_num: int = 100
-    # # 单个种子信息
-    # torrents_info: dict = {}
-    # # 种子列表
-    # torrents_info_array: list = []
-    # # 搜索超时, 默认: 15秒
-    # _timeout = 15
-    # # 支持的媒体类型
-    # types: list = []
 
     def __init__(self,
                  indexer: CommentedMap,
@@ -242,10 +197,10 @@ class SiteSpider(SiteSpiderBase):
 
         if not indexer:
             return
-        self.keyword = keyword
-        self.mtype = mtype
-        self.indexerid = indexer.get('id')
-        self.indexername = indexer.get('name')
+        # self.keyword = keyword
+        # self.mtype = mtype
+        # self.indexerid = indexer.get('id')
+        # self.indexername = indexer.get('name')
         self.search = indexer.get('search', {})
         self.batch = indexer.get('batch')
         self.browse = indexer.get('browse', {})
@@ -260,18 +215,18 @@ class SiteSpider(SiteSpiderBase):
             'browser_torrents', {}).get('torrent', {})
         self.torrent_fields = indexer.get('search_torrents', {}).get('torrent_fields') if keyword else indexer.get(
             'browser_torrents', {}).get('torrent_fields')
-        self.render = indexer.get('render')
+        # self.render = indexer.get('render')
         self.url = indexer.get('url')
-        self.result_num = int(indexer.get('result_num') or 100)
-        self._timeout = int(indexer.get('timeout') or 15)
+        # self.result_num = int(indexer.get('result_num') or 100)
+        # self._timeout = int(indexer.get('timeout') or 15)
         self.types = indexer.get('types')
-        self.page = page
+        # self.page = page
         if self.url and not str(self.url).endswith("/"):
             self.url = self.url + "/"
-        if indexer.get('ua'):
-            self.ua = indexer.get('ua') or settings.USER_AGENT
-        else:
-            self.ua = settings.USER_AGENT
+        # if indexer.get('ua'):
+        #     self.ua = indexer.get('ua') or settings.USER_AGENT
+        # else:
+        #     self.ua = settings.USER_AGENT
         if indexer.get('proxy'):
             self.proxies = settings.PROXY
             self.proxy_server = settings.PROXY_SERVER
@@ -916,6 +871,8 @@ class SiteSpider(SiteSpiderBase):
                     text = text.strip(r"%s" % args)
                 elif method_name == "appendleft":
                     text = f"{args}{text}"
+                elif method_name == "appendright":
+                    text = f"{text}{args}"
                 elif method_name == "querystring":
                     parsed_url = urlparse(str(text))
                     query_params = parse_qs(parsed_url.query)
@@ -986,7 +943,7 @@ class SiteSpider(SiteSpiderBase):
                 for torn in html_doc(lists_selector):
                     self.fields = self.list_fields
                     detail_info = self.get_info(PyQuery(torn))
-                    if detail_info.get('title') in self.keyword:
+                    if not self.keyword or detail_info.get('title') in self.keyword:
                         detail_html_text = self.get_pagesource(detail_info.get('page_url'))
                         self._parse(detail_html_text)
                         if len(self.torrents_info_array) >= int(self.result_num):

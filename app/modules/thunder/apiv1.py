@@ -137,6 +137,42 @@ class RemoteClient:
         except Exception as err:
             raise LoginFailed(f"thunder 登录出错：{str(err)}")
 
+    def __headers(self):
+        return {
+            'authorization': self._props.get('credentials.token_type') + ' ' + self._props.get(
+                'credentials.access_token'),
+            'cache-control': 'no-cache',
+            'content-type': 'application/json',
+            'origin': 'https://pan.xunlei.com',
+            'referer': 'https://pan.xunlei.com/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0',
+            'x-captcha-token': self._props.get('captcha.token'),
+            'x-client-id': self.__client_id,
+            'x-device-id': self._props.get('init.device_id'),
+        }
+
+    def __request(self, method: str, url: str, **kwargs):
+        """
+        检查响应
+        """
+        response = requests.request(method, url, headers=self.__headers(), **kwargs)
+        data = response.json()
+        if data.get("error") == "unauthenticated":
+            # 重新登录
+            self._props = {
+                "init.client_id": self._props.get("init.client_id"),
+                "init.device_id": self._props.get("init.device_id"),
+                "init.meta": self._props.get("init.meta"),
+            }
+            self._save_props()
+            self.auth_log_in()
+            return self.__request(method, url, **kwargs)
+        if data.get("error_code"):
+            raise Exception(f"thunder 请求出错：{data.get("error_description")}")
+        if response.status_code != 200:
+            raise Exception(f"thunder 请求出错：{response.text}")
+        return data
+
     def _refresh_props(self):
         expire_time = self._props.get('captcha.expires_at')
         if expire_time:
@@ -164,20 +200,6 @@ class RemoteClient:
             })
             logger.info('[INFO]新的 captcha_token: ' + response.get('captcha_token'))
             self._save_props()
-
-    def _headers(self):
-        return {
-            'authorization': self._props.get('credentials.token_type') + ' ' + self._props.get(
-                'credentials.access_token'),
-            'cache-control': 'no-cache',
-            'content-type': 'application/json',
-            'origin': 'https://pan.xunlei.com',
-            'referer': 'https://pan.xunlei.com/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0',
-            'x-captcha-token': self._props.get('captcha.token'),
-            'x-client-id': self.__client_id,
-            'x-device-id': self._props.get('init.device_id'),
-        }
 
     # @cached(maxsize=1000, ttl=3600)
     def get_devices(self) -> list[Dict]:
@@ -281,10 +303,10 @@ class RemoteClient:
         }
         """
 
-        response = requests.get(
+        response = self.__request(
+            method="GET",
             url="https://api-pan.xunlei.com/drive/v1/tasks?type=user%23runner&space=",
-            headers=self._headers(),
-        ).json()
+        )
         return response.get('tasks')
 
     def get_device(self, name: str):
@@ -458,12 +480,12 @@ class RemoteClient:
             }
         }
         """
-        response = requests.get(
+        response = self.__request(
+            method="GET",
             url="https://api-pan.xunlei.com/drive/v1/apps/INNER_API?" + parse.urlencode({
                 "space": device.get("params").get("target")
-            }),
-            headers=self._headers(),
-        ).json()
+            })
+        )
         if not response.get("link"):
             raise Exception("客户端不在线，请检查客户端状态！")
         return response.get("link")
@@ -472,11 +494,11 @@ class RemoteClient:
         inner_api = parse.urlparse(self._get_innerapi(device))
         inner_query = parse.parse_qs(inner_api.query)
         inner_query.update(**params)
-        response = requests.get(
+        response = self.__request(
+            method="GET",
             url=f"{inner_api.scheme}://{inner_api.netloc}{inner_api.path}{url}",
-            headers=self._headers(),
             params=inner_query
-        ).json()
+        )
         return response
 
     # @cached(maxsize=1000, ttl=3600)
@@ -925,7 +947,7 @@ class RemoteClient:
                         "real_path": "/downloads/【高清剧集网发布 www.PTHDTV.com】爱，死亡和机器人.第四季[全10集][简繁英字幕].2025.Repack.1080p.NF.WEB-DL.x264.DDP5.1.Atmos-DeePTV",
                         "sleep": "timer:1s<1s<1m0s",
                         "spec": "{\"phase\":\"running\"}",
-                        "speed": "12473137",
+                        "speed": "12473137", ## 当前下载速速
                         "speed_limit": "-1",
                         "speedup": "{\"p2p\":\"started\",\"vip\":\"close\",\"super\":\"close\",\"trace_id\":\"WsDBU5M5\"}",
                         "speedup_count": "5",
@@ -962,9 +984,9 @@ class RemoteClient:
         }
         """
         device = self.get_device(device_name)
-        response = requests.get(
+        response = self.__request(
+            method="GET",
             url="https://api-pan.xunlei.com/drive/v1/tasks",
-            headers=self._headers(),
             params={
                 "space": device.get("params").get("target"),
                 "page_token": "",
@@ -974,34 +996,34 @@ class RemoteClient:
                 }),
                 "limit": "200",
             }
-        ).json()
+        )
         return response.get("tasks")
 
     def task_info(self, device_name: str, task_id: str):
         device = self.get_device(device_name)
-        response = requests.get(
+        response = self.__request(
+            method="GET",
             url="https://api-pan.xunlei.com/drive/v1/tasks/" + task_id,
-            headers=self._headers(),
             params={
                 "space": device.get("params").get("target"),
             }
-        ).json()
+        )
         return response
 
     def create_task(self, torrent_url: str, device_name: str, directory_path: str):
         device = self.get_device(device_name)
         directory = self.get_directory(device_name, directory_path)
 
-        list_response = requests.post(
+        list_response = self.__request(
+            method="POST",
             url="https://api-pan.xunlei.com/drive/v1/resource/list",
-            headers=self._headers(),
             json={"urls": torrent_url, "page_size": 2000}
-        ).json()
+        )
 
         resources = list_response.get("list").get("resources")[0]
-        response = requests.post(
+        response = self.__request(
+            method="POST",
             url="https://api-pan.xunlei.com/drive/v1/task",
-            headers=self._headers(),
             json={
                 "file_name": resources.get("name"),
                 "file_size": resources.get("file_size"),
@@ -1016,15 +1038,14 @@ class RemoteClient:
                     "sub_file_index": "0-" + str(int(resources.get("file_count")) - 1)
                 }
             }
-        ).json()
+        )
         return response['task']['id']
 
     def remove_task(self, device_name: str, task_id: str):
         device = self.get_device(device_name)
-        response = requests.request(
-            url="https://api-pan.xunlei.com/drive/v1/task",
+        response = self.__request(
             method="PATCH",
-            headers=self._headers(),
+            url="https://api-pan.xunlei.com/drive/v1/task",
             json={
                 "space": device.get("params").get("target"),
                 "type": "user#download-url",
@@ -1036,10 +1057,9 @@ class RemoteClient:
 
     def start_task(self, device_name: str, task_id: str):
         device = self.get_device(device_name)
-        response = requests.request(
-            url="https://api-pan.xunlei.com/drive/v1/task",
+        response = self.__request(
             method="PATCH",
-            headers=self._headers(),
+            url="https://api-pan.xunlei.com/drive/v1/task",
             json={
                 "space": device.get("params").get("target"),
                 "type": "user#download-url",
@@ -1051,10 +1071,9 @@ class RemoteClient:
 
     def pause_task(self, device_name: str, task_id: str):
         device = self.get_device(device_name)
-        response = requests.request(
-            url="https://api-pan.xunlei.com/drive/v1/task",
+        response = self.__request(
             method="PATCH",
-            headers=self._headers(),
+            url="https://api-pan.xunlei.com/drive/v1/task",
             json={
                 "space": device.get("params").get("target"),
                 "type": "user#download-url",

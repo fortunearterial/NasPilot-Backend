@@ -206,12 +206,23 @@ class UserServiceBase(Generic[TService, TConf], metaclass=ABCMeta):
 
         :return: 返回服务实例列表
         """
-        raise NotImplementedError("get_instances method is not implemented")
+        if not user_id:
+            return {}
+        configs = self.get_configs(user_id)
+
+        for conf in configs.values():
+            # 通过服务类型或工厂函数来创建实例
+            if isinstance(self._service_type, type):
+                # 如果传入的是类类型，调用构造函数实例化
+                yield self._service_type(**conf.config)
+            else:
+                # 如果传入的是工厂函数，直接调用工厂函数
+                yield self._service_type(conf)
 
     def get_instance(self, user_id: int, name: Optional[str] = None) -> Optional[TService]:
         """
         获取指定名称的服务实例
-
+        :param user_id: 用户ID
         :param name: 实例名称，可选。如果为 None，则返回默认实例
         :return: 返回符合条件的服务实例，若不存在则返回 None
         """
