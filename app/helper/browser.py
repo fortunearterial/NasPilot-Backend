@@ -36,12 +36,13 @@ class PlaywrightHelper:
         :param proxies: 代理
         :param headless: 是否无头模式
         :param timeout: 超时时间
+        :param user_data_dir: 持久化目录
         """
         try:
             with sync_playwright() as playwright:
                 if user_data_dir:
                     context = playwright[self.browser_type].launch_persistent_context(user_data_dir=user_data_dir,
-                                                                                      headless=headless)
+                                                                                      headless=headless,)
                 else:
                     browser = playwright[self.browser_type].launch(headless=headless)
                     context = browser.new_context(user_agent=ua, proxy=proxies)
@@ -57,7 +58,10 @@ class PlaywrightHelper:
                 except Exception as e:
                     logger.error(f"网页操作失败: {str(e)}")
                 finally:
-                    browser.close()
+                    if user_data_dir:
+                        context.close()
+                    else:
+                        browser.close()
         except Exception as e:
             logger.error(f"网页操作失败: {str(e)}")
         return None

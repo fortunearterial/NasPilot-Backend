@@ -1,4 +1,4 @@
-from typing import Any, List, Annotated, Optional
+from typing import Any, List, Annotated, Optional, Dict
 
 from fastapi import APIRouter, Depends, Body
 
@@ -13,6 +13,7 @@ from app.db.user_oper import get_current_active_user
 from app.db.user_oper import get_current_user
 from app.db.userconfig_oper import UserConfigOper
 from app.schemas.types import UserConfigKey
+from app.modules.thunder.apiv1 import RemoteClient
 
 router = APIRouter()
 
@@ -51,8 +52,9 @@ def download(
         media_info=mediainfo,
         torrent_info=torrentinfo
     )
-    did, error_msg = DownloadChain().download_single(user_id=current_user.id, context=context, username=current_user.name,
-                                          downloader=downloader, save_path=save_path, source="Manual")
+    did, error_msg = DownloadChain().download_single(user_id=current_user.id, context=context,
+                                                     username=current_user.name,
+                                                     downloader=downloader, save_path=save_path, source="Manual")
     if not did:
         return schemas.Response(success=False, message=error_msg or "任务添加失败")
     return schemas.Response(success=True, data={
@@ -84,8 +86,9 @@ def add(
         media_info=mediainfo,
         torrent_info=torrentinfo
     )
-    did, error_msg = DownloadChain().download_single(user_id=current_user.id, context=context, username=current_user.name,
-                                          downloader=downloader, save_path=save_path, source="Manual")
+    did, error_msg = DownloadChain().download_single(user_id=current_user.id, context=context,
+                                                     username=current_user.name,
+                                                     downloader=downloader, save_path=save_path, source="Manual")
     if not did:
         return schemas.Response(success=False, message=error_msg or "任务添加失败")
     return schemas.Response(success=True, data={

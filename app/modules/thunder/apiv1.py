@@ -11,7 +11,6 @@ from playwright.sync_api import Request, Page
 from app.log import logger
 from app.helper.browser import PlaywrightHelper
 from app.core.config import settings
-from app.core.cache import cached
 
 
 class LoginFailed(BaseException):
@@ -24,6 +23,8 @@ class RemoteClient:
     _username: Optional[str] = None
     _password: Optional[str] = None
     _props: Optional[Dict] = None
+
+    smscode: Optional[str] = None
 
     def __init__(self,
                  username: Optional[str] = None,
@@ -52,8 +53,8 @@ class RemoteClient:
         try:
             with open(settings.CONFIG_PATH / "thunder" / f'{self._username}.db', 'rb') as f:
                 self._props = pickle.load(f)  # noqa
+            logger.debug(f"读取迅雷数据成功：{self._props}")
         except Exception as err:
-            logger.error(f"读取迅雷数据出错：{str(err)}")
             self._props = {}
 
     def auth_log_in(self):
@@ -69,9 +70,10 @@ class RemoteClient:
             PlaywrightHelper().action(
                 url="https://pan.xunlei.com/yc/home",
                 headless=not settings.DEBUG,
-                ua="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0",
+                ua="Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0",
                 callback=self.__login_callback,
-                user_data_dir=str(settings.CONFIG_PATH / "thunder/browser_data" / self._username), )
+                user_data_dir=str(settings.CONFIG_PATH / "thunder/browser_data" / self._username),
+            )
             self._save_props()
         except Exception as err:
             logger.error(f"thunder 连接出错：{str(err)}")
@@ -89,10 +91,24 @@ class RemoteClient:
                     "init.device_id": captcha_data["device_id"],
                     "init.meta": captcha_data.get("meta")
                 })
+                logger.debug(f"获取到init数据：{self._props}")
+
+            try:
+                authorization = request.header_value('authorization')
+                if authorization:
+                    token_type, access_token = authorization.split(' ')
+                    self._props.update({
+                        "credentials.token_type": token_type,
+                        "credentials.access_token": access_token,
+                    })
+                    logger.debug(f"获取到credentials数据：{self._props}")
+            except Exception:
+                pass
 
         try:
             # 未登录
             if page.is_visible("span.button-login:has-text('立即登录')"):
+                logger.info(f"开始登录")
                 page.on("request", request_handler)
                 # 跳转登录页面
                 page.click("span.button-login:has-text('立即登录')")
@@ -107,7 +123,15 @@ class RemoteClient:
                 # 检测是否有错误信息
                 if page.is_visible("p.xlucommon-login-note"):
                     raise LoginFailed(page.query_selector("p.xlucommon-login-note").text_content())
+                # 是否有短信验证
+                if page.is_visible("h3:has-text('请进行短信验证')"):
+                    page.click("span.get-validate-code")
+                    while not self.smscode:
+                        time.sleep(1)
+                    page.fill("input.xlubase-login-input[type='text']", self.smscode)
+                    page.click("button.xlucommon-login-button")
 
+            logger.info(f"已登录，开始获取客户端信息")
             time.sleep(5)
             local_storage = None
             while not local_storage:
@@ -116,6 +140,7 @@ class RemoteClient:
                 except Exception:
                     time.sleep(1)
 
+            logger.info(f"客户端信息： {local_storage}")
             for key in local_storage:
                 if 'captcha_' + self.__client_id == key:
                     captcha = json.loads(local_storage[key])
@@ -125,6 +150,7 @@ class RemoteClient:
                         self._props.update({
                             "captcha." + k: captcha[k]
                         })
+                    logger.debug(f"获取到captcha数据：{self._props}")
                 if 'credentials_' + self.__client_id == key:
                     credentials = json.loads(local_storage[key])
                     credentials['expires_at'] = datetime.datetime.strptime(credentials['expires_at'],
@@ -133,11 +159,15 @@ class RemoteClient:
                         self._props.update({
                             "credentials." + k: credentials[k]
                         })
+                    logger.debug(f"获取到credentials数据：{self._props}")
             self._refresh_props()
         except Exception as err:
             raise LoginFailed(f"thunder 登录出错：{str(err)}")
 
     def __headers(self):
+        if not self._props.get('credentials.token_type') or \
+                not self._props.get('credentials.access_token'):
+            raise Exception("未取到credentials")
         return {
             'authorization': self._props.get('credentials.token_type') + ' ' + self._props.get(
                 'credentials.access_token'),
@@ -145,7 +175,7 @@ class RemoteClient:
             'content-type': 'application/json',
             'origin': 'https://pan.xunlei.com',
             'referer': 'https://pan.xunlei.com/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0',
             'x-captcha-token': self._props.get('captcha.token'),
             'x-client-id': self.__client_id,
             'x-device-id': self._props.get('init.device_id'),
@@ -179,7 +209,7 @@ class RemoteClient:
     def _refresh_props(self):
         expire_time = self._props.get('captcha.expires_at')
         if expire_time:
-            expire_time = int(expire_time)
+            expire_time = int(expire_time.timestamp())
         if not expire_time or expire_time < int(time.time()):
             logger.info('[INFO]更新 captcha_token')
             url = "https://xluser-ssl.xunlei.com/v1/shield/captcha/init"
@@ -193,7 +223,7 @@ class RemoteClient:
                 'content-type': 'application/json',
                 'origin': 'https://pan.xunlei.com',
                 'referer': 'https://pan.xunlei.com/',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0',
             }
             response = requests.request("POST", url, headers=headers, data=json.dumps(device))
             response = json.loads(response.text)
