@@ -2,7 +2,8 @@ import datetime
 import json
 import time
 import pickle
-from typing import Optional, Dict
+from pathlib import Path
+from typing import Optional, Dict, Union
 from urllib import parse
 
 import requests
@@ -11,6 +12,7 @@ from playwright.sync_api import Request, Page
 from app.log import logger
 from app.helper.browser import PlaywrightHelper
 from app.core.config import settings
+from app.utils.system import SystemUtils
 
 
 class LoginFailed(BaseException):
@@ -340,10 +342,14 @@ class RemoteClient:
             method="GET",
             url="https://api-pan.xunlei.com/drive/v1/tasks?type=user%23runner&space=",
         )
+        logger.debug(f"获取设备列表：{response.get('tasks')}")
         return response.get('tasks')
 
     def get_device(self, name: str):
         devices = self.get_devices()
+        for device in devices:
+            logger.debug(
+                f"设备名称：{device.get('name')}, {device.get('name').__class__}, {repr(device.get('name'))}, {repr(name)}, {device.get('name') == name}")
         filter_devices = list(filter(lambda x: x.get('name') == name, devices))
         if len(filter_devices) == 0:
             raise Exception(f"无法找到名称为{name}的远程设备，请检查配置")
@@ -943,11 +949,19 @@ class RemoteClient:
                 "with": "withCategoryHistoryDownloadPath",
                 "order": "TYPE_DESC",
             })
+        logger.debug(f"获取目录列表：{response.get('files')}")
         return response.get("files")
 
     def get_directory(self, device_name: str, path: str):
         directories = self.get_directories(device_name)
-        filter_directories = list(filter(lambda x: x.get('params').get('RealPath') == path + "\\", directories))
+        for directory in directories:
+            logger.debug(
+                f"目录：{directory.get('params').get('RealPath')}, {repr(directory.get('params').get('RealPath'))}, {repr(path)}, "
+                f"{directory.get('params').get('RealPath') == path or directory.get('params').get('RealPath') == path + '/' or directory.get('params').get('RealPath') == path + '\\'}")
+        filter_directories = list(filter(lambda x: x.get('params').get('RealPath') == path or
+                                                   x.get('params').get('RealPath') == path + "/" or  # Linux
+                                                   x.get('params').get('RealPath') == path + "\\",   # Win
+                                         directories))
         if len(filter_directories) == 0:
             raise Exception(f"无法找到远程设备名称为{device_name}的\"{path}\"目录，请检查配置")
         return filter_directories[0]
@@ -1041,7 +1055,7 @@ class RemoteClient:
         )
         return response
 
-    def create_task(self, torrent_url: str, device_name: str, directory_path: str):
+    def create_task(self, torrent_url: str, device_name: str, directory_path: str, tag: str):
         device = self.get_device(device_name)
         directory = self.get_directory(device_name, directory_path)
         # 获取种子的文件列表
@@ -1052,11 +1066,12 @@ class RemoteClient:
         )
         resources = list_response.get("list").get("resources")[0]
         # 开始下载
+
         response = self.__request(
             method="POST",
             url="https://api-pan.xunlei.com/drive/v1/task",
             json={
-                "file_name": resources.get("name"),
+                "file_name": tag + "#" + resources.get("name"),
                 "file_size": resources.get("file_size"),
                 "space": device.get("params").get("target"),
                 "type": "user#download-url",
@@ -1074,7 +1089,7 @@ class RemoteClient:
 
     def remove_task(self, device_name: str, task_id: str):
         device = self.get_device(device_name)
-        response = self.__request(
+        self.__request(
             method="PATCH",
             url="https://api-pan.xunlei.com/drive/v1/task",
             json={
@@ -1084,11 +1099,11 @@ class RemoteClient:
                 "set_params": {"spec": "{\"phase\":\"delete\"}"}
             }
         )
-        return response.status_code == 200
+        return True
 
     def start_task(self, device_name: str, task_id: str):
         device = self.get_device(device_name)
-        response = self.__request(
+        self.__request(
             method="PATCH",
             url="https://api-pan.xunlei.com/drive/v1/task",
             json={
@@ -1098,11 +1113,11 @@ class RemoteClient:
                 "set_params": {"spec": "{\"phase\":\"running\"}"}
             }
         )
-        return response.status_code == 200
+        return True
 
     def pause_task(self, device_name: str, task_id: str):
         device = self.get_device(device_name)
-        response = self.__request(
+        self.__request(
             method="PATCH",
             url="https://api-pan.xunlei.com/drive/v1/task",
             json={
@@ -1112,9 +1127,34 @@ class RemoteClient:
                 "set_params": {"spec": "{\"phase\":\"pause\"}"}
             }
         )
-        return response.status_code == 200
+        return True
 
     def statistics(self, device_name: str):
+        '''
+        {
+            "status": 0,
+            "usage": {
+                "total": 3,
+                "used": 0
+            },
+            "count_down": {
+                "total": 0,
+                "used": 0
+            },
+            "task_counter": {
+                "super_speed": null,
+                "team": null
+            },
+            "statistic": {
+                "average_speed": 0,
+                "saved_sec": 0,
+                "start_time": 0,
+                "end_time": 0,
+                "stop_reason": ""
+            },
+            "expire_sec": 10
+        }
+        '''
         device = self.get_device(device_name)
         response = self.__invoke_innerapi_with_url(
             device=device,
@@ -1137,7 +1177,7 @@ if __name__ == '__main__':
     directory_info = api.get_directory("群晖-SynologyUat", "/downloads/")
     print(directory_info)
     did = api.create_task("magnet:?xt=urn:btih:3393fdb952109e24c66c8b39e393f23dfd550084", "群晖-SynologyUat",
-                          "/downloads/")
+                          "/downloads/", "NASPILOT")
     print(did)
     api.pause_task("群晖-SynologyUat", did)
     api.start_task("群晖-SynologyUat", did)

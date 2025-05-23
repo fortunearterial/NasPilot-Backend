@@ -328,7 +328,8 @@ class JobManager:
             # 计算状态为完成的任务数
             if __mediaid__ not in self._job_view:
                 return 0
-            return sum([task.fileitem.size for task in self._job_view[__mediaid__].tasks if task.state == "completed" and task.fileitem.size is not None])
+            return sum([task.fileitem.size for task in self._job_view[__mediaid__].tasks if
+                        task.state == "completed" and task.fileitem.size is not None])
 
     def total(self) -> int:
         """
@@ -793,7 +794,8 @@ class TransferChain(ChainBase, metaclass=Singleton):
                 return True
             logger.info("开始整理下载器中已经完成下载的文件 ...")
             # 从下载器获取种子列表
-            torrents: Optional[List[TransferTorrent]] = self.list_torrents(status=TorrentStatus.TRANSFER)
+            torrents: Optional[List[TransferTorrent]] = self.list_torrents(user_id=settings.CURRENT_USERID,
+                                                                           status=TorrentStatus.TRANSFER)
             if not torrents:
                 logger.info("没有已完成下载但未整理的任务")
                 return False
@@ -1383,7 +1385,8 @@ class TransferChain(ChainBase, metaclass=Singleton):
             return state, errmsg
 
     def send_transfer_message(self, meta: MetaBase, mediainfo: MediaInfo,
-                              transferinfo: TransferInfo, season_episode: Optional[str] = None, username: Optional[str] = None):
+                              transferinfo: TransferInfo, season_episode: Optional[str] = None,
+                              username: Optional[str] = None):
         """
         发送入库成功的消息
         """

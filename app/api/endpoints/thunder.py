@@ -41,7 +41,7 @@ async def close_context_after_delay(context: BrowserContext, session_id: str, de
         await context.close()
     if session_id in active_login_sessions:
         del active_login_sessions[session_id]
-    if not active_login_sessions:
+    if not active_login_sessions and playwright_manager:
         await playwright_manager.stop()
         playwright_manager = None
     print(f"Session {session_id} context closed and cleaned up after delay.")
@@ -100,13 +100,12 @@ async def initiate_login(payload: LoginInitiatePayload,
                                         message="downloader.ext.sms_code_required",
                                         data={"session_id": payload.username})
 
-
         # 已登录
         await page.close()
         del active_login_sessions[payload.username]
         await context.close()  # 成功后关闭 context
 
-        if not active_login_sessions:
+        if not active_login_sessions and playwright_manager:
             await playwright_manager.stop()
             playwright_manager = None
         return schemas.Response(success=True)
@@ -143,7 +142,8 @@ async def complete_login(payload: LoginCompletePayload,
         await frame.locator("#verification_code").fill(payload.sms_code)
         # 点击确定
         await frame.locator("a.next-step-btn").click()
-        if await frame.locator("div.error-tips").is_visible():
+        if await frame.locator("div.error-tips").is_visible() and \
+                await frame.locator("div.error-tips").text_content():
             return schemas.Response(success=False, message=await frame.locator("div.error-tips").text_content())
 
         # 清理会话
@@ -152,7 +152,7 @@ async def complete_login(payload: LoginCompletePayload,
             del active_login_sessions[payload.session_id]
         await context.close()  # 成功后关闭 context
 
-        if not active_login_sessions:
+        if not active_login_sessions and playwright_manager:
             await playwright_manager.stop()
             playwright_manager = None
 

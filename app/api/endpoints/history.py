@@ -15,6 +15,7 @@ from app.db.models.transferhistory import TransferHistory
 from app.db.models.user import User
 from app.db.user_oper import get_current_active_superuser
 from app.schemas.types import EventType, MediaType
+from db.user_oper import get_current_user
 
 router = APIRouter()
 
@@ -81,7 +82,7 @@ def delete_transfer_history(history_in: schemas.TransferHistory,
                             deletesrc: Optional[bool] = False,
                             deletedest: Optional[bool] = False,
                             db: Session = Depends(get_db),
-                            _: schemas.TokenPayload = Depends(get_current_active_superuser)) -> Any:
+                            current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     删除整理记录
     """
@@ -103,6 +104,7 @@ def delete_transfer_history(history_in: schemas.TransferHistory,
         eventmanager.send_event(
             EventType.DownloadFileDeleted,
             {
+                "user_id": current_user.id,
                 "src": history.src,
                 "hash": history.download_hash
             }

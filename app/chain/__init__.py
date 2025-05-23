@@ -445,7 +445,7 @@ class ChainBase(metaclass=ABCMeta):
         return self.run_module("download_added", context=context, torrent_path=torrent_path,
                                download_dir=download_dir)
 
-    def list_torrents(self, status: TorrentStatus = None,
+    def list_torrents(self, user_id: int, status: TorrentStatus = None,
                       hashs: Union[list, str] = None,
                       downloader: Optional[str] = None
                       ) -> Optional[List[Union[TransferTorrent, DownloadingTorrent]]]:
@@ -456,7 +456,7 @@ class ChainBase(metaclass=ABCMeta):
         :param downloader:  下载器
         :return: 下载器中符合状态的种子列表
         """
-        return self.run_module("list_torrents", status=status, hashs=hashs, downloader=downloader)
+        return self.run_module("list_torrents", user_id=user_id, status=status, hashs=hashs, downloader=downloader)
 
     def transfer(self, fileitem: FileItem, meta: MetaBase, mediainfo: MediaInfo,
                  target_directory: TransferDirectoryConf = None,

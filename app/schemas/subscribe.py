@@ -54,7 +54,7 @@ class Subscribe(BaseSchema):
     # 状态：N-新建， R-订阅中
     state: Optional[str] = None
     # 最后更新时间
-    last_update: Optional[str] = None
+    last_update: Optional[datetime.datetime] = None
     # 订阅站点
     sites: Optional[List[int]] = Field(default_factory=list)
     # 下载器

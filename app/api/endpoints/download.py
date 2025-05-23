@@ -21,11 +21,11 @@ router = APIRouter()
 @router.get("/", summary="正在下载", response_model=List[schemas.DownloadingTorrent])
 def current(
         name: Optional[str] = None,
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     查询正在下载的任务
     """
-    return DownloadChain().downloading(name)
+    return DownloadChain().downloading(current_user.id, name)
 
 
 @router.post("/", summary="添加下载（含媒体信息）", response_model=schemas.Response)

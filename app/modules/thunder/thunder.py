@@ -78,7 +78,7 @@ class Thunder:
         if not self.tdc:
             return [], True
         try:
-            torrents = []
+            torrents = self.tdc.list_tasks(self._device_name)
             if tags:
                 results = []
                 if not isinstance(tags, list):
@@ -346,8 +346,18 @@ class Thunder:
         """
         if not self.tdc:
             return None
+
         try:
-            return None  # TODO
+            results = {
+                "speed": 0,
+                "downloaded_file_size": 0,
+            }
+            for task in self.tdc.list_tasks(self._device_name):
+                results.update({
+                    "speed": results.get("speed") + int(task.get("params").get("speed")),
+                    "downloaded_file_size": results.get("downloaded_file_size") + int(task.get("file_size")) * task.get("progress") / 100.0,
+                })
+            return results
         except Exception as err:
             logger.error(f"获取传输信息出错：{str(err)}")
             return None

@@ -120,6 +120,8 @@ class SubscribeOper(DbOper):
         合并结果
         """
         result = dict()
+        if not usersubscribe:
+            return subscribe or result
         if subscribe.id == usersubscribe.subscribe_id:
             rd = subscribe.to_dict()
             usd = usersubscribe.to_dict()

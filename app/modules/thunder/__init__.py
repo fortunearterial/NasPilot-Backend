@@ -355,16 +355,16 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             servers = [server]
         else:
             servers = self.get_instances(user_id).values()
-        # 调用Qbittorrent API查询实时信息
+        # 调用Thunder API查询实时信息
         ret_info = []
         for server in servers:
             info = server.transfer_info()
             if not info:
                 continue
             ret_info.append(schemas.DownloaderInfo(
-                download_speed=info.get("dl_info_speed"),
-                upload_speed=info.get("up_info_speed"),
-                download_size=info.get("dl_info_data"),
-                upload_size=info.get("up_info_data")
+                download_speed=info.get("speed"),
+                upload_speed=0,
+                download_size=info.get("downloaded_file_size"),
+                upload_size=0,
             ))
         return ret_info

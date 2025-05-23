@@ -552,9 +552,10 @@ class DownloadChain(ChainBase):
                     or context.media_info.type == MediaType.GAME \
                     or context.media_info.type == MediaType.JAV:
                 logger.info(f"开始下载{context.media_info.type} {context.torrent_info.title} ...")
-                did, error_msg = self.download_single(user_id=user_id, context=context, save_path=save_path, channel=channel,
-                                        source=source, userid=userid, username=username,
-                                        downloader=downloader)
+                did, error_msg = self.download_single(user_id=user_id, context=context, save_path=save_path,
+                                                      channel=channel,
+                                                      source=source, userid=userid, username=username,
+                                                      downloader=downloader)
                 if did:
                     # 下载成功
                     logger.info(f"{context.torrent_info.title} 添加下载成功")
@@ -650,11 +651,11 @@ class DownloadChain(ChainBase):
                                 # 下载
                                 logger.info(f"开始下载 {torrent.title} ...")
                                 download_id, error_msg = self.download_single(user_id=user_id,
-                                                                   context=context,
-                                                                   save_path=save_path,
-                                                                   channel=channel, source=source,
-                                                                   userid=userid, username=username,
-                                                                   downloader=downloader)
+                                                                              context=context,
+                                                                              save_path=save_path,
+                                                                              channel=channel, source=source,
+                                                                              userid=userid, username=username,
+                                                                              downloader=downloader)
 
                             if download_id:
                                 # 下载成功
@@ -723,11 +724,11 @@ class DownloadChain(ChainBase):
                                 # 下载
                                 logger.info(f"开始下载 {meta.title} ...")
                                 download_id, error_msg = self.download_single(user_id=user_id,
-                                                                   context=context,
-                                                                   save_path=save_path,
-                                                                   channel=channel, source=source,
-                                                                   userid=userid, username=username,
-                                                                   downloader=downloader)
+                                                                              context=context,
+                                                                              save_path=save_path,
+                                                                              channel=channel, source=source,
+                                                                              userid=userid, username=username,
+                                                                              downloader=downloader)
                                 if download_id:
                                     # 下载成功
                                     logger.info(f"{meta.title} 添加下载成功")
@@ -996,7 +997,7 @@ class DownloadChain(ChainBase):
         """
         查询正在下载的任务，并发送消息
         """
-        torrents = self.list_torrents(status=TorrentStatus.DOWNLOADING)
+        torrents = self.list_torrents(user_id=userid, status=TorrentStatus.DOWNLOADING)
         if not torrents:
             self.post_message(Notification(
                 channel=channel,
@@ -1026,11 +1027,11 @@ class DownloadChain(ChainBase):
             link=settings.MP_DOMAIN('#/downloading')
         ))
 
-    def downloading(self, name: Optional[str] = None) -> List[DownloadingTorrent]:
+    def downloading(self, user_id: int, name: Optional[str] = None) -> List[DownloadingTorrent]:
         """
         查询正在下载的任务
         """
-        torrents = self.list_torrents(downloader=name, status=TorrentStatus.DOWNLOADING)
+        torrents = self.list_torrents(user_id=user_id, downloader=name, status=TorrentStatus.DOWNLOADING)
         if not torrents:
             return []
         ret_torrents = []
@@ -1075,12 +1076,13 @@ class DownloadChain(ChainBase):
         """
         if not event:
             return
+        user_id = event.event_data.get("user_id")
         hash_str = event.event_data.get("hash")
         if not hash_str:
             return
         logger.warn(f"检测到下载源文件被删除，删除下载任务（不含文件）：{hash_str}")
         # 先查询种子
-        torrents: List[schemas.TransferTorrent] = self.list_torrents(hashs=[hash_str])
+        torrents: List[schemas.TransferTorrent] = self.list_torrents(user_id=user_id, hashs=[hash_str])
         if torrents:
             self.remove_torrents(hashs=[hash_str], delete_file=False)
             # 发出下载任务删除事件，如需处理辅种，可监听该事件
