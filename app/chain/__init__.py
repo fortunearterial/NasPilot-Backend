@@ -500,7 +500,7 @@ class ChainBase(metaclass=ABCMeta):
         """
         return self.run_module("transfer_completed", hashs=hashs, downloader=downloader)
 
-    def remove_torrents(self, hashs: Union[str, list], delete_file: bool = True,
+    def remove_torrents(self, user_id: int, hashs: Union[str, list], delete_file: bool = True,
                         downloader: Optional[str] = None) -> bool:
         """
         删除下载器种子
@@ -509,25 +509,26 @@ class ChainBase(metaclass=ABCMeta):
         :param downloader:  下载器
         :return: bool
         """
-        return self.run_module("remove_torrents", hashs=hashs, delete_file=delete_file, downloader=downloader)
+        return self.run_module("remove_torrents", user_id=user_id, hashs=hashs, delete_file=delete_file,
+                               downloader=downloader)
 
-    def start_torrents(self, hashs: Union[list, str], downloader: Optional[str] = None) -> bool:
+    def start_torrents(self, user_id: int, hashs: Union[list, str], downloader: Optional[str] = None) -> bool:
         """
         开始下载
         :param hashs:  种子Hash
         :param downloader:  下载器
         :return: bool
         """
-        return self.run_module("start_torrents", hashs=hashs, downloader=downloader)
+        return self.run_module("start_torrents", user_id=user_id, hashs=hashs, downloader=downloader)
 
-    def stop_torrents(self, hashs: Union[list, str], downloader: Optional[str] = None) -> bool:
+    def stop_torrents(self, user_id: int, hashs: Union[list, str], downloader: Optional[str] = None) -> bool:
         """
         停止下载
         :param hashs:  种子Hash
         :param downloader:  下载器
         :return: bool
         """
-        return self.run_module("stop_torrents", hashs=hashs, downloader=downloader)
+        return self.run_module("stop_torrents", user_id=user_id, hashs=hashs, downloader=downloader)
 
     def torrent_files(self, tid: str,
                       downloader: Optional[str] = None) -> Optional[Union[TorrentFilesList, List[File]]]:

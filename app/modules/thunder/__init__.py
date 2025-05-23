@@ -122,6 +122,14 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
         if not server:
             return None
 
+        # 生成随机Tag
+        tag = StringUtils.generate_random_str(10)
+        if label:
+            tags = label.split(',') + [tag]
+        elif settings.TORRENT_TAG:
+            tags = [tag, settings.TORRENT_TAG]
+        else:
+            tags = [tag]
         # 如果要选择文件则先暂停
         is_paused = True if episodes else False
         # 添加任务
@@ -129,6 +137,7 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             content=content.read_bytes() if isinstance(content, Path) else content,
             download_dir=str(download_dir),
             is_paused=is_paused,
+            tag=tags,
             cookie=cookie,
             category=category,
             ignore_category_check=False
@@ -161,7 +170,8 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
                         if settings.TORRENT_TAG and settings.TORRENT_TAG not in torrent_tags:
                             logger.info(f"给种子 {torrent_hash} 打上标签：{settings.TORRENT_TAG}")
                             server.set_torrents_tag(ids=torrent_hash, tags=[settings.TORRENT_TAG])
-                        return downloader or self.get_default_config_name(user_id), torrent_hash, torrent_layout, f"下载任务已存在"
+                        return downloader or self.get_default_config_name(
+                            user_id), torrent_hash, torrent_layout, f"下载任务已存在"
             return None, None, None, f"添加种子任务失败：{content}"
         else:
             # 获取种子Hash
@@ -173,7 +183,8 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
                     # 种子文件
                     torrent_files = server.get_files(torrent_hash)
                     if not torrent_files:
-                        return downloader or self.get_default_config_name(user_id), torrent_hash, torrent_layout, "获取种子文件失败，下载任务可能在暂停状态"
+                        return downloader or self.get_default_config_name(
+                            user_id), torrent_hash, torrent_layout, "获取种子文件失败，下载任务可能在暂停状态"
 
                     # 不需要的文件ID
                     file_ids = []
@@ -192,7 +203,8 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
                     if sucess_epidised and file_ids:
                         # 选择文件
                         server.set_files(torrent_hash=torrent_hash, file_ids=file_ids, priority=0)
-                    return downloader or self.get_default_config_name(user_id), torrent_hash, torrent_layout, f"添加下载成功，已选择集数：{sucess_epidised}"
+                    return downloader or self.get_default_config_name(
+                        user_id), torrent_hash, torrent_layout, f"添加下载成功，已选择集数：{sucess_epidised}"
                 else:
                     if server.is_force_resume():
                         server.torrents_set_force_start(torrent_hash)
@@ -264,22 +276,23 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             for name, server in servers.items():
                 torrents = server.get_downloading_torrents(tags=settings.TORRENT_TAG)
                 for torrent in torrents or []:
-                    meta = MetaInfo(torrent.get('name'))
+                    meta = MetaInfo(torrent.get('file_name'))
                     ret_torrents.append(DownloadingTorrent(
                         downloader=name,
-                        hash=torrent.get('hash'),
-                        title=torrent.get('name'),
+                        hash=torrent.get('id'),
+                        title=torrent.get('file_name'),
                         name=meta.name,
                         year=meta.year,
                         season_episode=meta.season_episode,
-                        progress=torrent.get('progress') * 100,
-                        size=torrent.get('total_size'),
-                        state="paused" if torrent.get('state') in ("paused", "pausedDL") else "downloading",
-                        dlspeed=StringUtils.str_filesize(torrent.get('dlspeed')),
-                        upspeed=StringUtils.str_filesize(torrent.get('upspeed')),
+                        progress=torrent.get('progress'),
+                        size=torrent.get('file_size'),
+                        state="paused" if torrent.get('phase') == 'PHASE_TYPE_PAUSED' else "downloading",
+                        dlspeed=StringUtils.str_filesize(torrent.get('params').get('speed')),
+                        upspeed=StringUtils.str_filesize(0),
                         left_time=StringUtils.str_secends(
-                            (torrent.get('total_size') - torrent.get('completed')) / torrent.get('dlspeed')) if torrent.get(
-                            'dlspeed') > 0 else ''
+                            (1 - int(torrent.get('progress')) / 100.0) * int(torrent.get('file_size')) / int(
+                                torrent.get('params').get('speed')) if int(torrent.get('params').get('speed')) > 0 else 0
+                        )
                     ))
         else:
             return None

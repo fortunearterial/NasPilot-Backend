@@ -1,5 +1,3 @@
-import json
-import pickle
 import time
 import traceback
 from typing import Optional, Union, Tuple, List, Any, Dict
@@ -84,9 +82,18 @@ class Thunder:
                 if not isinstance(tags, list):
                     tags = [tags]
                 for torrent in torrents:
-                    torrent_tags = [str(tag).strip() for tag in torrent.get("tags").split(',')]
-                    if set(tags).issubset(set(torrent_tags)):
-                        results.append(torrent)
+                    if not torrent.get("phase") in status:
+                        continue
+                    if torrent.get("phase") != 'PHASE_TYPE_RUNNING':
+                        # 不是下载状态则下载速度设置为0
+                        torrent.get('params')['speed'] = 0
+                    if "#" in torrent.get("file_name"):
+                        _tag, _file_name = torrent.get("file_name").split('#')
+                        torrent["tag"] = _tag or ''
+                        torrent["file_name"] = _file_name
+                        torrent_tags = [str(tag).strip() for tag in torrent.get("tag").split(',')]
+                        if set(tags).issubset(set(torrent_tags)):
+                            results.append(torrent)
                 return results, False
             return torrents or [], False
         except Exception as err:
@@ -102,7 +109,7 @@ class Thunder:
         if not self.tdc:
             return None
         # completed会包含移动状态 改为获取seeding状态 包含活动上传, 正在做种, 及强制做种
-        torrents, error = self.get_torrents(status="seeding", ids=ids, tags=tags)
+        torrents, error = self.get_torrents(status="PHASE_TYPE_COMPLETE", ids=ids, tags=tags)
         return None if error else torrents or []
 
     def get_downloading_torrents(self, ids: Union[str, list] = None,
@@ -114,7 +121,7 @@ class Thunder:
         if not self.tdc:
             return None
         torrents, error = self.get_torrents(ids=ids,
-                                            status="downloading",
+                                            status="PHASE_TYPE_PENDING,PHASE_TYPE_RUNNING,PHASE_TYPE_ERROR,PHASE_TYPE_PAUSED",
                                             tags=tags)
         return None if error else torrents or []
 
@@ -218,7 +225,6 @@ class Thunder:
                     download_dir: Optional[str] = None,
                     tag: Union[str, list] = None,
                     category: Optional[str] = None,
-                    cookie: Optional[str] = None,
                     **kwargs
                     ) -> Tuple[bool, Optional[str]]:
         """
@@ -228,8 +234,7 @@ class Thunder:
         :param tag: 标签
         :param category: 种子分类
         :param download_dir: 下载路径
-        :param cookie: 站点Cookie用于辅助下载种子
-        :param kwargs: 可选参数，如 ignore_category_check 以及 QB相关参数
+        :param kwargs: 可选参数
         :return: bool
         """
         if not self.tdc or not content:
@@ -262,9 +267,13 @@ class Thunder:
                 torrent_url=torrent_files,
                 device_name=self._device_name,
                 directory_path=save_path,
+                tag=tags,
             )
 
             if ret:
+                if is_paused:
+                    # 暂停下载
+                    self.stop_torrents([ret])
                 return True, ret
             return False, "添加种子失败"
         except Exception as err:
@@ -278,8 +287,9 @@ class Thunder:
         if not self.tdc:
             return False
         try:
-            # TODO: 迅雷不支持
-            return False
+            for _id in ids:
+                self.tdc.start_task(self._device_name, _id)
+            return True
         except Exception as err:
             logger.error(f"启动种子出错：{str(err)}")
             return False
@@ -291,8 +301,9 @@ class Thunder:
         if not self.tdc:
             return False
         try:
-            # TODO: 迅雷不支持
-            return False
+            for _id in ids:
+                self.tdc.pause_task(self._device_name, _id)
+            return True
         except Exception as err:
             logger.error(f"暂停种子出错：{str(err)}")
             return False
@@ -306,8 +317,12 @@ class Thunder:
         if not ids:
             return False
         try:
-            # TODO: 迅雷不支持
-            return False
+            for _id in ids:
+                if delete_file:
+                    self.tdc.remove_task_and_files(self._device_name, _id)
+                else:
+                    self.tdc.remove_task(self._device_name, _id)
+            return True
         except Exception as err:
             logger.error(f"删除种子出错：{str(err)}")
             return False
@@ -355,7 +370,8 @@ class Thunder:
             for task in self.tdc.list_tasks(self._device_name):
                 results.update({
                     "speed": results.get("speed") + int(task.get("params").get("speed")),
-                    "downloaded_file_size": results.get("downloaded_file_size") + int(task.get("file_size")) * task.get("progress") / 100.0,
+                    "downloaded_file_size": results.get("downloaded_file_size") + int(task.get("file_size")) * task.get(
+                        "progress") / 100.0,
                 })
             return results
         except Exception as err:

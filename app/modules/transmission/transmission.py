@@ -200,7 +200,7 @@ class Transmission:
             logger.error(f"添加种子出错：{str(err)}")
             return None
 
-    def start_torrents(self, ids: Union[str, list]) -> bool:
+    def start_torrents(self, user_id: int, ids: Union[str, list]) -> bool:
         """
         启动种子
         """
@@ -213,7 +213,7 @@ class Transmission:
             logger.error(f"启动种子出错：{str(err)}")
             return False
 
-    def stop_torrents(self, ids: Union[str, list]) -> bool:
+    def stop_torrents(self, user_id: int, ids: Union[str, list]) -> bool:
         """
         停止种子
         """
@@ -226,7 +226,7 @@ class Transmission:
             logger.error(f"停止种子出错：{str(err)}")
             return False
 
-    def delete_torrents(self, delete_file: bool, ids: Union[str, list]) -> bool:
+    def delete_torrents(self, user_id: int, delete_file: bool, ids: Union[str, list]) -> bool:
         """
         删除种子
         """

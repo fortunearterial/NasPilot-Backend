@@ -1053,21 +1053,21 @@ class DownloadChain(ChainBase):
             ret_torrents.append(torrent)
         return ret_torrents
 
-    def set_downloading(self, hash_str, oper: str) -> bool:
+    def set_downloading(self, user_id: int, hash_str, oper: str) -> bool:
         """
         控制下载任务 start/stop
         """
         if oper == "start":
-            return self.start_torrents(hashs=[hash_str])
+            return self.start_torrents(user_id=user_id, hashs=[hash_str])
         elif oper == "stop":
-            return self.stop_torrents(hashs=[hash_str])
+            return self.stop_torrents(user_id=user_id, hashs=[hash_str])
         return False
 
-    def remove_downloading(self, hash_str: str) -> bool:
+    def remove_downloading(self, user_id: int, hash_str: str) -> bool:
         """
         删除下载任务
         """
-        return self.remove_torrents(hashs=[hash_str])
+        return self.remove_torrents(user_id=user_id, hashs=[hash_str])
 
     @eventmanager.register(EventType.DownloadFileDeleted)
     def download_file_deleted(self, event: Event):

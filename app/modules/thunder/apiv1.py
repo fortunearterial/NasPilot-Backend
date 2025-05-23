@@ -347,9 +347,6 @@ class RemoteClient:
 
     def get_device(self, name: str):
         devices = self.get_devices()
-        for device in devices:
-            logger.debug(
-                f"设备名称：{device.get('name')}, {device.get('name').__class__}, {repr(device.get('name'))}, {repr(name)}, {device.get('name') == name}")
         filter_devices = list(filter(lambda x: x.get('name') == name, devices))
         if len(filter_devices) == 0:
             raise Exception(f"无法找到名称为{name}的远程设备，请检查配置")
@@ -952,16 +949,14 @@ class RemoteClient:
         logger.debug(f"获取目录列表：{response.get('files')}")
         return response.get("files")
 
+    def __all_path(self, path: str):
+        return [path, path.replace("\\", "/"), path.replace("\\", "/") + "/", path.replace("/", "\\"),
+                path.replace("/", "\\") + "\\"]
+
     def get_directory(self, device_name: str, path: str):
         directories = self.get_directories(device_name)
-        for directory in directories:
-            logger.debug(
-                f"目录：{directory.get('params').get('RealPath')}, {repr(directory.get('params').get('RealPath'))}, {repr(path)}, "
-                f"{directory.get('params').get('RealPath') == path or directory.get('params').get('RealPath') == path + '/' or directory.get('params').get('RealPath') == path + '\\'}")
-        filter_directories = list(filter(lambda x: x.get('params').get('RealPath') == path or
-                                                   x.get('params').get('RealPath') == path + "/" or  # Linux
-                                                   x.get('params').get('RealPath') == path + "\\",   # Win
-                                         directories))
+        filter_directories = list(
+            filter(lambda x: x.get('params').get('RealPath') in self.__all_path(path), directories))
         if len(filter_directories) == 0:
             raise Exception(f"无法找到远程设备名称为{device_name}的\"{path}\"目录，请检查配置")
         return filter_directories[0]
@@ -1036,7 +1031,7 @@ class RemoteClient:
                 "space": device.get("params").get("target"),
                 "page_token": "",
                 "filters": json.dumps({
-                    "phase": {"in": "PHASE_TYPE_PENDING,PHASE_TYPE_RUNNING,PHASE_TYPE_ERROR,PHASE_TYPE_PAUSED"},
+                    "phase": {"in": "PHASE_TYPE_PENDING,PHASE_TYPE_RUNNING,PHASE_TYPE_ERROR,PHASE_TYPE_PAUSED,PHASE_TYPE_COMPLETE"},
                     "type": {"in": "user#download,user#download-url"}
                 }),
                 "limit": "200",
@@ -1055,7 +1050,7 @@ class RemoteClient:
         )
         return response
 
-    def create_task(self, torrent_url: str, device_name: str, directory_path: str, tag: str):
+    def create_task(self, torrent_url: str, device_name: str, directory_path: str, tag: Union[str, list]) -> str:
         device = self.get_device(device_name)
         directory = self.get_directory(device_name, directory_path)
         # 获取种子的文件列表
@@ -1071,7 +1066,7 @@ class RemoteClient:
             method="POST",
             url="https://api-pan.xunlei.com/drive/v1/task",
             json={
-                "file_name": tag + "#" + resources.get("name"),
+                "file_name": ",".join(tag) + "#" + resources.get("name"),
                 "file_size": resources.get("file_size"),
                 "space": device.get("params").get("target"),
                 "type": "user#download-url",
@@ -1088,6 +1083,18 @@ class RemoteClient:
         return response['task']['id']
 
     def remove_task(self, device_name: str, task_id: str):
+        device = self.get_device(device_name)
+        self.__request(
+            method="DELETE",
+            url="https://api-pan.xunlei.com/drive/v1/tasks",
+            json={
+                "space": device.get("params").get("target"),
+                "task_ids": task_id,
+            }
+        )
+        return True
+
+    def remove_task_and_files(self, device_name: str, task_id: str):
         device = self.get_device(device_name)
         self.__request(
             method="PATCH",
@@ -1181,6 +1188,6 @@ if __name__ == '__main__':
     print(did)
     api.pause_task("群晖-SynologyUat", did)
     api.start_task("群晖-SynologyUat", did)
-    api.remove_task("群晖-SynologyUat", did)
+    api.remove_task_and_files("群晖-SynologyUat", did)
     tasks = api.list_tasks("群晖-SynologyUat")
     print(tasks)

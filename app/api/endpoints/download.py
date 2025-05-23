@@ -99,21 +99,21 @@ def add(
 @router.get("/start/{hashString}", summary="开始任务", response_model=schemas.Response)
 def start(
         hashString: str,
-        _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+        current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     开如下载任务
     """
-    ret = DownloadChain().set_downloading(hashString, "start")
+    ret = DownloadChain().set_downloading(current_user.id, hashString, "start")
     return schemas.Response(success=True if ret else False)
 
 
 @router.get("/stop/{hashString}", summary="暂停任务", response_model=schemas.Response)
 def stop(hashString: str,
-         _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+         current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     暂停下载任务
     """
-    ret = DownloadChain().set_downloading(hashString, "stop")
+    ret = DownloadChain().set_downloading(current_user.id, hashString, "stop")
     return schemas.Response(success=True if ret else False)
 
 
@@ -130,9 +130,9 @@ def clients(current_user: schemas.User = Depends(get_current_user)) -> Any:
 
 @router.delete("/{hashString}", summary="删除下载任务", response_model=schemas.Response)
 def delete(hashString: str,
-           _: schemas.TokenPayload = Depends(verify_token)) -> Any:
+           current_user: schemas.User = Depends(get_current_user)) -> Any:
     """
     删除下载任务
     """
-    ret = DownloadChain().remove_downloading(hashString)
+    ret = DownloadChain().remove_downloading(current_user.id, hashString)
     return schemas.Response(success=True if ret else False)
