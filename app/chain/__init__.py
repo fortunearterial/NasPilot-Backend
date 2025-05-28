@@ -28,6 +28,7 @@ from app.schemas import TransferInfo, TransferTorrent, ExistMediaInfo, Downloadi
     WebhookEventInfo, TmdbEpisode, MediaPerson, FileItem, TransferDirectoryConf
 from app.schemas.types import TorrentStatus, MediaType, MediaImageType, EventType
 from app.utils.object import ObjectUtils
+from app.modules.thunder import TorrentFile
 
 
 class ChainBase(metaclass=ABCMeta):
@@ -504,6 +505,7 @@ class ChainBase(metaclass=ABCMeta):
                         downloader: Optional[str] = None) -> bool:
         """
         删除下载器种子
+        :param user_id:  用户ID
         :param hashs:  种子Hash
         :param delete_file: 是否删除文件
         :param downloader:  下载器
@@ -515,6 +517,7 @@ class ChainBase(metaclass=ABCMeta):
     def start_torrents(self, user_id: int, hashs: Union[list, str], downloader: Optional[str] = None) -> bool:
         """
         开始下载
+        :param user_id:  用户ID
         :param hashs:  种子Hash
         :param downloader:  下载器
         :return: bool
@@ -524,21 +527,23 @@ class ChainBase(metaclass=ABCMeta):
     def stop_torrents(self, user_id: int, hashs: Union[list, str], downloader: Optional[str] = None) -> bool:
         """
         停止下载
+        :param user_id:  用户ID
         :param hashs:  种子Hash
         :param downloader:  下载器
         :return: bool
         """
         return self.run_module("stop_torrents", user_id=user_id, hashs=hashs, downloader=downloader)
 
-    def torrent_files(self, tid: str,
-                      downloader: Optional[str] = None) -> Optional[Union[TorrentFilesList, List[File]]]:
+    def torrent_files(self, user_id: int, tid: str,
+                      downloader: Optional[str] = None) -> Optional[Union[TorrentFilesList, List[File], List[TorrentFile]]]:
         """
         获取种子文件
+        :param user_id:  用户ID
         :param tid:  种子Hash
         :param downloader:  下载器
         :return: 种子文件
         """
-        return self.run_module("torrent_files", tid=tid, downloader=downloader)
+        return self.run_module("torrent_files", user_id=user_id, tid=tid, downloader=downloader)
 
     def media_exists(self, mediainfo: MediaInfo, itemid: Optional[str] = None,
                      server: Optional[str] = None) -> Optional[ExistMediaInfo]:

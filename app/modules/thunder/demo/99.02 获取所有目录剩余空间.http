@@ -1,0 +1,207 @@
+# curl 'https://vod1568-a12xllite-vip-lixian.xunlei.com/drive-reverse-proxy/v1/proxyToken/cb56f/1748333870/bscpZlLQH4MCLSsVp7IqATCB-_o=/625200512/94082a79c0fee7fef301911ae6769783/assets/apps/INNER_API/device/info/watch?device_space=&space=device_id%2394082a79c0fee7fef301911ae6769783&plugin_app_id=INNER_API&plugin_app_token=79L-V0fhRN78WGVSeENqFDTDdiF31ZcRPo2Nr7pNZEEQBa71J19chJ3s4i1itwRk'
+#  -H 'Accept: application/json, text/plain, */*'
+#  -H 'Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6'
+#  -H 'Cache-Control: no-cache'
+#  -H 'Connection: keep-alive'
+#  -H 'Content-Type: application/json'
+#  -H 'DNT: 1'
+#  -H 'Origin: https://pan.xunlei.com'
+#  -H 'Pragma: no-cache'
+#  -H 'Referer: https://pan.xunlei.com/'
+#  -H 'Sec-Fetch-Dest: empty'
+#  -H 'Sec-Fetch-Mode: cors'
+#  -H 'Sec-Fetch-Site: same-site'
+#  -H 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0'
+#  -H 'x-client-id: Yd0uSVGrNJhCC2oE'
+#  --data-raw '{"device_space":"","path_separator":"/","downloads":[{"name":"","path":"/downloads/","usage":1701833924608,"limit":1908995522560,"errmsg":"","is_root_path":false},{"name":"","path":"/data/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/usr/bin/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/usr/lib/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/run/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/tmp/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/usr/lib64/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true}],"user":{"name":"牧狮草","id":"625200512","picture":"https://xfile2.a.88cdn.com/file/k/FgK5FOqFS0YNIxRHmGQQ4p13J_iT","vip":{"is_vip":false,"level":0,"vastype":"0","isyear":false},"group":[{"id":"vip_0_0_5","expires_at":"2024-08-29T16:00:00Z"}]},"runner_status":{"status":"","message":{"messages":null,"url":"","url_title":"","title":"","just_one":false},"expire_config":{"expire_time":"","reg_is_expire":""},"update_time":"2025-05-27T16:58:43.714153604+08:00"},"task_daily_limit":{"messages":["<a class=\"nas-user__vip-link\" target=\"_blank\" href=\"paycenter\">开通会员</a>即可享受任务无限次下载"],"url":"","url_title":"","title":"今日3个免费下载任务数已用完，开通会员不限次数","just_one":false},"login_message":{"messages":null,"url":"","url_title":"","title":"","just_one":false},"target":"device_id#94082a79c0fee7fef301911ae6769783","privilege":"PAN_CLI_PREVIEW","product_name":"群晖","create_privilege_code":"PAN_CLI_PREVIEW","labels":["withPreviewPrivilege","withFetchFolder","withSyncDriveFile","withQrcodeLogin","withHighSpeedFlowCtrl","withVFS","withKuainiaoNew","withPlugin","withCinemaIndexFolder","withOtherAuthLogin","allowUseConfigPathAsCachePath","withRootDiskSelect","withInstallLocalPlugin","withUserResetScrapeResult","withNFOSearch","withSubFile"],"build_version":"5d916f14","download_version":"9.1207.160.28","is_connected":true,"last_update_time":"2025-05-27T16:58:41.621+08:00","download_running":true,"client_version":"3.21.0","contact":"NAS迅雷-群晖用户QQ群：772445453&nbsp;&nbsp;|&nbsp;&nbsp;<a target=\"_blank\" href=\"https://docs.qq.com/doc/DQWZSTWtVU1llTnBW\">常见问题</a>","ntp_time":"2025-05-27T16:59:48.000+08:00","plugin_banner":{"h5":[{"preview":"https://backstage-img-ssl.a.88cdn.com/23dcb18dd3da4d1a9adcf6efbba9e9bfb70d4fde","url":"https://act.walk-live.com/promotion/nas_help"},{"preview":"https://backstage-img-ssl.a.88cdn.com/a73d546372e4784bfe3576a97f431c6a26d89c98","url":"https://docs.qq.com/doc/p/f1ccc2dee7c2d6734fc86abe87fbd4b879c3486a"},{"preview":"https://backstage-img-ssl.a.88cdn.com/dbba7b18b8d2a95e2b39aef933138a2ac2c1e6ea","url":"https://nas.xunlei.com/"}],"pc":[{"preview":"https://backstage-img-ssl.a.88cdn.com/c645d3159c0ed150e8ad5c1acf9161bfcaf52f41","url":"https://act.walk-live.com/promotion/nas_help"},{"preview":"https://backstage-img-ssl.a.88cdn.com/b5657dc88f4f979ef49687be4614b4804f66f97a","url":"https://youxi.xunlei.com/gamehome?referfrom=xlnas"},{"preview":"https://backstage-img-ssl.a.88cdn.com/022030c6ad9121ec5a40b012f8fb5a50459bedb9","url":"https://nas.xunlei.com/"}]},"download_guide":"https://docs.qq.com/doc/DV3N3VHJCU2lmYk54"}'
+POST https://vod1568-a12xllite-vip-lixian.xunlei.com/drive-reverse-proxy/v1/proxyToken/cb56f/1748333870/bscpZlLQH4MCLSsVp7IqATCB-_o=/625200512/94082a79c0fee7fef301911ae6769783/assets/apps/INNER_API/device/info/watch?device_space=&space=device_id%2394082a79c0fee7fef301911ae6769783&plugin_app_id=INNER_API&plugin_app_token=79L-V0fhRN78WGVSeENqFDTDdiF31ZcRPo2Nr7pNZEEQBa71J19chJ3s4i1itwRk
+Accept: application/json, text/plain, */*
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cache-Control: no-cache
+Connection: keep-alive
+DNT: 1
+Origin: https://pan.xunlei.com
+Pragma: no-cache
+Referer: https://pan.xunlei.com/
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-site
+User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0
+x-client-id: Yd0uSVGrNJhCC2oE
+Content-Type: application/json
+
+{"device_space":"","path_separator":"/","downloads":[{"name":"","path":"/downloads/","usage":1701833924608,"limit":1908995522560,"errmsg":"","is_root_path":false},{"name":"","path":"/data/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/usr/bin/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/usr/lib/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/run/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/tmp/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true},{"name":"","path":"/usr/lib64/","usage":15856881664,"limit":54609838080,"errmsg":"","is_root_path":true}],"user":{"name":"牧狮草","id":"625200512","picture":"https://xfile2.a.88cdn.com/file/k/FgK5FOqFS0YNIxRHmGQQ4p13J_iT","vip":{"is_vip":false,"level":0,"vastype":"0","isyear":false},"group":[{"id":"vip_0_0_5","expires_at":"2024-08-29T16:00:00Z"}]},"runner_status":{"status":"","message":{"messages":null,"url":"","url_title":"","title":"","just_one":false},"expire_config":{"expire_time":"","reg_is_expire":""},"update_time":"2025-05-27T16:58:43.714153604+08:00"},"task_daily_limit":{"messages":["<a class="nas-user__vip-link" target="_blank" href="paycenter">开通会员</a>即可享受任务无限次下载"],"url":"","url_title":"","title":"今日3个免费下载任务数已用完，开通会员不限次数","just_one":false},"login_message":{"messages":null,"url":"","url_title":"","title":"","just_one":false},"target":"device_id#94082a79c0fee7fef301911ae6769783","privilege":"PAN_CLI_PREVIEW","product_name":"群晖","create_privilege_code":"PAN_CLI_PREVIEW","labels":["withPreviewPrivilege","withFetchFolder","withSyncDriveFile","withQrcodeLogin","withHighSpeedFlowCtrl","withVFS","withKuainiaoNew","withPlugin","withCinemaIndexFolder","withOtherAuthLogin","allowUseConfigPathAsCachePath","withRootDiskSelect","withInstallLocalPlugin","withUserResetScrapeResult","withNFOSearch","withSubFile"],"build_version":"5d916f14","download_version":"9.1207.160.28","is_connected":true,"last_update_time":"2025-05-27T16:58:41.621+08:00","download_running":true,"client_version":"3.21.0","contact":"NAS迅雷-群晖用户QQ群：772445453&nbsp;&nbsp;|&nbsp;&nbsp;<a target="_blank" href="https://docs.qq.com/doc/DQWZSTWtVU1llTnBW">常见问题</a>","ntp_time":"2025-05-27T16:59:48.000+08:00","plugin_banner":{"h5":[{"preview":"https://backstage-img-ssl.a.88cdn.com/23dcb18dd3da4d1a9adcf6efbba9e9bfb70d4fde","url":"https://act.walk-live.com/promotion/nas_help"},{"preview":"https://backstage-img-ssl.a.88cdn.com/a73d546372e4784bfe3576a97f431c6a26d89c98","url":"https://docs.qq.com/doc/p/f1ccc2dee7c2d6734fc86abe87fbd4b879c3486a"},{"preview":"https://backstage-img-ssl.a.88cdn.com/dbba7b18b8d2a95e2b39aef933138a2ac2c1e6ea","url":"https://nas.xunlei.com/"}],"pc":[{"preview":"https://backstage-img-ssl.a.88cdn.com/c645d3159c0ed150e8ad5c1acf9161bfcaf52f41","url":"https://act.walk-live.com/promotion/nas_help"},{"preview":"https://backstage-img-ssl.a.88cdn.com/b5657dc88f4f979ef49687be4614b4804f66f97a","url":"https://youxi.xunlei.com/gamehome?referfrom=xlnas"},{"preview":"https://backstage-img-ssl.a.88cdn.com/022030c6ad9121ec5a40b012f8fb5a50459bedb9","url":"https://nas.xunlei.com/"}]},"download_guide":"https://docs.qq.com/doc/DV3N3VHJCU2lmYk54"}
+
+###
+
+{
+    "device_space": "",
+    "path_separator": "/",
+    "downloads": [
+        {
+            "name": "",
+            "path": "/downloads/",
+            "usage": 1701833924608,
+            "limit": 1908995522560,
+            "errmsg": "",
+            "is_root_path": false
+        },
+        {
+            "name": "",
+            "path": "/data/",
+            "usage": 15856881664,
+            "limit": 54609838080,
+            "errmsg": "",
+            "is_root_path": true
+        },
+        {
+            "name": "",
+            "path": "/usr/bin/",
+            "usage": 15856881664,
+            "limit": 54609838080,
+            "errmsg": "",
+            "is_root_path": true
+        },
+        {
+            "name": "",
+            "path": "/usr/lib/",
+            "usage": 15856881664,
+            "limit": 54609838080,
+            "errmsg": "",
+            "is_root_path": true
+        },
+        {
+            "name": "",
+            "path": "/run/",
+            "usage": 15856881664,
+            "limit": 54609838080,
+            "errmsg": "",
+            "is_root_path": true
+        },
+        {
+            "name": "",
+            "path": "/tmp/",
+            "usage": 15856881664,
+            "limit": 54609838080,
+            "errmsg": "",
+            "is_root_path": true
+        },
+        {
+            "name": "",
+            "path": "/usr/lib64/",
+            "usage": 15856881664,
+            "limit": 54609838080,
+            "errmsg": "",
+            "is_root_path": true
+        }
+    ],
+    "user": {
+        "name": "牧狮草",
+        "id": "625200512",
+        "picture": "https://xfile2.a.88cdn.com/file/k/FgK5FOqFS0YNIxRHmGQQ4p13J_iT",
+        "vip": {
+            "is_vip": false,
+            "level": 0,
+            "vastype": "0",
+            "isyear": false
+        },
+        "group": [
+            {
+                "id": "vip_0_0_5",
+                "expires_at": "2024-08-29T16:00:00Z"
+            }
+        ]
+    },
+    "runner_status": {
+        "status": "",
+        "message": {
+            "messages": null,
+            "url": "",
+            "url_title": "",
+            "title": "",
+            "just_one": false
+        },
+        "expire_config": {
+            "expire_time": "",
+            "reg_is_expire": ""
+        },
+        "update_time": "2025-05-27T16:58:43.714153604+08:00"
+    },
+    "task_daily_limit": {
+        "messages": [
+            "\u003ca class=\"nas-user__vip-link\" target=\"_blank\" href=\"paycenter\"\u003e开通会员\u003c/a\u003e即可享受任务无限次下载"
+        ],
+        "url": "",
+        "url_title": "",
+        "title": "今日3个免费下载任务数已用完，开通会员不限次数",
+        "just_one": false
+    },
+    "login_message": {
+        "messages": null,
+        "url": "",
+        "url_title": "",
+        "title": "",
+        "just_one": false
+    },
+    "target": "device_id#94082a79c0fee7fef301911ae6769783",
+    "privilege": "PAN_CLI_PREVIEW",
+    "product_name": "群晖",
+    "create_privilege_code": "PAN_CLI_PREVIEW",
+    "labels": [
+        "withPreviewPrivilege",
+        "withFetchFolder",
+        "withSyncDriveFile",
+        "withQrcodeLogin",
+        "withHighSpeedFlowCtrl",
+        "withVFS",
+        "withKuainiaoNew",
+        "withPlugin",
+        "withCinemaIndexFolder",
+        "withOtherAuthLogin",
+        "allowUseConfigPathAsCachePath",
+        "withRootDiskSelect",
+        "withInstallLocalPlugin",
+        "withUserResetScrapeResult",
+        "withNFOSearch",
+        "withSubFile"
+    ],
+    "build_version": "5d916f14",
+    "download_version": "9.1207.160.28",
+    "is_connected": true,
+    "last_update_time": "2025-05-27T16:58:41.621+08:00",
+    "download_running": true,
+    "client_version": "3.21.0",
+    "contact": "NAS迅雷-群晖用户QQ群：772445453\u0026nbsp;\u0026nbsp;|\u0026nbsp;\u0026nbsp;\u003ca target=\"_blank\" href=\"https://docs.qq.com/doc/DQWZSTWtVU1llTnBW\"\u003e常见问题\u003c/a\u003e",
+    "ntp_time": "2025-05-27T16:59:53.000+08:00",
+    "plugin_banner": {
+        "h5": [
+            {
+                "preview": "https://backstage-img-ssl.a.88cdn.com/23dcb18dd3da4d1a9adcf6efbba9e9bfb70d4fde",
+                "url": "https://act.walk-live.com/promotion/nas_help"
+            },
+            {
+                "preview": "https://backstage-img-ssl.a.88cdn.com/a73d546372e4784bfe3576a97f431c6a26d89c98",
+                "url": "https://docs.qq.com/doc/p/f1ccc2dee7c2d6734fc86abe87fbd4b879c3486a"
+            },
+            {
+                "preview": "https://backstage-img-ssl.a.88cdn.com/dbba7b18b8d2a95e2b39aef933138a2ac2c1e6ea",
+                "url": "https://nas.xunlei.com/"
+            }
+        ],
+        "pc": [
+            {
+                "preview": "https://backstage-img-ssl.a.88cdn.com/c645d3159c0ed150e8ad5c1acf9161bfcaf52f41",
+                "url": "https://act.walk-live.com/promotion/nas_help"
+            },
+            {
+                "preview": "https://backstage-img-ssl.a.88cdn.com/b5657dc88f4f979ef49687be4614b4804f66f97a",
+                "url": "https://youxi.xunlei.com/gamehome?referfrom=xlnas"
+            },
+            {
+                "preview": "https://backstage-img-ssl.a.88cdn.com/022030c6ad9121ec5a40b012f8fb5a50459bedb9",
+                "url": "https://nas.xunlei.com/"
+            }
+        ]
+    },
+    "download_guide": "https://docs.qq.com/doc/DV3N3VHJCU2lmYk54"
+}

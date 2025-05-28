@@ -1,0 +1,723 @@
+# curl 'https://api-pan.xunlei.com/drive/v1/resource/list'
+#  -H 'accept: */*'
+#  -H 'accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6'
+#  -H 'authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjlhMjIzOWY2LWE3Y2QtNDgwNS1iM2NkLTgxODQ1ODdkNTg0ZiJ9.eyJpc3MiOiJodHRwczovL3hsdXNlci1zc2wueHVubGVpLmNvbSIsInN1YiI6IjYyNTIwMDUxMiIsImF1ZCI6IllkMHVTVkdyTkpoQ0Myb0UiLCJleHAiOjE3NDgzNzcwNTksImlhdCI6MTc0ODMzMzg1OSwiYXRfaGFzaCI6InIucnNNRkJpd0lRTHlHcktLbDVUVGZEZyIsInNjb3BlIjoicHJvZmlsZSBwYW4gc3NvIHVzZXIiLCJwcm9qZWN0X2lkIjoiMnJ2azRlM2drZG5sN3Uxa2wwayIsIm1ldGEiOnsiYSI6IlR3U01ITHh3Y0FySHd0NGljUmllNG52WG5PMkVDcTdUYVdFVEFjeDN3UDg9In19.HdtnltxsCAAdY59sDd1SnhTJfYjZHRIz_ld2pueIFIec3rVveNKFpkAcnQDzSmD7vmce6b9R_9K-zs1F5jMXbbdJkXMbjuVXEc8CPPwP4fb9eVLAVMRROlcWzAol4gocdr4uAGQAt1c1s_MkzZoqf118FC3PybRXmoyEC7wpTSy78jMHAtrjTeawTqGlR4k5Ok4MwrxDE6CJl9XMQX2BuXISZAnAsk18OzBlDOXX-WrRZ0X5pqODL7hI-w0d9IlY6cZ_hQKzN4BAuGvFYcZirn7-tp6ONCLCZiSlcP6jsjpy04Ph84kqtMluG3CPHtENnYm29hfRftpKDMwhkeDM4A'
+#  -H 'cache-control: no-cache'
+#  -H 'content-type: application/json'
+#  -H 'dnt: 1'
+#  -H 'origin: https://pan.xunlei.com'
+#  -H 'pragma: no-cache'
+#  -H 'priority: u=1, i'
+#  -H 'referer: https://pan.xunlei.com/'
+#  -H 'sec-fetch-dest: empty'
+#  -H 'sec-fetch-mode: cors'
+#  -H 'sec-fetch-site: same-site'
+#  -H 'user-agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0'
+#  -H 'x-captcha-token: ck0.cRTLnFCm5Gy4IAAqriLC4NovOHFD-_CZZwxjK3YisdiA0ajnD-7dRhaKsP7sjfdi_B68medJ5AVNXpxu0bDDezMEgOlUM5c1_TqcAvv86suOu0C8hV7rrYQtylXobQYAMRkU48fq6RAQothqujSZxIEXQ6PKgCULHQbfLWymOdL3eJWf5LJlkNWPPbakteH8U13GBRakbRIXiyHcDYyp4LJ_cFJsG3ZkQz7XgAJG5SpxMUyEMA66bw-ykAn3vHSsZYTbV_ZGRSBzN_xU8HGQE7SdSJvh1EvvgakamRbFLnigChlPHltCPdDLalvvRNiD192OcYnryQKbXA-rADIVd73Kz204Q-2ozevJHrVqrC52qC4w3FYEbRhW07gCAUim.ClIIw-Skh_EyEhBZZDB1U1ZHck5KaENDMm9FGgUyLjkuMCIOcGFuLnh1bmxlaS5jb20qIDVkOTYxMTM1ODFjMTFlZWE2NjE2NDZkMzkxMzA1ZGE0EoABF1-5uzsM0Jehep3v9BLh_Lzfik9HfHp9GSaDq27mbx2_RZ_gscGxCX_NqdzW9i76uP-U9hEqNdZMeU_fPcfR_5uNj0EjP38e2OVq1zKnPUkYRKODPQk1BtY5V8Iqw2OEnA9WKaTSJrxXg7uMswr2Vzs3k_i9mP2bY9-hQluGc0k'
+#  -H 'x-client-id: Yd0uSVGrNJhCC2oE'
+#  -H 'x-device-id: 5d96113581c11eea661646d391305da4'
+#  --data-raw '{"urls":"magnet:?xt=urn:btih:76b38a5b80a1cd80d76130364ceebd30523ae887","page_size":2000}'
+POST https://api-pan.xunlei.com/drive/v1/resource/list
+accept: */*
+accept-language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjlhMjIzOWY2LWE3Y2QtNDgwNS1iM2NkLTgxODQ1ODdkNTg0ZiJ9.eyJpc3MiOiJodHRwczovL3hsdXNlci1zc2wueHVubGVpLmNvbSIsInN1YiI6IjYyNTIwMDUxMiIsImF1ZCI6IllkMHVTVkdyTkpoQ0Myb0UiLCJleHAiOjE3NDgzNzcwNTksImlhdCI6MTc0ODMzMzg1OSwiYXRfaGFzaCI6InIucnNNRkJpd0lRTHlHcktLbDVUVGZEZyIsInNjb3BlIjoicHJvZmlsZSBwYW4gc3NvIHVzZXIiLCJwcm9qZWN0X2lkIjoiMnJ2azRlM2drZG5sN3Uxa2wwayIsIm1ldGEiOnsiYSI6IlR3U01ITHh3Y0FySHd0NGljUmllNG52WG5PMkVDcTdUYVdFVEFjeDN3UDg9In19.HdtnltxsCAAdY59sDd1SnhTJfYjZHRIz_ld2pueIFIec3rVveNKFpkAcnQDzSmD7vmce6b9R_9K-zs1F5jMXbbdJkXMbjuVXEc8CPPwP4fb9eVLAVMRROlcWzAol4gocdr4uAGQAt1c1s_MkzZoqf118FC3PybRXmoyEC7wpTSy78jMHAtrjTeawTqGlR4k5Ok4MwrxDE6CJl9XMQX2BuXISZAnAsk18OzBlDOXX-WrRZ0X5pqODL7hI-w0d9IlY6cZ_hQKzN4BAuGvFYcZirn7-tp6ONCLCZiSlcP6jsjpy04Ph84kqtMluG3CPHtENnYm29hfRftpKDMwhkeDM4A
+cache-control: no-cache
+dnt: 1
+origin: https://pan.xunlei.com
+pragma: no-cache
+priority: u=1, i
+referer: https://pan.xunlei.com/
+sec-fetch-dest: empty
+sec-fetch-mode: cors
+sec-fetch-site: same-site
+user-agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0
+x-captcha-token: ck0.cRTLnFCm5Gy4IAAqriLC4NovOHFD-_CZZwxjK3YisdiA0ajnD-7dRhaKsP7sjfdi_B68medJ5AVNXpxu0bDDezMEgOlUM5c1_TqcAvv86suOu0C8hV7rrYQtylXobQYAMRkU48fq6RAQothqujSZxIEXQ6PKgCULHQbfLWymOdL3eJWf5LJlkNWPPbakteH8U13GBRakbRIXiyHcDYyp4LJ_cFJsG3ZkQz7XgAJG5SpxMUyEMA66bw-ykAn3vHSsZYTbV_ZGRSBzN_xU8HGQE7SdSJvh1EvvgakamRbFLnigChlPHltCPdDLalvvRNiD192OcYnryQKbXA-rADIVd73Kz204Q-2ozevJHrVqrC52qC4w3FYEbRhW07gCAUim.ClIIw-Skh_EyEhBZZDB1U1ZHck5KaENDMm9FGgUyLjkuMCIOcGFuLnh1bmxlaS5jb20qIDVkOTYxMTM1ODFjMTFlZWE2NjE2NDZkMzkxMzA1ZGE0EoABF1-5uzsM0Jehep3v9BLh_Lzfik9HfHp9GSaDq27mbx2_RZ_gscGxCX_NqdzW9i76uP-U9hEqNdZMeU_fPcfR_5uNj0EjP38e2OVq1zKnPUkYRKODPQk1BtY5V8Iqw2OEnA9WKaTSJrxXg7uMswr2Vzs3k_i9mP2bY9-hQluGc0k
+x-client-id: Yd0uSVGrNJhCC2oE
+x-device-id: 5d96113581c11eea661646d391305da4
+Content-Type: application/json
+
+{
+  "urls": "magnet:?xt=urn:btih:76b38a5b80a1cd80d76130364ceebd30523ae887",
+  "page_size": 2000
+}
+
+###
+
+{
+    "list_id": "AnVgKUYalilsKMQVdsDJkxhDVcpQ9dcV",
+    "list": {
+        "page_size": 2000,
+        "next_page_token": "",
+        "resources": [
+            {
+                "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0",
+                "name": "【高清剧集网发布 www.PTHDTV.com】淮水竹亭[60帧率版本][全36集][中文字幕].Love.in.Pavilion.S01.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV",
+                "file_size": "53888649204",
+                "file_count": 38,
+                "file_index": 0,
+                "meta": {
+                    "bt_create_time": "1748165802",
+                    "icon": "https://backstage-img-ssl.a.88cdn.com/65d616355857aef8af40b89f187a8cf2770cb0ce",
+                    "status": "1",
+                    "url": "magnet:?xt=urn:btih:76b38a5b80a1cd80d76130364ceebd30523ae887",
+                    "url_tag": "video"
+                },
+                "is_dir": true,
+                "dir": {
+                    "page_size": 38,
+                    "next_page_token": "",
+                    "resources": [
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.0",
+                            "name": "【更多电视剧集下载请访问 www.BPHDTV.com】【更多剧集打包下载请访问 www.BPHDTV.com】.MKV",
+                            "file_size": "636976",
+                            "file_count": 1,
+                            "file_index": 0,
+                            "meta": {
+                                "hash": "3723100ACE5BB420290BA70C379CAFB2A03E374F",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "application/octet-stream",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.1",
+                            "name": "【更多高清剧集下载请访问 www.BPHDTV.com】【更多剧集打包下载请访问 www.BPHDTV.com】.mkv",
+                            "file_size": "636976",
+                            "file_count": 1,
+                            "file_index": 1,
+                            "meta": {
+                                "hash": "3723100ACE5BB420290BA70C379CAFB2A03E374F",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "application/octet-stream",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.2",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E01.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1319738525",
+                            "file_count": 1,
+                            "file_index": 2,
+                            "meta": {
+                                "hash": "3801A4E2FF65583CB5B6757F02474D138A12A349",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.3",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E02.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1434006217",
+                            "file_count": 1,
+                            "file_index": 3,
+                            "meta": {
+                                "hash": "3934C109D79EA5038A359BF04DA32AC9C9360D69",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.4",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E03.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1647207580",
+                            "file_count": 1,
+                            "file_index": 4,
+                            "meta": {
+                                "hash": "9A2A42F7C78E0C40C733E1C17AEF36B318BB10C0",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.5",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E04.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1732164695",
+                            "file_count": 1,
+                            "file_index": 5,
+                            "meta": {
+                                "hash": "5378462633443B7E159E6054F319EE2715BF22E2",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.6",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E05.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1682798627",
+                            "file_count": 1,
+                            "file_index": 6,
+                            "meta": {
+                                "hash": "6D4FE7F75EB00D267624D53E9E274C02D7D86FA9",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.7",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E06.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1440363070",
+                            "file_count": 1,
+                            "file_index": 7,
+                            "meta": {
+                                "hash": "7A0A7AA81D29C740F582999CEE91ABDCBC266FD8",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.8",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E07.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1531272947",
+                            "file_count": 1,
+                            "file_index": 8,
+                            "meta": {
+                                "hash": "8791FE1516376329EEE63A17A9E0D75727601B31",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.9",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E08.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1489269758",
+                            "file_count": 1,
+                            "file_index": 9,
+                            "meta": {
+                                "hash": "C48A21D9EB94D1089E3A972F621FF52DD9217B4E",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.10",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E09.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1492930772",
+                            "file_count": 1,
+                            "file_index": 10,
+                            "meta": {
+                                "hash": "3A84ACAD51A502EEF5CBD63EA45AA66347464791",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.11",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E10.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1730293364",
+                            "file_count": 1,
+                            "file_index": 11,
+                            "meta": {
+                                "hash": "DB4758BB988EF30A61E37797A62A5E7B64EB6B45",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.12",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E11.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1549352171",
+                            "file_count": 1,
+                            "file_index": 12,
+                            "meta": {
+                                "hash": "99752D6BCDD185C9D17D7F54506AC6D09335A122",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.13",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E12.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1359607937",
+                            "file_count": 1,
+                            "file_index": 13,
+                            "meta": {
+                                "hash": "F40D3FC00954F28C816AD5475D0864E06A005830",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.14",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E13.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1391406790",
+                            "file_count": 1,
+                            "file_index": 14,
+                            "meta": {
+                                "hash": "AD0E4F714F1D91FE60A909C8DB6A7118FC79DF90",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.15",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E14.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1465200234",
+                            "file_count": 1,
+                            "file_index": 15,
+                            "meta": {
+                                "hash": "D073A3C45F66E05E6CB9C3638D697924C36D1D9A",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.16",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E15.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1320009974",
+                            "file_count": 1,
+                            "file_index": 16,
+                            "meta": {
+                                "hash": "9BB397D78FEA33DD18FADC97D0DDBAE5722C7A4E",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.17",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E16.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1506811569",
+                            "file_count": 1,
+                            "file_index": 17,
+                            "meta": {
+                                "hash": "C5DD78DE1250DD33F74D741F7DDA54CDA8DFAEFB",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.18",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E17.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1593481179",
+                            "file_count": 1,
+                            "file_index": 18,
+                            "meta": {
+                                "hash": "43563C003153C56740112E4CE5DBA13F2EF4CB8C",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.19",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E18.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1466944272",
+                            "file_count": 1,
+                            "file_index": 19,
+                            "meta": {
+                                "hash": "983AC766C4BF58B1512F6E8994D0E195BE923048",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.20",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E19.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1449283389",
+                            "file_count": 1,
+                            "file_index": 20,
+                            "meta": {
+                                "hash": "8B828737FEECEE01C51C63259DB10BB0C14E2875",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.21",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E20.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1534106337",
+                            "file_count": 1,
+                            "file_index": 21,
+                            "meta": {
+                                "hash": "F22D88F41DA0E3873CB4F06EE4D6C41D741A9B26",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.22",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E21.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1503991195",
+                            "file_count": 1,
+                            "file_index": 22,
+                            "meta": {
+                                "hash": "9EC8F898DB7FBA779567BEE4091E009895041419",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.23",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E22.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1484266393",
+                            "file_count": 1,
+                            "file_index": 23,
+                            "meta": {
+                                "hash": "C5A6070765972B5B9C534DE04078CC37EC689A6C",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.24",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E23.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1523838662",
+                            "file_count": 1,
+                            "file_index": 24,
+                            "meta": {
+                                "hash": "0C3124D8BCBEB61A3E43CF2E085E5339E4300048",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.25",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E24.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1489379862",
+                            "file_count": 1,
+                            "file_index": 25,
+                            "meta": {
+                                "hash": "E6ADC5F517F0BBE19D531C22FE197DD326C17454",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.26",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E25.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1506805625",
+                            "file_count": 1,
+                            "file_index": 26,
+                            "meta": {
+                                "hash": "E13754490F4295FD388B9DDED7CC9E3BF534E051",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.27",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E26.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1431394827",
+                            "file_count": 1,
+                            "file_index": 27,
+                            "meta": {
+                                "hash": "517B6269B953ECC90D8BFE8ECFE1567058D58E70",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.28",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E27.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1545143090",
+                            "file_count": 1,
+                            "file_index": 28,
+                            "meta": {
+                                "hash": "88A2E6E7A4C4A0DCE7D70AFA587F542FD1B8C7EB",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.29",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E28.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1442497900",
+                            "file_count": 1,
+                            "file_index": 29,
+                            "meta": {
+                                "hash": "0E8FA9C96314668F04C8A17DAA19A8D307D284CC",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.30",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E29.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1598454153",
+                            "file_count": 1,
+                            "file_index": 30,
+                            "meta": {
+                                "hash": "152DFFF4CA734A4C06D6F32C0C5376842FD081E3",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.31",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E30.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1274675037",
+                            "file_count": 1,
+                            "file_index": 31,
+                            "meta": {
+                                "hash": "95B446950BBFF67B7FDC2B358146BCF160E0ADA9",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.32",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E31.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1540759538",
+                            "file_count": 1,
+                            "file_index": 32,
+                            "meta": {
+                                "hash": "A0D422AF37352C55717D84C91A48F03355BEFCB0",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.33",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E32.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1715105993",
+                            "file_count": 1,
+                            "file_index": 33,
+                            "meta": {
+                                "hash": "70E633131AB8FFF2D42BB060ADA7EE065FEE1E77",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.34",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E33.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1271707798",
+                            "file_count": 1,
+                            "file_index": 34,
+                            "meta": {
+                                "hash": "50255565F32692327EE42D3D629F734A96C59B58",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.35",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E34.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1496692785",
+                            "file_count": 1,
+                            "file_index": 35,
+                            "meta": {
+                                "hash": "53825D9D97C96BB26C4569BFF3C138F3221FC176",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.36",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E35.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1503812383",
+                            "file_count": 1,
+                            "file_index": 36,
+                            "meta": {
+                                "hash": "35CDE9A7C8E472FA98E365A1DFF571FAA11AD2FF",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        },
+                        {
+                            "id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ.0.37",
+                            "name": "淮水竹亭.Love.in.Pavilion.S01E36.2025.2160p.WEB-DL.DDP5.1.Atmos.H265.60fps-ZeroTV.mkv",
+                            "file_size": "1422600604",
+                            "file_count": 1,
+                            "file_index": 37,
+                            "meta": {
+                                "hash": "DC59FBE7062390C7A343E9A3E7ABECFCADB9C73A",
+                                "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                "mime_type": "video/x-matroska",
+                                "status": "1"
+                            },
+                            "is_dir": false,
+                            "dir": null,
+                            "parent_id": "",
+                            "resolver": "DIRECT"
+                        }
+                    ]
+                },
+                "parent_id": "eSWDXH4hThUJ8eSOu5F6AdvSMNQ",
+                "resolver": "DIRECT"
+            }
+        ]
+    }
+}

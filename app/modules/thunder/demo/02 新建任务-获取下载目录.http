@@ -1,0 +1,77 @@
+# curl 'https://vod1568-a12xllite-vip-lixian.xunlei.com/drive-reverse-proxy/v1/proxyToken/cb56f/1748333870/bscpZlLQH4MCLSsVp7IqATCB-_o=/625200512/94082a79c0fee7fef301911ae6769783/assets/apps/INNER_API/device/download_paths?device_space=&plugin_app_id=INNER_API&plugin_app_token=79L-V0fhRN78WGVSeENqFDTDdiF31ZcRPo2Nr7pNZEEQBa71J19chJ3s4i1itwRk'
+#  -H 'Accept: application/json, text/plain, */*'
+#  -H 'Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6'
+#  -H 'Cache-Control: no-cache'
+#  -H 'Connection: keep-alive'
+#  -H 'Content-Type: application/json'
+#  -H 'DNT: 1'
+#  -H 'Origin: https://pan.xunlei.com'
+#  -H 'Pragma: no-cache'
+#  -H 'Referer: https://pan.xunlei.com/'
+#  -H 'Sec-Fetch-Dest: empty'
+#  -H 'Sec-Fetch-Mode: cors'
+#  -H 'Sec-Fetch-Site: same-site'
+#  -H 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0'
+#  -H 'x-client-id: Yd0uSVGrNJhCC2oE'
+GET https://vod1568-a12xllite-vip-lixian.xunlei.com/drive-reverse-proxy/v1/proxyToken/cb56f/1748333870/bscpZlLQH4MCLSsVp7IqATCB-_o=/625200512/94082a79c0fee7fef301911ae6769783/assets/apps/INNER_API/device/download_paths?device_space=&plugin_app_id=INNER_API&plugin_app_token=79L-V0fhRN78WGVSeENqFDTDdiF31ZcRPo2Nr7pNZEEQBa71J19chJ3s4i1itwRk
+Accept: application/json, text/plain, */*
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cache-Control: no-cache
+Connection: keep-alive
+DNT: 1
+Origin: https://pan.xunlei.com
+Pragma: no-cache
+Referer: https://pan.xunlei.com/
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-site
+User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0
+x-client-id: Yd0uSVGrNJhCC2oE
+Content-Type: application/json
+
+###
+
+[
+    {
+        "Id": "defc12968dc16ed26e204acdf33ae30b",
+        "IsDeleted": false,
+        "Kind": "drive#folder",
+        "ParentID": "",
+        "RealPath": "/data/",
+        "FileName": "data",
+        "FileSize": "2402",
+        "TaskId": "",
+        "Index": 0,
+        "MimeType": "",
+        "CreatedTime": "2025-05-27T16:53:35.844+08:00",
+        "UpdatedTime": "2025-05-18T15:19:51.798+08:00",
+        "CID": "",
+        "GCID": "",
+        "BID": null,
+        "LastPlaySec": "",
+        "LastRecord": null,
+        "NfoId": 0,
+        "DriveFileID": ""
+    },
+    {
+        "Id": "b6a0ac45cc125bae2191888b547ad053",
+        "IsDeleted": false,
+        "Kind": "drive#folder",
+        "ParentID": "",
+        "RealPath": "/downloads/",
+        "FileName": "downloads",
+        "FileSize": "126",
+        "TaskId": "",
+        "Index": 0,
+        "MimeType": "",
+        "CreatedTime": "2025-05-27T16:53:27.451+08:00",
+        "UpdatedTime": "2025-05-18T13:33:51.377+08:00",
+        "CID": "",
+        "GCID": "",
+        "BID": null,
+        "LastPlaySec": "",
+        "LastRecord": null,
+        "NfoId": 0,
+        "DriveFileID": ""
+    }
+]

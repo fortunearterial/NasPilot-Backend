@@ -6,6 +6,7 @@ from app.log import logger
 from app.core.config import settings
 from app.utils.string import StringUtils
 from app.modules.thunder.apiv1 import RemoteClient, LoginFailed
+from app.modules.thunder.types import TorrentFile
 
 
 class Thunder:
@@ -242,7 +243,6 @@ class Thunder:
 
         # 下载内容
         if isinstance(content, str):
-            # TODO：磁链转种子文件
             torrent_files = content
         else:
             torrent_files = settings.TEMP_PATH / (StringUtils.generate_random_str(8) + ".torrent")
@@ -327,15 +327,14 @@ class Thunder:
             logger.error(f"删除种子出错：{str(err)}")
             return False
 
-    def get_files(self, tid: str) -> Optional[Any]:
+    def get_files(self, tid: str) -> Optional[List[TorrentFile]]:
         """
         获取种子文件清单
         """
         if not self.tdc:
             return None
         try:
-            # TODO: 迅雷不支持 111
-            return []
+            return self.tdc.torrents_files(self._device_name, tid)
         except Exception as err:
             logger.error(f"获取种子文件列表出错：{str(err)}")
             return None

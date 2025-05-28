@@ -121,7 +121,7 @@ class SubscribeOper(DbOper):
         """
         result = dict()
         if not usersubscribe:
-            return subscribe or result
+            return None
         if subscribe.id == usersubscribe.subscribe_id:
             rd = subscribe.to_dict()
             usd = usersubscribe.to_dict()

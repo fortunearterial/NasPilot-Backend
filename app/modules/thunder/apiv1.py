@@ -2,8 +2,7 @@ import datetime
 import json
 import time
 import pickle
-from pathlib import Path
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, List
 from urllib import parse
 
 import requests
@@ -12,7 +11,8 @@ from playwright.sync_api import Request, Page
 from app.log import logger
 from app.helper.browser import PlaywrightHelper
 from app.core.config import settings
-from app.utils.system import SystemUtils
+from app.helper.downloader import DownloaderHelper
+from app.modules.thunder.types import TorrentFile
 
 
 class LoginFailed(BaseException):
@@ -1031,7 +1031,8 @@ class RemoteClient:
                 "space": device.get("params").get("target"),
                 "page_token": "",
                 "filters": json.dumps({
-                    "phase": {"in": "PHASE_TYPE_PENDING,PHASE_TYPE_RUNNING,PHASE_TYPE_ERROR,PHASE_TYPE_PAUSED,PHASE_TYPE_COMPLETE"},
+                    "phase": {
+                        "in": "PHASE_TYPE_PENDING,PHASE_TYPE_RUNNING,PHASE_TYPE_ERROR,PHASE_TYPE_PAUSED,PHASE_TYPE_COMPLETE"},
                     "type": {"in": "user#download,user#download-url"}
                 }),
                 "limit": "200",
@@ -1040,6 +1041,66 @@ class RemoteClient:
         return response.get("tasks")
 
     def task_info(self, device_name: str, task_id: str):
+        '''
+        {
+            "kind": "drive#task",
+            "id": "VORF6_Y30iKhP9NpEimCwNPmA1",
+            "name": "4NmEFLlgGu,NASPILOT#【高清剧集网发布 www.BPHDTV.com】半熟男女[60帧率版本][高码版][全27集][国语配音+中文字幕].2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV",
+            "type": "user#download-url",
+            "user_id": "625200512",
+            "statuses": [],
+            "status_size": 0,
+            "params": {
+                "checked_size": "49552623965",
+                "client_id": "X9ibISwpIp8jQ4Ya",
+                "client_version": "3.21.0",
+                "device_model": "geminilake dsm 7.2-64570",
+                "ehc": "8",
+                "file_id": "",
+                "gcid_empty_count": "0",
+                "hc": "21",
+                "info_hash": "1dc27d4c5265c98506400eb795c7ef299cb90b83",
+                "ip": "58.48.104.217",
+                "mime_type": "",
+                "package_name": "pan.xunlei.cli.synology",
+                "parent_folder_id": "b6a0ac45cc125bae2191888b547ad053",
+                "platform": "synology",
+                "real_path": "/downloads/4NmEFLlgGu,NASPILOT#【高清剧集网发布 www.BPHDTV.com】半熟男女[60帧率版本][高码版][全27集][国语配音+中文字幕].2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV",
+                "retry_record": "|10527_1358_111176|20527_1451_111176|30527_1541_114011",
+                "retry_times": "3",
+                "sleep": "timer:1s<1s<1m0s",
+                "spec": "{\"phase\":\"pause\"}",
+                "speed": "0",
+                "speed_limit": "-1",
+                "speedup": "{\"p2p\":\"started\",\"vip\":\"close\",\"super\":\"close\",\"trace_id\":\"UrOJzKgV\"}",
+                "speedup_count": "1",
+                "speedup_failed_count": "0",
+                "speedup_refresh": "11",
+                "speedup_speed": "0",
+                "speedup_status": "1",
+                "status": "{\"phase\":\"running\"}",
+                "sub_file_index": "0-28",
+                "super_speedup_isjoined": "false",
+                "target": "device_id#94082a79c0fee7fef301911ae6769783",
+                "team_isjoined": "false",
+                "total_file_count": "29",
+                "url": "magnet:?xt=urn:btih:1dc27d4c5265c98506400eb795c7ef299cb90b83"
+            },
+            "file_id": "65a066836f554ce454f44f65d88dd89d",
+            "file_name": "4NmEFLlgGu,NASPILOT#【高清剧集网发布 www.BPHDTV.com】半熟男女[60帧率版本][高码版][全27集][国语配音+中文字幕].2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV",
+            "file_size": "217845799043",
+            "message": "已添加",
+            "created_time": "2025-05-27T13:01:53.732+08:00",
+            "updated_time": "2025-05-27T16:29:17.583+08:00",
+            "third_task_id": "",
+            "phase": "PHASE_TYPE_RUNNING",
+            "progress": 22,
+            "icon_link": "https://backstage-img-ssl.a.88cdn.com/65d616355857aef8af40b89f187a8cf2770cb0ce",
+            "callback": "",
+            "reference_resource": null,
+            "space": "device_id#94082a79c0fee7fef301911ae6769783"
+        }
+        '''
         device = self.get_device(device_name)
         response = self.__request(
             method="GET",
@@ -1050,24 +1111,724 @@ class RemoteClient:
         )
         return response
 
-    def create_task(self, torrent_url: str, device_name: str, directory_path: str, tag: Union[str, list]) -> str:
-        device = self.get_device(device_name)
-        directory = self.get_directory(device_name, directory_path)
-        # 获取种子的文件列表
-        list_response = self.__request(
+    def _list_resource(self, torrent_url: str):
+        '''
+        {
+            "list_id": "CGRC2hKQL1Fc4a6jJCbEHxhDSfJQvoU-",
+            "list": {
+                "page_size": 1000,
+                "resources": [
+                    {
+                        "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0",
+                        "name": "【高清剧集网发布 www.DDHDTV.com】女子推理社[第00-13集][上][下][国语配音+中文字幕].The.Sherlock.2023.S01.1080p.WEB-DL.H264.AAC-Huawei",
+                        "file_size": 46571499334,
+                        "file_count": 51,
+                        "meta": {
+                            "bt_create_time": "1747897463",
+                            "icon": "https://backstage-img-ssl.a.88cdn.com/65d616355857aef8af40b89f187a8cf2770cb0ce",
+                            "status": "1",
+                            "url": "magnet:?xt=urn:btih:af3c3fc5c2e07c8c7c422b1064a9cbf870b09e70",
+                            "url_tag": "video"
+                        },
+                        "is_dir": true,
+                        "dir": {
+                            "page_size": 51,
+                            "resources": [
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.0",
+                                    "name": "【更多电视剧集下载请访问 www.DDHDTV.com】【更多剧集打包下载请访问 www.DDHDTV.com】.MKV",
+                                    "file_size": 636976,
+                                    "file_count": 1,
+                                    "meta": {
+                                        "hash": "3723100ACE5BB420290BA70C379CAFB2A03E374F",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "application/octet-stream",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.1",
+                                    "name": "【更多高清剧集下载请访问 www.DDHDTV.com】【更多剧集打包下载请访问 www.DDHDTV.com】.mkv",
+                                    "file_size": 636976,
+                                    "file_count": 1,
+                                    "file_index": 1,
+                                    "meta": {
+                                        "hash": "3723100ACE5BB420290BA70C379CAFB2A03E374F",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "application/octet-stream",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.2",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E00.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 884003721,
+                                    "file_count": 1,
+                                    "file_index": 2,
+                                    "meta": {
+                                        "hash": "AB4000B9045D640A80C9948D2F96F3927C5DB9C1",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.3",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E01.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1297172325,
+                                    "file_count": 1,
+                                    "file_index": 3,
+                                    "meta": {
+                                        "hash": "155549A6D707662F4385A6D5193F55C76A35CD31",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.4",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E01.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 943936372,
+                                    "file_count": 1,
+                                    "file_index": 4,
+                                    "meta": {
+                                        "hash": "CA60AED77941282AAAD37B057A07ACEBF6A8DFB3",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.5",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E02.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1145399757,
+                                    "file_count": 1,
+                                    "file_index": 5,
+                                    "meta": {
+                                        "hash": "07CB657FB3B3CBFDF7A26DF94C6A23B278F9B2A6",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.6",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E02.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1080971419,
+                                    "file_count": 1,
+                                    "file_index": 6,
+                                    "meta": {
+                                        "hash": "30BDB2F7FDE651B01CD98FA87324E06B337C3A59",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.7",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E03.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1250444753,
+                                    "file_count": 1,
+                                    "file_index": 7,
+                                    "meta": {
+                                        "hash": "C065835DBA4C12E8A85E559DC20A1BF1152716AF",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.8",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E03.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 979560359,
+                                    "file_count": 1,
+                                    "file_index": 8,
+                                    "meta": {
+                                        "hash": "035F20970EDDE06FDE7750F2135FC58878135876",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.9",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E04.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1165219719,
+                                    "file_count": 1,
+                                    "file_index": 9,
+                                    "meta": {
+                                        "hash": "B77E45CBB62636A98D6EC90D664CCB8D383014F4",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.10",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E04.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1056385754,
+                                    "file_count": 1,
+                                    "file_index": 10,
+                                    "meta": {
+                                        "hash": "CA63F44CA28001DFE6DBF4D2063A53563423DB0E",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.11",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E05.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 2466725691,
+                                    "file_count": 1,
+                                    "file_index": 11,
+                                    "meta": {
+                                        "hash": "D7FAEFC1ED9B10626729017FA5BA019C67A42CBF",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.12",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E05.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1558610264,
+                                    "file_count": 1,
+                                    "file_index": 12,
+                                    "meta": {
+                                        "hash": "35A667A5B47A171ACB979AC6354FC901B6F56BB5",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.13",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E06.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 829087099,
+                                    "file_count": 1,
+                                    "file_index": 13,
+                                    "meta": {
+                                        "hash": "EEA227D4A8BBDFD6BA98F0DCD4CC8F562A0D6A28",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.14",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E06.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 894753195,
+                                    "file_count": 1,
+                                    "file_index": 14,
+                                    "meta": {
+                                        "hash": "0E78411564F2B542F375FF8230C8CAB878B3FE00",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.15",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E07.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1441270906,
+                                    "file_count": 1,
+                                    "file_index": 15,
+                                    "meta": {
+                                        "hash": "7B0B64049528956B8465049D10D28A8BEFCED126",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.16",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E07.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1211381219,
+                                    "file_count": 1,
+                                    "file_index": 16,
+                                    "meta": {
+                                        "hash": "27C8B8376993670256FF63BB4BDA10760E100AAF",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.17",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E08.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1394347047,
+                                    "file_count": 1,
+                                    "file_index": 17,
+                                    "meta": {
+                                        "hash": "4F19B1A8A23F9D0C652CA6BFEBE1D36C355095EF",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.18",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E08.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1158243209,
+                                    "file_count": 1,
+                                    "file_index": 18,
+                                    "meta": {
+                                        "hash": "3FB83898D6731554FD01CC8431B91D625607AA1F",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.19",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E09.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1569154962,
+                                    "file_count": 1,
+                                    "file_index": 19,
+                                    "meta": {
+                                        "hash": "0DCBF3B5B0E07395E0E8C57FC742EEEB3B645FE2",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.20",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E09.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1338415333,
+                                    "file_count": 1,
+                                    "file_index": 20,
+                                    "meta": {
+                                        "hash": "8DF867C429B9D3DD63DEE2D673AFC3CB5A7C7C9E",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.21",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E10.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1487905937,
+                                    "file_count": 1,
+                                    "file_index": 21,
+                                    "meta": {
+                                        "hash": "48E305010A121F6F41830037C09ACB4EA8F728F8",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.22",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E10.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1216139204,
+                                    "file_count": 1,
+                                    "file_index": 22,
+                                    "meta": {
+                                        "hash": "592CEBBD49817FFE8F4DA95B10581A201F7939BA",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.23",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E11.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1144566823,
+                                    "file_count": 1,
+                                    "file_index": 23,
+                                    "meta": {
+                                        "hash": "3FEAEFCEEAE1E9F4BAABD302B51A524D939F0DD4",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.24",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E11.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1431883159,
+                                    "file_count": 1,
+                                    "file_index": 24,
+                                    "meta": {
+                                        "hash": "AE693EBB40F181B6942DC3717C19B038CCC7C33A",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.25",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E12.Part1.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1282490284,
+                                    "file_count": 1,
+                                    "file_index": 25,
+                                    "meta": {
+                                        "hash": "783FB8D0CE66F93F7CB7AA0F2C188153DDE6320F",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.26",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E12.Part2.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1269621758,
+                                    "file_count": 1,
+                                    "file_index": 26,
+                                    "meta": {
+                                        "hash": "A78EF29A8A9BE622468E95C34326A72FE226D09D",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.27",
+                                    "name": "女子推理社.The.Sherlock.2023.S01E13.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 1452998268,
+                                    "file_count": 1,
+                                    "file_index": 27,
+                                    "meta": {
+                                        "hash": "4484B3B5988E81911DC3CCEDF562FE7B961D6DC9",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.28",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E01.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 781050556,
+                                    "file_count": 1,
+                                    "file_index": 28,
+                                    "meta": {
+                                        "hash": "3531A6278B953B1FD249AEE52D1C26C2286B1A7E",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.29",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E02.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 565662603,
+                                    "file_count": 1,
+                                    "file_index": 29,
+                                    "meta": {
+                                        "hash": "2486E2DEB6856F88B7CD4722D759CF4B0F81C33E",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.30",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E03.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 635383564,
+                                    "file_count": 1,
+                                    "file_index": 30,
+                                    "meta": {
+                                        "hash": "69737F6EB360FEEF0DD60FD94584C3B6E6A0564D",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.31",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E04.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 607238689,
+                                    "file_count": 1,
+                                    "file_index": 31,
+                                    "meta": {
+                                        "hash": "CB95B763EC70AE37F15686DE668015B5312D5752",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.32",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E05.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 938626477,
+                                    "file_count": 1,
+                                    "file_index": 32,
+                                    "meta": {
+                                        "hash": "6575AF87AFA4C8B1BAB2BF4A0F353C97E8B084C1",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.33",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E06.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 540391185,
+                                    "file_count": 1,
+                                    "file_index": 33,
+                                    "meta": {
+                                        "hash": "985B325E96848304E3CB4F526B2194ACCC6DB0D7",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.34",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E07.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 821574824,
+                                    "file_count": 1,
+                                    "file_index": 34,
+                                    "meta": {
+                                        "hash": "D476D12B48A1C3CDA5DC860C122C60726579C4DA",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.35",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E08.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 650435925,
+                                    "file_count": 1,
+                                    "file_index": 35,
+                                    "meta": {
+                                        "hash": "DF06D59BD090BB0E235173B2AF8E9288DCEE249C",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.36",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E09.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 869751010,
+                                    "file_count": 1,
+                                    "file_index": 36,
+                                    "meta": {
+                                        "hash": "47434E4E605212117D820D9C93F9403D77E05801",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.37",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E10.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 608984649,
+                                    "file_count": 1,
+                                    "file_index": 37,
+                                    "meta": {
+                                        "hash": "3E26C297D0E1315269EA60A7C71A305D665C6867",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.38",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E11.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 926792251,
+                                    "file_count": 1,
+                                    "file_index": 38,
+                                    "meta": {
+                                        "hash": "A6352AD94DD21CA78030F3DA0A4B8305E1EDD325",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.39",
+                                    "name": "女子推理社爱你永不便利店.The.Sherlock.Plus.2023.S01E12.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 611009076,
+                                    "file_count": 1,
+                                    "file_index": 39,
+                                    "meta": {
+                                        "hash": "03CB617B140EC4B7BADBEE45F07019081040DAE2",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.40",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E01.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 314213349,
+                                    "file_count": 1,
+                                    "file_index": 40,
+                                    "meta": {
+                                        "hash": "5F2137D8D2BA00F0E2AC271061963AF42720CD18",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.41",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E02.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 506825708,
+                                    "file_count": 1,
+                                    "file_index": 41,
+                                    "meta": {
+                                        "hash": "645082AB7F29643BF2CAFBBBED98DE9370E2C5C8",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.42",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E03.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 473675436,
+                                    "file_count": 1,
+                                    "file_index": 42,
+                                    "meta": {
+                                        "hash": "DC686F4E8145442044EAFD07C44B978F8627D3E4",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.43",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E04.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 532517183,
+                                    "file_count": 1,
+                                    "file_index": 43,
+                                    "meta": {
+                                        "hash": "4661F51336453112881933D6465CD75BC6BB7844",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.44",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E05.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 519994567,
+                                    "file_count": 1,
+                                    "file_index": 44,
+                                    "meta": {
+                                        "hash": "4D18764A216B20A7B9D601BD7F123345057DE333",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.45",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E06.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 459929485,
+                                    "file_count": 1,
+                                    "file_index": 45,
+                                    "meta": {
+                                        "hash": "C3BF62FB3EF0AA055BF7DDBF3DEAE4891915EF5C",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.46",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E07.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 452435400,
+                                    "file_count": 1,
+                                    "file_index": 46,
+                                    "meta": {
+                                        "hash": "EC6DF876D929B44F83C84542CAE6416FF3DEC672",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.47",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E08.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 457199711,
+                                    "file_count": 1,
+                                    "file_index": 47,
+                                    "meta": {
+                                        "hash": "6A2DC8E44D6AE370DC6F5C1E8056F5A36A43DA7B",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.48",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E09.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 550449074,
+                                    "file_count": 1,
+                                    "file_index": 48,
+                                    "meta": {
+                                        "hash": "C386414311B671A93D8CBE9C6EC3775997197CEC",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.49",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E10.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 437662790,
+                                    "file_count": 1,
+                                    "file_index": 49,
+                                    "meta": {
+                                        "hash": "62791C5F3B7F452867713A015F86D439C44B827D",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                },
+                                {
+                                    "id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y.0.50",
+                                    "name": "女子推理社超前彩蛋.The.Sherlock.Extra.2023.S01E11.1080p.WEB-DL.H264.AAC-Huawei.mp4",
+                                    "file_size": 357733333,
+                                    "file_count": 1,
+                                    "file_index": 50,
+                                    "meta": {
+                                        "hash": "FBE9751355F3AA133037162369A2FAE2D1D7628A",
+                                        "icon": "https://backstage-img-ssl.a.88cdn.com/8e91a81218dd38ba32dccbc91757548851617f79",
+                                        "mime_type": "video/mp4",
+                                        "status": "1"
+                                    }
+                                }
+                            ]
+                        },
+                        "parent_id": "fUO8CbxRCtyDsYiVrFAUL7zof9Y"
+                    }
+                ]
+            }
+        }
+        '''
+        response = self.__request(
             method="POST",
             url="https://api-pan.xunlei.com/drive/v1/resource/list",
             json={"urls": torrent_url, "page_size": 2000}
         )
-        resources = list_response.get("list").get("resources")[0]
-        # 开始下载
+        return response.get("list").get("resources")[0]
 
+    def create_task(self, torrent_url: str, device_name: str, directory_path: str, tag: Union[str, list]) -> str:
+        device = self.get_device(device_name)
+        directory = self.get_directory(device_name, directory_path)
+        # 获取种子的文件列表
+        resources = self._list_resource(torrent_url)
+        file_index: list[str] = []
+        file_size: int = 0
+        for i, resource in enumerate(resources.get("dir").get("resources")):
+            if not DownloaderHelper().is_ignore_torrent_file(resource.get("name")):
+                file_index.append(str(i))
+                file_size += int(resource.get("file_size"))
+        # 开始下载
         response = self.__request(
             method="POST",
             url="https://api-pan.xunlei.com/drive/v1/task",
             json={
-                "file_name": ",".join(tag) + "#" + resources.get("name"),
-                "file_size": resources.get("file_size"),
+                "file_name": ",".join(tag) + "#" + DownloaderHelper().remove_torrent_name_sites(resources.get("name")),
+                "file_size": str(file_size),  # resources.get("file_size"),
                 "space": device.get("params").get("target"),
                 "type": "user#download-url",
                 "params": {
@@ -1076,7 +1837,7 @@ class RemoteClient:
                     "platform": "web",
                     "total_file_count": str(resources.get("file_count")),
                     "url": torrent_url,
-                    "sub_file_index": "0-" + str(int(resources.get("file_count")) - 1)
+                    "sub_file_index": ",".join(file_index)  # "0-" + str(int(resources.get("file_count")) - 1)
                 }
             }
         )
@@ -1172,6 +1933,1309 @@ class RemoteClient:
         )
         return response.get("statistic")
 
+    def torrents_files(self, device_name: str, task_id: str) -> List[TorrentFile]:
+        '''
+        {
+            "kind": "drive#fileList",
+            "next_page_token": "",
+            "files": [
+                {
+                    "kind": "drive#file",
+                    "id": "b4d44717c84be0818e9f38e5fefd625b",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "【更多电视剧集下载请访问 www.BPHDTV.com】【更多剧集打包下载请访问 www.BPHDTV.com】.MKV",
+                    "user_id": "625200512",
+                    "size": "636976",
+                    "revision": "0",
+                    "file_extension": ".MKV",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "2025-05-26T17:57:51.854+08:00",
+                    "modified_time": "2025-05-27T15:42:06.804+08:00",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_COMPLETE",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "636976",
+                        "progress": "100",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.330b4a91baba79712706f9af59cae81c"
+                    },
+                    "original_file_index": 0,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "be17615bb6172eca1f35e5ce729b085d",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "【更多高清剧集下载请访问 www.BPHDTV.com】【更多剧集打包下载请访问 www.BPHDTV.com】.mkv",
+                    "user_id": "625200512",
+                    "size": "636976",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "2025-05-26T17:57:54.993+08:00",
+                    "modified_time": "2025-05-27T15:42:06.805+08:00",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_COMPLETE",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "636976",
+                        "progress": "100",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.73e738d241dcd22b02e2c8dc5e57f872"
+                    },
+                    "original_file_index": 1,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.12b28caffcd3133f3b6843098e20224c",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E01.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8414840184",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "150844427",
+                        "progress": "1",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.12b28caffcd3133f3b6843098e20224c"
+                    },
+                    "original_file_index": 2,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.e5a99ac8be6666c7f22925cef5ca9766",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E02.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8400918016",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "1180044",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.e5a99ac8be6666c7f22925cef5ca9766"
+                    },
+                    "original_file_index": 3,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "f523712aaf512c1c17b0d25fe07fb581",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E03.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8172488575",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "2025-05-26T17:39:14.514+08:00",
+                    "modified_time": "2025-05-27T15:42:06.805+08:00",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_COMPLETE",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "8172488575",
+                        "progress": "100",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.34ee78c01b0e225276beec5906c79818"
+                    },
+                    "original_file_index": 4,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "a0bb9b74cf76a98a0629e1f1000510fd",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E04.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8086257767",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "2025-05-26T17:48:03.694+08:00",
+                    "modified_time": "2025-05-27T15:42:06.805+08:00",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_COMPLETE",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "8086257767",
+                        "progress": "100",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.99d5fcd6daad6c1027b7d3b8eef19981"
+                    },
+                    "original_file_index": 5,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "01a5002a2f46e4b37f5612605f568a5c",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E05.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8278381693",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "2025-05-26T17:32:46.180+08:00",
+                    "modified_time": "2025-05-27T15:42:06.806+08:00",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_COMPLETE",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "8278381693",
+                        "progress": "100",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.3ff482d4bd3b3cef96bfde03f32bf062"
+                    },
+                    "original_file_index": 6,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "e4eb790529f03de0e2f5edc3f437bef6",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E06.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8702919627",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "2025-05-26T17:12:24.515+08:00",
+                    "modified_time": "2025-05-27T15:42:06.806+08:00",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_COMPLETE",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "8702919627",
+                        "progress": "100",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.2e82b22c97f9ad9d3b1abbab7bc568f9"
+                    },
+                    "original_file_index": 7,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.999c8c25ad4bd4cae73c5ff3d5f6835c",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E07.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8236418935",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.999c8c25ad4bd4cae73c5ff3d5f6835c"
+                    },
+                    "original_file_index": 8,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.f6193ef01c3f0b4c253448d4584afcc4",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E08.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8130229297",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.f6193ef01c3f0b4c253448d4584afcc4"
+                    },
+                    "original_file_index": 9,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "f24a7ba85dd3d176912cfe3188fa133c",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E09.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7609321045",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "2025-05-26T18:03:13.879+08:00",
+                    "modified_time": "2025-05-27T15:42:06.807+08:00",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_COMPLETE",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "7609321045",
+                        "progress": "100",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.15313fd379c3d6ffecf0cdd5b3a97618"
+                    },
+                    "original_file_index": 10,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "9c98a4db6433457ba2d7eddfee280f99",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E10.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7547070773",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "2025-05-26T18:12:42.508+08:00",
+                    "modified_time": "2025-05-27T15:42:06.807+08:00",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_COMPLETE",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "7547070773",
+                        "progress": "100",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.d66a03d45d72949f7e6cd76bb280bc46"
+                    },
+                    "original_file_index": 11,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.f1a8a9e6647448b874e9920f82b82af7",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E11.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8070902445",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.f1a8a9e6647448b874e9920f82b82af7"
+                    },
+                    "original_file_index": 12,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.887954fbae72148f9a770f453fd4c6ea",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E12.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7603129491",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_RUNNING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.887954fbae72148f9a770f453fd4c6ea"
+                    },
+                    "original_file_index": 13,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.d9349d8a197746b1792da0f6bd2e5378",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E13.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8290955885",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.d9349d8a197746b1792da0f6bd2e5378"
+                    },
+                    "original_file_index": 14,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.bfd5b0d6e32e7c2e1ecdfa9677ef7750",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E14.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7825328976",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_RUNNING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.bfd5b0d6e32e7c2e1ecdfa9677ef7750"
+                    },
+                    "original_file_index": 15,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.608a7aafc729008b1b09d910af855b91",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E15.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7859918297",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_RUNNING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.608a7aafc729008b1b09d910af855b91"
+                    },
+                    "original_file_index": 16,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.476608b3beee90b2cd3ae1ff9d7685dd",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E16.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7657937933",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_RUNNING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.476608b3beee90b2cd3ae1ff9d7685dd"
+                    },
+                    "original_file_index": 17,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.38105dd5aff07b348844371315ada7e7",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E17.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8108929866",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "963954509",
+                        "progress": "11",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.38105dd5aff07b348844371315ada7e7"
+                    },
+                    "original_file_index": 18,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.432472e4d68a33cfd7a6ae17db233795",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E18.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8157072013",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.432472e4d68a33cfd7a6ae17db233795"
+                    },
+                    "original_file_index": 19,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.8d9a2b1e5baf949f3359804184485d38",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E19.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7703928621",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_RUNNING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.8d9a2b1e5baf949f3359804184485d38"
+                    },
+                    "original_file_index": 20,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.c3637d5569386ab5b9ce332661c8ae71",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E20.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7879263650",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_RUNNING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.c3637d5569386ab5b9ce332661c8ae71"
+                    },
+                    "original_file_index": 21,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.f42e0233a52bab6a5e2d3b55d69c8b88",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E21.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8345551649",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "61113744",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.f42e0233a52bab6a5e2d3b55d69c8b88"
+                    },
+                    "original_file_index": 22,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.130ceb0c383edd8b19fbbbd7765132aa",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E22.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7959969836",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.130ceb0c383edd8b19fbbbd7765132aa"
+                    },
+                    "original_file_index": 23,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.afabe1ccc85bc9636c2bffb1e3496a87",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E23.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8313870552",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.afabe1ccc85bc9636c2bffb1e3496a87"
+                    },
+                    "original_file_index": 24,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.a40e8953402991e7340b0d6e65e87911",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E24.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8118985136",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.a40e8953402991e7340b0d6e65e87911"
+                    },
+                    "original_file_index": 25,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.225e7edaa62723fa601101be1a6fa451",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E25.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "7921073303",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.225e7edaa62723fa601101be1a6fa451"
+                    },
+                    "original_file_index": 26,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.4b4f764e99ba2c7cae0d0310281a1ec8",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E26.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8354382117",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "481930",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.4b4f764e99ba2c7cae0d0310281a1ec8"
+                    },
+                    "original_file_index": 27,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                },
+                {
+                    "kind": "drive#file",
+                    "id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.e3b76cf1493f21e038e113d07784bb56",
+                    "parent_id": "65a066836f554ce454f44f65d88dd89d",
+                    "name": "半熟男女.In.Between.S01E27.2024.2160p.HQ.WEB-DL.AAC.H265.60fps-ParkTV.mkv",
+                    "user_id": "625200512",
+                    "size": "8094479409",
+                    "revision": "0",
+                    "file_extension": ".mkv",
+                    "mime_type": "",
+                    "starred": false,
+                    "web_content_link": "",
+                    "created_time": "",
+                    "modified_time": "",
+                    "icon_link": "",
+                    "thumbnail_link": "",
+                    "md5_checksum": "",
+                    "hash": "",
+                    "links": {},
+                    "phase": "PHASE_TYPE_PENDING",
+                    "audit": null,
+                    "medias": [],
+                    "trashed": false,
+                    "delete_time": "",
+                    "original_url": "",
+                    "params": {
+                        "download_size": "0",
+                        "progress": "0",
+                        "speed": "0",
+                        "subfile_id": "subfile.VORF6_Y30iKhP9NpEimCwNPmA1.e3b76cf1493f21e038e113d07784bb56"
+                    },
+                    "original_file_index": 28,
+                    "space": "",
+                    "apps": [],
+                    "writable": false,
+                    "folder_type": "",
+                    "collection": null,
+                    "sort_name": "",
+                    "user_modified_time": "",
+                    "spell_name": [],
+                    "file_category": "OTHER",
+                    "tags": [],
+                    "reference_events": []
+                }
+            ],
+            "version": "",
+            "version_outdated": false,
+            "sync_time": ""
+        }
+        '''
+        device = self.get_device(device_name)
+        task_info = self.task_info(device_name, task_id)
+        response = self.__invoke_innerapi_with_url(
+            device=device,
+            url="drive/v1/files",
+            params={
+                "space": device.get("params").get("target"),
+                "limit": "1000",
+                "page_token": "",
+                "parent_id": task_info.get("file_id"),
+                "with": "taskID." + task_id
+            },
+        )
+        return response.get("files")
+
 
 if __name__ == '__main__':
     api = RemoteClient(
@@ -1179,15 +3243,17 @@ if __name__ == '__main__':
         password="ly2000281.",
     )
     api.auth_log_in()
-    device_info = api.get_device("群晖-SynologyUat")
-    print(device_info)
-    directory_info = api.get_directory("群晖-SynologyUat", "/downloads/")
-    print(directory_info)
-    did = api.create_task("magnet:?xt=urn:btih:3393fdb952109e24c66c8b39e393f23dfd550084", "群晖-SynologyUat",
-                          "/downloads/", "NASPILOT")
-    print(did)
-    api.pause_task("群晖-SynologyUat", did)
-    api.start_task("群晖-SynologyUat", did)
-    api.remove_task_and_files("群晖-SynologyUat", did)
-    tasks = api.list_tasks("群晖-SynologyUat")
-    print(tasks)
+    # device_info = api.get_device("群晖-SynologyUat")
+    # print(device_info)
+    # directory_info = api.get_directory("群晖-SynologyUat", "/downloads/")
+    # print(directory_info)
+    # did = api.create_task("magnet:?xt=urn:btih:3393fdb952109e24c66c8b39e393f23dfd550084", "群晖-SynologyUat",
+    #                       "/downloads/", "NASPILOT")
+    # print(did)
+    # api.pause_task("群晖-SynologyUat", did)
+    # api.start_task("群晖-SynologyUat", did)
+    # api.remove_task_and_files("群晖-SynologyUat", did)
+    # tasks = api.list_tasks("群晖-SynologyUat")
+    # print(tasks)
+    # files = api.torrents_files("群晖-SynologyUat", "VORF6_Y30iKhP9NpEimCwNPmA1")
+    # print(files)

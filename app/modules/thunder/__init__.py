@@ -14,6 +14,7 @@ from app.schemas import TransferTorrent, DownloadingTorrent
 from app.schemas.types import TorrentStatus, ModuleType, DownloaderType
 from app.utils.string import StringUtils
 from app.db.user_oper import UserOper
+from app.modules.thunder.types import TorrentFile
 
 
 class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
@@ -348,7 +349,7 @@ class ThunderModule(_ModuleBase, _DownloaderBase[Thunder]):
             return None
         return server.stop_torrents(ids=hashs)
 
-    def torrent_files(self, user_id: int, tid: str, downloader: Optional[str] = None) -> Optional[TorrentFilesList]:
+    def torrent_files(self, user_id: int, tid: str, downloader: Optional[str] = None) -> Optional[List[TorrentFile]]:
         """
         获取种子文件列表
         """

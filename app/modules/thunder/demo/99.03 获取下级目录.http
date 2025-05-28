@@ -1,0 +1,195 @@
+# curl 'https://vod1568-a12xllite-vip-lixian.xunlei.com/drive-reverse-proxy/v1/proxyToken/cb56f/1748333870/bscpZlLQH4MCLSsVp7IqATCB-_o=/625200512/94082a79c0fee7fef301911ae6769783/assets/apps/INNER_API/drive/v1/files?device_space=&space=device_id%2394082a79c0fee7fef301911ae6769783&parent_id=ec9864597d2d70d3c09b91e610e9af0a&limit=20&with_audit=true&filters=%7B%22trashed%22%3A%7B%22eq%22%3Afalse%7D%2C%22phase%22%3A%7B%22eq%22%3A%22PHASE_TYPE_COMPLETE%22%7D%2C%22kind%22%3A%7B%22eq%22%3A%22drive%23folder%22%7D%7D&page_token=&with=withCategoryDiskMountPath&with=withCategoryHistoryDownloadPath&order=TYPE_DESC&plugin_app_id=INNER_API&plugin_app_token=79L-V0fhRN78WGVSeENqFDTDdiF31ZcRPo2Nr7pNZEEQBa71J19chJ3s4i1itwRk'
+#  -H 'Accept: application/json, text/plain, */*'
+#  -H 'Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6'
+#  -H 'Cache-Control: no-cache'
+#  -H 'Connection: keep-alive'
+#  -H 'Content-Type: application/json'
+#  -H 'DNT: 1'
+#  -H 'Origin: https://pan.xunlei.com'
+#  -H 'Pragma: no-cache'
+#  -H 'Referer: https://pan.xunlei.com/'
+#  -H 'Sec-Fetch-Dest: empty'
+#  -H 'Sec-Fetch-Mode: cors'
+#  -H 'Sec-Fetch-Site: same-site'
+#  -H 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0'
+#  -H 'x-client-id: Yd0uSVGrNJhCC2oE'
+GET https://vod1568-a12xllite-vip-lixian.xunlei.com/drive-reverse-proxy/v1/proxyToken/cb56f/1748333870/bscpZlLQH4MCLSsVp7IqATCB-_o=/625200512/94082a79c0fee7fef301911ae6769783/assets/apps/INNER_API/drive/v1/files?device_space=&space=device_id%2394082a79c0fee7fef301911ae6769783&parent_id=ec9864597d2d70d3c09b91e610e9af0a&limit=20&with_audit=true&filters=%7B%22trashed%22%3A%7B%22eq%22%3Afalse%7D%2C%22phase%22%3A%7B%22eq%22%3A%22PHASE_TYPE_COMPLETE%22%7D%2C%22kind%22%3A%7B%22eq%22%3A%22drive%23folder%22%7D%7D&page_token=&with=withCategoryDiskMountPath&with=withCategoryHistoryDownloadPath&order=TYPE_DESC&plugin_app_id=INNER_API&plugin_app_token=79L-V0fhRN78WGVSeENqFDTDdiF31ZcRPo2Nr7pNZEEQBa71J19chJ3s4i1itwRk
+Accept: application/json, text/plain, */*
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cache-Control: no-cache
+Connection: keep-alive
+DNT: 1
+Origin: https://pan.xunlei.com
+Pragma: no-cache
+Referer: https://pan.xunlei.com/
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-site
+User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/136.0.0.0
+x-client-id: Yd0uSVGrNJhCC2oE
+Content-Type: application/json
+
+###
+
+{
+    "kind": "drive#fileList",
+    "next_page_token": "",
+    "files": [
+        {
+            "kind": "drive#folder",
+            "id": "e177988326a2f59f848ee14e23076c21",
+            "parent_id": "ec9864597d2d70d3c09b91e610e9af0a",
+            "name": "lock",
+            "user_id": "625200512",
+            "size": "0",
+            "revision": "0",
+            "file_extension": "",
+            "mime_type": "folder",
+            "starred": false,
+            "web_content_link": "",
+            "created_time": "2025-05-27T16:59:49.314+08:00",
+            "modified_time": "2024-05-30T10:03:46.000+08:00",
+            "icon_link": "https://backstage-img-ssl.a.88cdn.com/36de21fd06b9ebdd5092b68652b6fc6118e23c2b",
+            "thumbnail_link": "",
+            "md5_checksum": "",
+            "hash": "",
+            "links": {},
+            "phase": "PHASE_TYPE_COMPLETE",
+            "audit": null,
+            "medias": [],
+            "trashed": false,
+            "delete_time": "",
+            "original_url": "",
+            "params": {
+                "AliasPath": "/run/lock/",
+                "RealPath": "/run/lock/",
+                "TaskID": "",
+                "client_version": "3.21.0",
+                "is_write": "true",
+                "limit": "54609838080",
+                "platform": "synology",
+                "source": "other",
+                "usage": "15856844800",
+                "vfs_id": "20250523220215205",
+                "vfs_type": "os"
+            },
+            "original_file_index": 0,
+            "space": "device_id#94082a79c0fee7fef301911ae6769783",
+            "apps": [],
+            "writable": false,
+            "folder_type": "",
+            "collection": null,
+            "sort_name": "",
+            "user_modified_time": "",
+            "spell_name": [],
+            "file_category": "OTHER",
+            "tags": [],
+            "reference_events": []
+        },
+        {
+            "kind": "drive#folder",
+            "id": "d6bd1153f5dfcb1eb8e5f028d30d79fe",
+            "parent_id": "ec9864597d2d70d3c09b91e610e9af0a",
+            "name": "mount",
+            "user_id": "625200512",
+            "size": "0",
+            "revision": "0",
+            "file_extension": "",
+            "mime_type": "folder",
+            "starred": false,
+            "web_content_link": "",
+            "created_time": "2025-05-27T16:59:49.314+08:00",
+            "modified_time": "2024-05-30T10:03:46.000+08:00",
+            "icon_link": "https://backstage-img-ssl.a.88cdn.com/36de21fd06b9ebdd5092b68652b6fc6118e23c2b",
+            "thumbnail_link": "",
+            "md5_checksum": "",
+            "hash": "",
+            "links": {},
+            "phase": "PHASE_TYPE_COMPLETE",
+            "audit": null,
+            "medias": [],
+            "trashed": false,
+            "delete_time": "",
+            "original_url": "",
+            "params": {
+                "AliasPath": "/run/mount/",
+                "RealPath": "/run/mount/",
+                "TaskID": "",
+                "client_version": "3.21.0",
+                "is_write": "true",
+                "limit": "54609838080",
+                "platform": "synology",
+                "source": "other",
+                "usage": "15856844800",
+                "vfs_id": "20250523220215205",
+                "vfs_type": "os"
+            },
+            "original_file_index": 0,
+            "space": "device_id#94082a79c0fee7fef301911ae6769783",
+            "apps": [],
+            "writable": false,
+            "folder_type": "",
+            "collection": null,
+            "sort_name": "",
+            "user_modified_time": "",
+            "spell_name": [],
+            "file_category": "OTHER",
+            "tags": [],
+            "reference_events": []
+        },
+        {
+            "kind": "drive#folder",
+            "id": "c7c97c53cc950a0db7c2f6572a4cf151",
+            "parent_id": "ec9864597d2d70d3c09b91e610e9af0a",
+            "name": "systemd",
+            "user_id": "625200512",
+            "size": "18",
+            "revision": "0",
+            "file_extension": "",
+            "mime_type": "folder",
+            "starred": false,
+            "web_content_link": "",
+            "created_time": "2025-05-27T16:59:49.314+08:00",
+            "modified_time": "2024-05-30T10:07:10.000+08:00",
+            "icon_link": "https://backstage-img-ssl.a.88cdn.com/36de21fd06b9ebdd5092b68652b6fc6118e23c2b",
+            "thumbnail_link": "",
+            "md5_checksum": "",
+            "hash": "",
+            "links": {},
+            "phase": "PHASE_TYPE_COMPLETE",
+            "audit": null,
+            "medias": [],
+            "trashed": false,
+            "delete_time": "",
+            "original_url": "",
+            "params": {
+                "AliasPath": "/run/systemd/",
+                "RealPath": "/run/systemd/",
+                "TaskID": "",
+                "client_version": "3.21.0",
+                "is_write": "true",
+                "limit": "54609838080",
+                "platform": "synology",
+                "source": "other",
+                "usage": "15856844800",
+                "vfs_id": "20250523220215205",
+                "vfs_type": "os"
+            },
+            "original_file_index": 0,
+            "space": "device_id#94082a79c0fee7fef301911ae6769783",
+            "apps": [],
+            "writable": false,
+            "folder_type": "",
+            "collection": null,
+            "sort_name": "",
+            "user_modified_time": "",
+            "spell_name": [],
+            "file_category": "OTHER",
+            "tags": [],
+            "reference_events": []
+        }
+    ],
+    "version": "",
+    "version_outdated": false,
+    "sync_time": ""
+}

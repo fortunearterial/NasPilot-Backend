@@ -328,12 +328,17 @@ class DownloadChain(ChainBase):
                                                 category=_media.category,
                                                 label=label,
                                                 downloader=downloader)
+
         if result:
             _downloader, _hash, _layout, error_msg = result
         else:
             _downloader, _hash, _layout, error_msg = None, None, None, "未找到下载器"
 
         if _hash:
+            # 从下载器中获取文件列表
+            if not _file_list:
+                _file_list = self.torrent_files(user_id=user_id, tid=_hash, downloader=_downloader)
+
             # `不创建子文件夹` 或 `不存在子文件夹`
             if _layout == "NoSubfolder" or not _folder_name:
                 # 下载路径记录至文件
